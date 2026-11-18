@@ -143,7 +143,9 @@ function activateCertamen(){
   if(!topics.length)return toast('Escribe al menos un tema que entre en la evaluación.');
   S.certamen.plans=S.certamen.plans.filter(p=>p.eventId!==ev.id);
   S.certamen.plans.push({eventId:ev.id,courseId:ev.courseId,title:ev.title,date:ev.date,mockMin:certDraft.mockMin||90,topics:topics,leftOut:[]});
-  certDraft=null;replanAll();render();
+  certDraft=null;replanAll();
+  if(typeof metricsTrack==='function')metricsTrack('certamen_activado');
+  render();
   toast('Modo certamen activo: reemplacé las micro-tareas sueltas por un plan por fases.');
 }
 function exitCertamen(eventId){

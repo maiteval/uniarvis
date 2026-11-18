@@ -1,6 +1,14 @@
 /* U.A.R.V.I.S. · Estado de la app y persistencia local */
 /* ===================== Estado y persistencia (solo en este navegador) ===================== */
 const KEY='entrenador-academico-v1';
+const UNIVERSITY_OTHER='Otra',UNIVERSITY_PREFERS_NOT='Prefiero no decir';
+const UNIVERSITIES_CHILE=['Universidad de Concepción','Universidad de Chile','Pontificia Universidad Católica de Chile',
+  'Universidad de Santiago de Chile','Universidad Técnica Federico Santa María','Universidad Católica del Norte',
+  'Universidad de Valparaíso','Universidad de Antofagasta','Universidad de Atacama','Universidad de La Serena',
+  'Universidad de Los Lagos','Universidad de Magallanes','Universidad del Bío-Bío','Universidad de Talca',
+  'Universidad Católica de Temuco','Universidad de Playa Ancha','Pontificia Universidad Católica de Valparaíso','Universidad Andrés Bello',
+  'Universidad San Sebastián','Universidad del Desarrollo','Universidad Mayor','Universidad Central de Chile'];
+const universityOk=v=>UNIVERSITIES_CHILE.indexOf(v)>=0||v===UNIVERSITY_OTHER||v===UNIVERSITY_PREFERS_NOT;
 function freshPomodoro(){return {focusMin:25,shortMin:5,longMin:15,longEvery:4,sound:true,phase:'focus',running:false,endsAt:null,leftMs:1500000,pomodoros:0,target:''}}
 function freshFlashcards(){return {decks:[],activeDeckId:'',limit:20}}
 function freshTools(){return {pomodoro:freshPomodoro(),flashcards:freshFlashcards()}}
@@ -65,7 +73,7 @@ function cleanTools(t){
 }
 const migrateTools=t=>cleanTools(t);
 const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,theme:'cian',mode:'light',style:'calma',arvis:true},lastPlan:null,
-  wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},support:{name:'',contact:''},profile:{name:'',career:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
+  wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},support:{name:'',contact:''},profile:{name:'',career:'',university:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
   account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null},institutionConsentAt:null});
 function migrate(s){
   const hadData=!!((Array.isArray(s.courses)&&s.courses.length)||(Array.isArray(s.events)&&s.events.length)||
@@ -91,8 +99,14 @@ function migrate(s){
   if(!s.certamen||typeof s.certamen!=='object'||Array.isArray(s.certamen))s.certamen={plans:[],topicsByCourse:{}};
   if(!Array.isArray(s.certamen.plans))s.certamen.plans=[];
   if(!s.certamen.topicsByCourse||typeof s.certamen.topicsByCourse!=='object'||Array.isArray(s.certamen.topicsByCourse))s.certamen.topicsByCourse={};
-  if(!s.profile||typeof s.profile!=='object')s.profile={name:'',career:''};
+  if(!s.profile||typeof s.profile!=='object')s.profile={name:'',career:'',university:''};
   if(s.profile.name==null)s.profile.name=''; if(s.profile.career==null)s.profile.career='';
+  if(typeof s.profile.university!=='string')s.profile.university='';
+  s.profile.university=s.profile.university.trim().slice(0,80);
+  if(s.account.type==='institucional'&&typeof institutionById==='function'){
+    const inst=institutionById(s.account.institutionId);
+    if(inst)s.profile.university=inst.name;                  // en modo institucional la universidad no se elige aquí
+  }
   delete s.profile.onboarded;                  // introducción eliminada: se ignora en perfiles y respaldos antiguos
   delete s.intro;
   if(Array.isArray(s.courses))s.courses.forEach(c=>{

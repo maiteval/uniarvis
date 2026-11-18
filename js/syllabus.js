@@ -75,6 +75,7 @@ function analyze(){
   if(!sylText.trim())return toast('Sube un archivo o pega el texto del syllabus.');
   if(typeof certamenRememberSyllabus==='function')certamenRememberSyllabus(sylCourse,sylText);
   pending=detectEvents(sylText,sylCourse);
+  if(pending.length&&typeof metricsTrack==='function')metricsTrack('syllabus_importado');
   if(!pending.length)toast('No encontré fechas. Revisa el formato o agrégalas manualmente.');
   render();
 }

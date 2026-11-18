@@ -40,6 +40,7 @@ server.listen(0, '127.0.0.1', async () => {
     await run('pwa.test.js', [base, path.join(out, 'pwa')]),                          // por http: PWA, respaldo, .ics, PDF
     await run('crypto.test.js', [base, path.join(out, 'crypto')]),                    // cifrado con contraseña
     await run('social.test.js', [base, path.join(out, 'social')]),                    // Amigos con backend simulado
+    await run('metrics.test.js', [base, path.join(out, 'metrics')]),                  // Métricas anónimas y comentarios
     await run('demo.test.js', [base, path.join(out, 'demo')]),                       // modo demo sin red
     await run('institucional.test.js', [base, path.join(out, 'institucional')])      // modo institucional (prototipo)
   ];

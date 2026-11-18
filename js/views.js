@@ -159,12 +159,24 @@ function viewInicio(){
   <div class="home-menu">${cards}</div>`;
 }
 function viewPerfil(){
-  const p=S.profile||{};
+  const p=S.profile||{},inst=typeof isInstitutional==='function'&&isInstitutional()?currentInstitution():null;
+  const u=inst?inst.name:(p.university||'');
+  const universityField=inst
+    ?`<label>Universidad<input id="pf-university" type="text" value="${esc(u)}" disabled aria-describedby="pf-university-help"></label>
+      <p class="mute" id="pf-university-help" style="margin:0">En modo institucional la universidad la define tu cuenta (${esc(inst.name || u)}) y no se puede cambiar aquí.</p>`
+    :`<label>Universidad<select id="pf-university" data-focus-id="pf-university">
+        <option value="" ${!u?'selected':''}>Sin definir</option>
+        ${UNIVERSITIES_CHILE.map(x=>`<option value="${esc(x)}" ${u===x?'selected':''}>${esc(x)}</option>`).join('')}
+        <option value="${esc(UNIVERSITY_OTHER)}" ${u===UNIVERSITY_OTHER?'selected':''}>${esc(UNIVERSITY_OTHER)}</option>
+        <option value="${esc(UNIVERSITY_PREFERS_NOT)}" ${u===UNIVERSITY_PREFERS_NOT?'selected':''}>${esc(UNIVERSITY_PREFERS_NOT)}</option>
+      </select></label>
+      <p class="mute" style="margin:0">Opcional. Solo se usa, si activas las estadísticas anónimas o envías un comentario, como dato general: nunca se liga a tu correo ni a tu cuenta de Amigos.</p>`;
   return `${screenHelp('perfil')}<div class="card"><h2>Perfil</h2>
-    <p class="mute" style="margin-top:0">Tu nombre y tu carrera se guardan solo en este navegador y sirven para personalizar el saludo y el plan.</p>
+    <p class="mute" style="margin-top:0">Tu nombre, tu carrera y tu universidad se guardan solo en este navegador y sirven para personalizar el saludo y el plan.</p>
     <div class="hud-form" style="max-width:520px">
       <label>Nombre<input id="pf-name" type="text" maxlength="60" value="${esc(p.name||'')}"></label>
       <label>Carrera / Programa<input id="pf-career" type="text" maxlength="80" value="${esc(p.career||'')}"></label>
+      ${universityField}
       <button class="btn" data-focus-id="save-profile" onclick="saveProfile()">Guardar cambios</button>
     </div></div>`;
 }
@@ -611,6 +623,7 @@ function viewPrivacidad(){
       <li>${KEYOBJ?'Tus datos locales están cifrados con tu contraseña.':'Por defecto los datos locales no están cifrados: si compartes este equipo, activa el cifrado con contraseña (más abajo) o borra tus datos de bienestar.'}</li>
       <li>El lector de PDF viene incluido: tu archivo <b>no se sube</b>, se lee dentro de tu navegador. Los horarios .ics también se leen solo en tu navegador.</li>
       <li>Para borrar lo que sí se guarda en el servidor, ve a <i>Amigos → Eliminar mi cuenta y mis datos del servidor</i>. Eso no borra tus datos locales.</li>
+      <li>Las estadísticas de uso y los comentarios son <b>opcionales</b> y están apagados por defecto. Si los activas, puedes desactivarlos aquí mismo.</li>
     </ul>
     <p class="mute">Estado: ${!S.consent?'aún no decidiste si activar el check-in':(S.consent.health?'check-in activado':'check-in desactivado')}. Último respaldo: ${S.lastBackup?dshort(S.lastBackup):'nunca'}.</p>
     <div class="row">
@@ -620,7 +633,25 @@ function viewPrivacidad(){
       <button class="btn del" onclick="deleteHealth()">Borrar mis datos de bienestar</button>
       <button class="btn del" onclick="wipe()">Borrar todo</button></div>
     ${encryptionHtml()}
-    <p class="mute" style="margin-bottom:0">La Ley 21.719 de protección de datos personales de Chile (vigente desde el 1 de diciembre de 2026) aplica a lo que se guarda en el servidor si usas Amigos: nombre visible, amistades, fechas compartidas y sesiones. Lo que queda solo en tu navegador no sale de él. Esto no es asesoría legal.</p>
+    <p class="mute" style="margin-bottom:0">La Ley 21.719 de protección de datos personales de Chile (vigente desde el 1 de diciembre de 2026) aplica a lo que se guarda en el servidor si usas Amigos, las estadísticas o los comentarios. Lo que queda solo en tu navegador no sale de él. Esto no es asesoría legal.</p>
+  </div>
+  <div class="card"><h3>Estadísticas de uso anónimas</h3>
+    <label class="soc-switch"><input type="checkbox" id="metrics-toggle" data-focus-id="metrics-toggle" ${METRICS.enabled?'checked':''} onchange="setMetrics(this.checked)"> Compartir estadísticas de uso anónimas para mejorar Uarvis</label>
+    <p style="margin:8px 0">Si lo activas, se crea un <b>ID aleatorio</b> que no se liga a tu cuenta de Amigos, a tu correo ni a tu correo institucional. Cada día se envía un solo lote con: el nombre del evento (por ejemplo, «app_abierta» o «seccion_vista»), el nombre de la sección cuando aplica, el <b>día sin hora</b>, tu universidad y carrera solo si las completaste, y la versión de la app.</p>
+    <p class="mute" style="margin:0 0 8px">Se envían solo los eventos permitidos: app_abierta, seccion_vista, pomodoro_completado, flashcards_repasadas, certamen_activado, ics_importado, syllabus_importado, notas_calculadas, amigo_agregado y modo_elegido. <b>Nunca</b> se envían check-in, energía, ánimo, sueño, diario, notas personales, calificaciones, mazos de flashcards ni el contenido de tus ramos.</p>
+    <p class="mute" style="margin:0">Está desactivado por defecto. Al desactivarlo se borran el ID anónimo y la cola pendiente. Sin Supabase configurado o sin red no se envía nada y no se muestra ningún error.</p>
+  </div>
+  <div class="card"><h3>Enviar comentarios</h3>
+    <p class="mute" style="margin-top:0">Opcional. Si tienes Supabase configurado, tu mensaje se guarda en la tabla <code>feedback</code> con el día, el tipo, la versión y tu universidad y carrera si las completaste. Si no, puedes copiarlo y enviarlo por otro medio.</p>
+    <div class="hud-form" style="max-width:520px">
+      <label>Tipo<select id="fb-type" data-focus-id="fb-type">
+        <option value="idea">Idea</option><option value="problema">Problema</option><option value="otro">Otro</option>
+      </select></label>
+      <label>Comentario<textarea id="fb-text" data-focus-id="fb-text" maxlength="1000" rows="4" placeholder="Cuéntanos qué podríamos mejorar (máximo 1000 caracteres)"></textarea></label>
+      <div class="row"><button class="btn" data-focus-id="feedback-send" onclick="feedbackSend()">Enviar comentarios</button>
+        <button class="btn sec" data-focus-id="feedback-copy" onclick="feedbackCopy()">Copiar comentario</button></div>
+    </div>
+    <p class="mute" style="margin-bottom:0">No incluyas datos de bienestar ni información personal en el mensaje: el comentario no se liga a tu cuenta.</p>
   </div>`;
 }
 function viewSalud(){

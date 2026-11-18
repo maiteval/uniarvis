@@ -15,6 +15,10 @@ function go(t,fromRoute){
     try{if(h&&location.hash!==h)history.pushState(null,'',h)}catch(e){}
   }
   render();
+  if(typeof metricsTrack==='function'){
+    metricsTrack('seccion_vista',t);
+    if(t==='notas')metricsTrack('notas_calculadas');
+  }
   if(tab==='amigos'&&typeof socialOpenTab==='function')socialOpenTab();
 }
 function goBreath(k){stopBreath(true);stopMed(true);bsel=k;go('respiracion');startBreath()}
@@ -64,15 +68,23 @@ function registerProfile(){
   const n=($('#reg-name')||{}).value||'',c=($('#reg-career')||{}).value||'';
   const name=String(n).trim(),career=String(c).trim();
   if(!name||!career)return toast('Ingresa tu nombre y carrera.');
-  S.profile={name:name.slice(0,60),career:career.slice(0,80)};
+  S.profile={name:name.slice(0,60),career:career.slice(0,80),university:''};
   save();toast(`Bienvenido/a, ${S.profile.name}.`);render();
   if(typeof maybeShowTour==='function')maybeShowTour();
+}
+function profileUniversityField(fallback){
+  if(typeof isInstitutional==='function'&&isInstitutional()){
+    const i=currentInstitution();
+    return i?i.name:(String(fallback||'').slice(0,80));
+  }
+  const el=$('#pf-university'),v=String((el&&el.value)||'').trim().slice(0,80);
+  return universityOk(v)?v:'';
 }
 function saveProfile(){
   const n=($('#pf-name')||{}).value||'',c=($('#pf-career')||{}).value||'';
   const name=String(n).trim(),career=String(c).trim();
   if(!name||!career)return toast('Ingresa tu nombre y carrera.');
-  S.profile={name:name.slice(0,60),career:career.slice(0,80)};
+  S.profile={name:name.slice(0,60),career:career.slice(0,80),university:profileUniversityField(S.profile&&S.profile.university)};
   save();toast('Perfil actualizado.');render();
 }
 function addCourse(){
@@ -89,6 +101,7 @@ function addGrade(cid){
   if(!isFinite(weight)||weight<0||weight>100)return toast('Ingresa una ponderación entre 0 y 100%.');
   if(!Array.isArray(c.grades))c.grades=[];
   c.grades.push({id:uid(),name:name.slice(0,80),score:Math.round(score*100)/100,weight:Math.round(weight*100)/100});
+  if(typeof metricsTrack==='function')metricsTrack('notas_calculadas');
   save();render();
 }
 function delGrade(cid,gid){const c=course(cid);if(!c)return;undoable('Nota eliminada.',()=>{c.grades=(c.grades||[]).filter(g=>g.id!==gid)})}
@@ -97,12 +110,14 @@ function setGrade(cid,gid,field,val){
   if(field==='name')g.name=String(val).trim().slice(0,80);
   else if(field==='score'){const n=parseNum(val);if(isFinite(n))g.score=Math.round(n*100)/100}
   else if(field==='weight'){const n=parseNum(val);if(isFinite(n)&&n>=0&&n<=100)g.weight=Math.round(n*100)/100}
+  if(typeof metricsTrack==='function')metricsTrack('notas_calculadas');
   save();render();
 }
 function setGradeOption(cid,field,val){
   const c=course(cid);if(!c)return;
   if(field==='passGrade'){const n=parseNum(val);if(!isFinite(n)||n<1||n>7)return toast('La nota de aprobación debe estar entre 1,0 y 7,0.');c.passGrade=Math.round(n*100)/100}
   else if(field==='roundFinal')c.roundFinal=!!val;
+  if(typeof metricsTrack==='function')metricsTrack('notas_calculadas');
   save();render();
 }
 function delCourse(id){
@@ -191,6 +206,7 @@ function validState(j){
     if(!j.profile||typeof j.profile!=='object'||Array.isArray(j.profile))return 'perfil';
     if(j.profile.name!==undefined&&!str(j.profile.name,60))return 'perfil';
     if(j.profile.career!==undefined&&!str(j.profile.career,80))return 'perfil';
+    if(j.profile.university!==undefined&&!str(j.profile.university,80))return 'perfil';
   }
   if(j.settings!==undefined){
     if(!j.settings||typeof j.settings!=='object'||Array.isArray(j.settings))return 'ajustes';
@@ -239,7 +255,11 @@ function cleanState(j){
   c.support={name:String((j.support&&j.support.name)||'').slice(0,120),contact:String((j.support&&j.support.contact)||'').slice(0,300)};
   c.consent=j.consent&&typeof j.consent.health==='boolean'?{health:j.consent.health,at:today()}:null;
   c.lastBackup=typeof j.lastBackup==='string'&&RX.date.test(j.lastBackup)?j.lastBackup:null;
-  if(j.profile&&typeof j.profile==='object')c.profile={name:String(j.profile.name||'').slice(0,60),career:String(j.profile.career||'').slice(0,80)};
+  if(j.profile&&typeof j.profile==='object'){
+    c.profile={name:String(j.profile.name||'').slice(0,60),career:String(j.profile.career||'').slice(0,80),university:String(j.profile.university||'').slice(0,80)};
+    if(c.account.type==='institucional'&&knownInst&&institutionById(c.account.institutionId))
+      c.profile.university=institutionById(c.account.institutionId).name;
+  }
   c.certamen={plans:[],topicsByCourse:{}};
   const cp=j.certamen&&j.certamen;
   if(cp&&Array.isArray(cp.plans))c.certamen.plans=cp.plans.filter(p=>p&&j.events.some(e=>e.id===p.eventId)).map(p=>({
@@ -327,7 +347,10 @@ function confirmICS(){
     S.classes.push({id:uid(),courseId:cid,day:b.day,start:b.start,end:b.end});added++;
   });
   icsPending=null;icsNotice='';icsEvaluations=[];
-  if(added||created){save();replanAll();toast(`${added} clase(s) agregadas${created?` y ${created} ramo(s) creados`:''}.`)}
+  if(added||created){
+    if(typeof metricsTrack==='function')metricsTrack('ics_importado');
+    save();replanAll();toast(`${added} clase(s) agregadas${created?` y ${created} ramo(s) creados`:''}.`);
+  }
   render();
 }
 

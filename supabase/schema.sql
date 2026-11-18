@@ -1,8 +1,10 @@
--- U.A.R.V.I.S. · Esquema opcional para la función "Amigos"
+-- U.A.R.V.I.S. · Esquema opcional para "Amigos", estadísticas de uso y comentarios
 -- Ejecutar este archivo en Supabase → SQL Editor → New query.
 -- La anon key es pública: la seguridad la dan las políticas RLS de abajo.
 -- Los datos de bienestar (check-in, energía, ánimo, sueño, diario, notas, calificaciones)
 -- NO tienen tabla aquí y nunca se envían desde la app.
+
+grant usage on schema public to anon;
 
 -- Permisos base. Quitamos los permisos anchos que Supabase da por defecto y los volvemos a dar
 -- columna por columna donde hace falta (por ejemplo, en profiles solo se puede cambiar display_name).
@@ -336,3 +338,73 @@ begin
 end $$;
 revoke all on function public.delete_my_account() from public;
 grant execute on function public.delete_my_account() to authenticated;
+
+-- ===================== Métricas de uso anónimas y comentarios =====================
+-- Ambas cosas son opcionales y están apagadas por defecto en la app. El anon_id es
+-- aleatorio y no existe ninguna columna que lo relacione con auth.users ni con perfiles.
+
+create table if not exists public.usage_events (
+  id uuid primary key default gen_random_uuid(),
+  anon_id text not null check (char_length(anon_id) between 10 and 80),
+  evento text not null check (evento in (
+    'app_abierta', 'seccion_vista', 'pomodoro_completado', 'flashcards_repasadas',
+    'certamen_activado', 'ics_importado', 'syllabus_importado', 'notas_calculadas',
+    'amigo_agregado', 'modo_elegido')),
+  seccion text check (seccion is null or char_length(seccion) between 1 and 80),
+  dia date not null,
+  university text check (university is null or char_length(university) between 1 and 80),
+  career text check (career is null or char_length(career) between 1 and 80),
+  app_version text not null check (char_length(app_version) between 1 and 20),
+  created_at timestamptz not null default now()
+);
+comment on table public.usage_events is 'Eventos anónimos permitidos. Sin hora, sin correos, sin bienestar y sin notas.';
+
+create table if not exists public.feedback (
+  id uuid primary key default gen_random_uuid(),
+  dia date not null,
+  tipo text not null check (tipo in ('idea', 'problema', 'otro')),
+  mensaje text not null check (char_length(mensaje) between 1 and 1000),
+  university text check (university is null or char_length(university) between 1 and 80),
+  career text check (career is null or char_length(career) between 1 and 80),
+  app_version text not null check (char_length(app_version) between 1 and 20),
+  created_at timestamptz not null default now()
+);
+comment on table public.feedback is 'Comentarios opcionales. No se ligan a cuentas y no incluyen datos de bienestar.';
+
+alter table public.usage_events enable row level security;
+alter table public.feedback enable row level security;
+revoke all on public.usage_events from public, anon, authenticated;
+revoke all on public.feedback from public, anon, authenticated;
+
+drop policy if exists usage_events_insert on public.usage_events;
+create policy usage_events_insert on public.usage_events for insert to anon, authenticated with check (true);
+drop policy if exists usage_events_service_select on public.usage_events;
+create policy usage_events_service_select on public.usage_events for select to service_role using (true);
+grant insert on public.usage_events to anon, authenticated;
+grant select on public.usage_events to service_role;
+
+drop policy if exists feedback_insert on public.feedback;
+create policy feedback_insert on public.feedback for insert to anon, authenticated with check (true);
+drop policy if exists feedback_service_select on public.feedback;
+create policy feedback_service_select on public.feedback for select to service_role using (true);
+grant insert on public.feedback to anon, authenticated;
+grant select on public.feedback to service_role;
+
+create index if not exists usage_events_dia_idx on public.usage_events (dia);
+create index if not exists usage_events_anon_idx on public.usage_events (anon_id);
+create index if not exists feedback_dia_idx on public.feedback (dia);
+
+-- Vista agregada para el panel interno: una fila por semana, evento y universidad.
+-- usuarios_unicos cuenta IDs anónimos distintos (no cuentas ni correos).
+drop view if exists public.usage_events_weekly;
+create view public.usage_events_weekly as
+select date_trunc('week', u.dia::timestamp)::date as semana,
+       u.evento,
+       coalesce(u.university, '(sin universidad)') as university,
+       count(distinct u.anon_id) as usuarios_unicos,
+       count(*) as eventos
+from public.usage_events u
+group by 1, 2, 3;
+comment on view public.usage_events_weekly is 'Usuarios únicos por semana, evento y universidad (solo service_role).';
+revoke all on public.usage_events_weekly from public, anon, authenticated;
+grant select on public.usage_events_weekly to service_role;

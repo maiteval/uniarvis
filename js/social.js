@@ -310,6 +310,7 @@ async function socialSendRequest(){
   SOC.busy=true;render();
   try{
     await socialFetch('/rest/v1/rpc/send_friend_request',{method:'POST',body:{code:code}});
+    if(typeof metricsTrack==='function')metricsTrack('amigo_agregado');
     toast('Solicitud enviada. Si la otra persona también te había agregado, ya son amigos.');
     await socialLoad();
   }catch(e){toast(socialMessage(e))}
@@ -318,6 +319,7 @@ async function socialSendRequest(){
 async function socialRespondFriend(id,accept){
   try{
     await socialFetch('/rest/v1/rpc/respond_friend_request',{method:'POST',body:{id:id,accept:!!accept}});
+    if(accept&&typeof metricsTrack==='function')metricsTrack('amigo_agregado');
     toast(accept?'Listo: ya son amigos.':'Solicitud rechazada.');
     await socialLoad();
   }catch(e){toast(socialMessage(e))}

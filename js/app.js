@@ -151,6 +151,7 @@ function start(){
   render();
   if(typeof socialBoot==='function')socialBoot();
   if(tab==='amigos'&&typeof socialOpenTab==='function')socialOpenTab();
+  if(typeof metricsTrack==='function')metricsTrack('app_abierta');
   if(typeof maybeShowTour==='function')maybeShowTour();
 }
 window.addEventListener('hashchange',goFromRoute);

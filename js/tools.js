@@ -53,6 +53,7 @@ function pomAdvance(now=Date.now(),natural=true,quiet=false){
   if(i>=60&&p.running)p.endsAt=now+pomDuration(p);
   if(changed){
     if(last&&natural)pomAlert(last,p.phase);
+    if(last==='focus'&&natural&&typeof metricsTrack==='function')metricsTrack('pomodoro_completado');
     if(last==='focus'&&natural&&!quiet&&typeof arvisCelebrar==='function')arvisCelebrar();
     save();
     if(!quiet&&(typeof tab==='undefined'||tab==='herramientas')&&typeof render==='function')render();
@@ -248,9 +249,14 @@ function flashcardAnswerNow(knew){
   const next=flashcardAnswer(c,!!knew,today());
   c.box=next.box;c.due=next.due;
   fcSession.reviewed++;if(next.due===addDays(today(),1))fcSession.tomorrow++;
-  fcSession.queue.shift();fcShow=false;save();render();
+  fcSession.queue.shift();fcShow=false;
+  if(!fcSession.queue.length&&fcSession.reviewed>0&&typeof metricsTrack==='function')metricsTrack('flashcards_repasadas');
+  save();render();
 }
-function finishFlashcards(){fcSession=null;fcShow=false;render()}
+function finishFlashcards(){
+  if(fcSession&&fcSession.reviewed>0&&fcSession.queue.length&&typeof metricsTrack==='function')metricsTrack('flashcards_repasadas');
+  fcSession=null;fcShow=false;render();
+}
 function fcStudyHtml(){
   const F=fcCfg();
   if(fcSession&&!fcSession.queue.length)return `<div class="card"><h3>Resumen del repaso</h3>

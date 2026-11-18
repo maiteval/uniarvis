@@ -92,6 +92,7 @@ function institutionDayMark(date){
 }
 function choosePersonal(){
   S.account=accountBlank();S.account.type='personal';
+  if(typeof metricsTrack==='function')metricsTrack('modo_elegido','personal');
   if(typeof save==='function')save();
   if(typeof render==='function')render();
 }
@@ -99,6 +100,9 @@ function linkInstitution(id,email){
   const i=institutionById(id);if(!i)return false;
   S.account={type:'institucional',institutionId:id,email:String(email||'').trim().slice(0,120),linkedAt:today()};
   S.institutionConsentAt=today();
+  if(!S.profile||typeof S.profile!=='object')S.profile={name:'',career:'',university:''};
+  S.profile.university=i.name;
+  if(typeof metricsTrack==='function')metricsTrack('modo_elegido','institucional');
   if(!S.support||(!S.support.name&&!S.support.contact))S.support={name:i.support.service,contact:i.support.email+' · '+i.support.phone};
   if(typeof save==='function')save();
   return true;
