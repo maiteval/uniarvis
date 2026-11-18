@@ -55,7 +55,8 @@ function mobileNavHtml(){
 }
 function render(){
   const key=LOCKED?'lock':(typeof InstitutionalFlow!=='undefined'&&InstitutionalFlow.get()?'flow':
-    (!S.profile||!S.profile.name?'landing':(!S.account||!S.account.type?'account-choice':section+'/'+tab)));
+    (typeof instImport!=='undefined'&&instImport?'inst-import':
+    (!S.profile||!S.profile.name?'landing':(!S.account||!S.account.type?'account-choice':section+'/'+tab))));
   const same=key===lastRenderKey;
   const active=document.activeElement;
   const focus=active&&active!==document.body?{id:active.id||'',data:(active.dataset&&active.dataset.focusId)||''}:null;
@@ -90,11 +91,11 @@ function render(){
     let mob=$('#mobile-nav');if(mob)mob.remove();
     app.innerHTML=lockView();finish($('#lp'));return;
   }
-  if(key==='flow'||key==='account-choice'){
+  if(key==='flow'||key==='account-choice'||key==='inst-import'){
     document.body.classList.add('landing-active');$('#nav').innerHTML='';
     let mob=$('#mobile-nav');if(mob)mob.remove();
-    app.innerHTML=key==='flow'?viewInstitutionalFlow():viewAccountChoice();
-    finish(key==='flow'?$('#inst-email'):$('#reg-name'));return;
+    app.innerHTML=key==='inst-import'?(instImport&&instImport.data?institutionPreviewHtml():institutionImportHtml()):(key==='flow'?viewInstitutionalFlow():viewAccountChoice());
+    finish(key==='flow'?$('#inst-email'):null);return;
   }
   if(key==='landing'){
     document.body.classList.add('landing-active');$('#nav').innerHTML='';

@@ -151,8 +151,90 @@ function institutionalCancel(){InstitutionalFlow.cancel();if(typeof render==='fu
 function institutionalNext(){InstitutionalFlow.next();if(typeof render==='function')render()}
 function institutionalEmail(v){InstitutionalFlow.setEmail(v)}
 function institutionalSubmitEmail(){InstitutionalFlow.submitEmail();if(typeof render==='function')render()}
-function institutionalAccept(){if(InstitutionalFlow.accept()&&typeof toast==='function')toast('Vinculado con la Universidad de Concepción (prototipo).');if(typeof render==='function')render()}
+function institutionalAccept(){
+  const wasLinked=InstitutionalFlow.accept();
+  if(wasLinked&&typeof toast==='function')toast('Vinculado con la Universidad de Concepción (prototipo).');
+  if(wasLinked&&typeof startInstitutionImport==='function')startInstitutionImport('consent');
+  if(typeof render==='function')render();
+}
+const INST_IMPORT_STEPS=['Ramos inscritos','Horario','Fechas de evaluación','Notas'];
+let instImport=null,instImportNotice='';
+const importedCourse=c=>!!(c&&c.origin==='udec-demo');
+const importedCount=()=>S.courses.filter(importedCourse).length+S.classes.filter(x=>x.origin==='udec-demo').length+S.events.filter(x=>x.origin==='udec-demo').length;
+function hasSyllabus(cid){return !!(S.certamen&&S.certamen.topicsByCourse&&Array.isArray(S.certamen.topicsByCourse[cid])&&S.certamen.topicsByCourse[cid].length)}
+function startInstitutionImport(from){
+  if(!isInstitutional())return;
+  instImport={step:0,from:from||'cuenta',data:null,courses:[],error:''};
+  instImportNotice='';render();runInstitutionImport();
+}
+async function runInstitutionImport(){
+  if(!instImport||!isInstitutional())return;
+  const a=S.account||{},inst=currentInstitution();
+  if(typeof fetchInstitutionData!=='function'||!inst){instImport.error='La importación simulada no está disponible.';render();return}
+  const data=await fetchInstitutionData(inst.id,a.email);
+  if(!instImport||!isInstitutional())return;
+  if(!data){instImport.error='No pude importar con esa cuenta institucional.';render();return}
+  instImport.data=data;
+  instImport.courses=data.courses.map(c=>({course:c,keep:!S.courses.some(x=>x.name===c.name),exists:S.courses.some(x=>x.name===c.name)}));
+  instImport.step=4;render();
+}
+function setInstitutionCourse(i,keep){if(instImport&&instImport.courses[i])instImport.courses[i].keep=!!keep}
+function cancelInstitutionImport(){instImport=null;instImportNotice='';render()}
+function dismissInstitutionDone(){instImportNotice='';render()}
+const institutionImportSummary=()=>instImport&&instImport.data?{
+  courses:instImport.courses.filter(x=>x.keep).length,
+  classes:instImport.data.classes.filter(k=>instImport.courses.some(x=>x.keep&&x.course.id===k.courseId)).length,
+  events:instImport.data.events.filter(e=>instImport.courses.some(x=>x.keep&&x.course.id===e.courseId)).length,
+  grades:instImport.data.courses.filter(c=>instImport.courses.some(x=>x.keep&&x.course.id===c.id)).reduce((n,c)=>n+(c.grades||[]).length,0)
+}:{courses:0,classes:0,events:0,grades:0};
+function confirmInstitutionImport(){
+  if(!instImport||!instImport.data)return;
+  const keep=instImport.courses.filter(x=>x.keep).map(x=>x.course),ids=keep.map(c=>c.id);
+  let addedC=0,addedK=0,addedE=0;
+  keep.forEach(c=>{
+    if(S.courses.some(x=>x.name===c.name))return;
+    S.courses.push({...c,grades:(c.grades||[]).map(g=>({...g})),share:false});addedC++;
+  });
+  instImport.data.classes.filter(k=>ids.includes(k.courseId)).forEach(k=>{
+    if(S.classes.some(x=>x.courseId===k.courseId&&x.day===k.day&&x.start===k.start&&x.end===k.end))return;
+    S.classes.push({...k});addedK++;
+  });
+  instImport.data.events.filter(e=>ids.includes(e.courseId)).forEach(e=>{
+    if(S.events.some(x=>x.courseId===e.courseId&&x.title===e.title&&x.date===e.date))return;
+    S.events.push({...e});addedE++;
+  });
+  instImport=null;instImportNotice='';
+  if(addedC||addedK||addedE){
+    if(addedC)S.lastPlan=null;
+    save();if(typeof replanAll==='function')replanAll();
+    if(S.courses.some(c=>importedCourse(c)&&!hasSyllabus(c.id)))instImportNotice='Listo. Lo único que falta es el syllabus de cada ramo';
+    toast(`Agregué ${addedC} ramo(s), ${addedK} clase(s) y ${addedE} fecha(s) desde la UdeC (datos de ejemplo).`);
+  }else toast('No hay datos nuevos para agregar.');
+  if(typeof render==='function')render();
+}
+async function removeInstitutionData(skipConfirm=false){
+  if(!importedCount())return toast('No hay datos importados desde la UdeC.');
+  if(!skipConfirm&&!await askConfirm({title:'Quitar los datos importados',text:`Se borrarán solo ${importedCount()} dato(s) marcados como «Datos de ejemplo» de la UdeC: ramos, clases, fechas y notas. No se tocarán tus otros ramos ni tus datos de bienestar.`,okLabel:'Quitar datos',danger:true}))return;
+  const ids=S.courses.filter(importedCourse).map(c=>c.id);
+  S.courses=S.courses.filter(c=>!importedCourse(c));
+  S.classes=S.classes.filter(k=>k.origin!=='udec-demo'&&!ids.includes(k.courseId));
+  S.events=S.events.filter(e=>e.origin!=='udec-demo'&&!ids.includes(e.courseId));
+  S.tasks=S.tasks.filter(t=>!ids.includes(t.courseId)&&!S.events.some(e=>e.id===t.eventId));
+  S.sessions=S.sessions.filter(s=>!ids.includes(s.courseId));
+  if(S.certamen){
+    S.certamen.plans=(S.certamen.plans||[]).filter(p=>!ids.includes(p.courseId)&&S.events.some(e=>e.id===p.eventId));
+    if(S.certamen.topicsByCourse&&typeof S.certamen.topicsByCourse==='object')ids.forEach(id=>delete S.certamen.topicsByCourse[id]);
+  }
+  save();if(typeof replanAll==='function')replanAll();
+  instImport=null;instImportNotice='Datos de ejemplo de la UdeC quitados.';
+  toast('Los datos importados fueron quitados. Tus otros datos siguen aquí.');render();
+}
 async function disconnectInstitution(){
-  if(!await askConfirm({title:'Desconectar de tu universidad',text:'Volverás al modo Personal. No se borran tus ramos, notas, diario ni ningún otro dato.',okLabel:'Desconectar'}))return;
-  unlinkInstitution();toast('Volviste al modo Personal. Tus datos siguen aquí.');render();
+  const n=importedCount();
+  let keep=true;
+  if(n&&typeof askConfirm==='function')keep=await askConfirm({title:'Desconectar de tu universidad',text:`Tienes ${n} dato(s) importados desde la UdeC (ramos, horario, fechas y notas de ejemplo). ¿Quieres conservarlos o quitarlos al volver al modo Personal?`,okLabel:'Conservar mis datos',cancelLabel:'Quitar los importados'});
+  const wasInstitutional=isInstitutional();
+  unlinkInstitution();instImport=null;instImportNotice=keep?'Datos de ejemplo conservados.':'Datos de ejemplo de la UdeC quitados.';
+  if(!keep&&wasInstitutional)await removeInstitutionData(true);
+  toast(keep?'Volviste al modo Personal. Tus datos siguen aquí.':'Volviste al modo Personal y quité los datos importados.');render();
 }

@@ -415,6 +415,15 @@ filter:blur(10px);opacity:.9;animation:hudPulse 8s ease-in-out infinite alternat
 .hd.inst-day.exam{box-shadow:inset 0 -3px 0 var(--warn)}
 .hd.inst-day.break{box-shadow:inset 0 -3px 0 var(--soft)}
 .hd.inst-day.holiday{box-shadow:inset 0 -3px 0 var(--accent)}
+.inst-flow .inst-steps span b{font-weight:700;margin-right:3px}
+.inst-flow table{width:100%;font-size:13px;border-collapse:collapse}
+.inst-flow th,.inst-flow td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+#inst-import .banner.info,#inst-preview .banner.info{margin:10px 0}
+.inst-account-data{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.inst-account-data h3{margin:0 0 6px}
+.inst-pending{border-color:var(--warn);color:var(--warn)}
+.inst-done{margin:10px 0}
+.inst-syllabus-pending{margin-bottom:12px}
 @media (max-width:640px){
   .inst-logo{width:112px;height:37px}
   .inst-logo-sm{width:56px;height:19px}

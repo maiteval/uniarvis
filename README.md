@@ -108,6 +108,7 @@ La app ofrece al iniciar una pantalla para elegir **Personal** o **Institucional
 - **Personal:** todo sigue funcionando como antes; los datos quedan solo en este dispositivo.
 - **Institucional:** prototipo sin backend real. La única institución es la **Universidad de Concepción**. El acceso se simula validando que el correo termine en `@udec.cl` (no se envía nada: aquí irá el SSO con Google o Microsoft vía Supabase) y luego un consentimiento único. El catálogo está en `js/institutions.js`: agregar otra universidad es agregar un objeto. El logo es un SVG propio con la sigla UdeC; **no es el escudo ni un logo oficial**. La interfaz marca **«Prototipo · no oficial»** y los contactos de ejemplo como **«Dato de ejemplo»**.
 - Los contactos de apoyo y las fechas del calendario (inicio y fin de clases, certámenes, recesos y feriados) son **ejemplos relativos a hoy**, marcados con `TODO: completar con datos oficiales de la UdeC`. Las líneas nacionales \*4141 y Salud Responde se muestran siempre. «Quiero que me contacten» abre un `mailto:` solo con nombre y correo; no incluye datos de bienestar ni hace peticiones de red.
+- La **importación de ramos, horario, fechas y notas es simulada**: `js/institution-data.js` genera un semestre de ejemplo de Ingeniería Civil con `origin:'udec-demo'` y una espera de 1–2 s; no hace peticiones de red, no pide claves del portal del estudiante y nunca toca datos de bienestar. Tras el consentimiento se muestran los pasos y una vista previa para confirmar (o «Ahora no»). Los ramos que ya tienes se marcan «Ya lo tienes» y se omiten por defecto. Cada ramo importado queda con «Syllabus pendiente» hasta que subas su syllabus; no se borra ni se sobrescribe nada. En **Ajustes → Cuenta** puedes volver a importar, quitar solo los datos con `origin:'udec-demo'`, y al desconectarte elegir si los conservas. **Hacerla real requiere un convenio con la universidad, SSO institucional y una API oficial** (el `TODO` en `fetchInstitutionData` marca dónde se conectaría). El estudiante solo sube los syllabus por su cuenta.
 - En modo institucional, las semanas de certámenes cuentan como semanas críticas; los feriados y recesos no reciben micro-tareas, y los ramos nuevos parten con nota de aprobación 4,0 (editable por ramo).
 - **Privacidad:** el check-in, la energía, el ánimo, el sueño, el diario, las notas personales y las calificaciones **nunca salen del dispositivo**, también en modo institucional. El prototipo no envía esos datos a la universidad ni a ningún servidor.
 
@@ -125,6 +126,7 @@ js/ics.js             parser de horarios .ics (sin librerías)
 js/crypto.js          cifrado opcional con contraseña
 js/state.js           estado y persistencia local
 js/institutions.js    catálogo institucional y flujo simulado (prototipo, sin red)
+js/institution-data.js importación simulada de ramos, horario, fechas y notas (sin red)
 js/capacity.js        capacidad realista del día
 js/planner.js         micro-tareas, semanas críticas y modo certamen
 js/wellbeing.js       check-in, alertas, pausas, respiración, patrones

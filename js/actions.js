@@ -170,15 +170,20 @@ function validState(j){
     if(c.share!==undefined&&typeof c.share!=='boolean')return 'ramos';
     if(c.passGrade!==undefined&&!num(c.passGrade,1,7))return 'notas';
     if(c.roundFinal!==undefined&&typeof c.roundFinal!=='boolean')return 'notas';
+    if(c.origin!==undefined&&c.origin!=='udec-demo')return 'ramos';
     if(c.grades!==undefined){
       if(!Array.isArray(c.grades))return 'notas';
-      for(const g of c.grades)if(!(g&&RX.id.test(g.id)&&str(g.name,80)&&num(g.score,-100,100)&&num(g.weight,0,100)))return 'notas';
+      for(const g of c.grades)if(!(g&&RX.id.test(g.id)&&str(g.name,80)&&(g.score===undefined||g.score===null||num(g.score,-100,100))&&num(g.weight,0,100)))return 'notas';
     }
   }
-  for(const k of j.classes)if(!(k&&RX.id.test(k.id)&&RX.id.test(k.courseId)&&int(k.day,0,6)&&RX.time.test(k.start)&&RX.time.test(k.end)))return 'horario';
+  for(const k of j.classes){
+    if(!(k&&RX.id.test(k.id)&&RX.id.test(k.courseId)&&int(k.day,0,6)&&RX.time.test(k.start)&&RX.time.test(k.end)))return 'horario';
+    if(k.origin!==undefined&&k.origin!=='udec-demo')return 'horario';
+  }
   for(const e of j.events){
     if(!(e&&RX.id.test(e.id)&&RX.id.test(e.courseId)&&str(e.title,200)&&RX.date.test(e.date)&&Object.prototype.hasOwnProperty.call(TYPE_LABEL,e.type)))return 'fechas';
     if(e.src!==undefined&&!(e.src&&typeof e.src==='object'&&!Array.isArray(e.src)&&RX.id.test(e.src.owner)&&RX.id.test(e.src.id)))return 'fechas';
+    if(e.origin!==undefined&&e.origin!=='udec-demo')return 'fechas';
   }
   for(const t of j.tasks)if(!(t&&RX.id.test(t.id)&&RX.id.test(t.eventId)&&RX.id.test(t.courseId)&&str(t.title,300)&&RX.date.test(t.date)&&num(t.minutes,1,600)&&typeof t.done==='boolean'))return 'tareas';
   for(const s of j.sessions)if(!(s&&RX.id.test(s.id)&&RX.id.test(s.courseId)&&RX.date.test(s.date)&&num(s.minutes,1,1440)&&(s.taskId===undefined||RX.id.test(s.taskId))&&(s.socialId===undefined||RX.id.test(s.socialId))))return 'sesiones';
@@ -214,12 +219,13 @@ function validState(j){
 }
 function cleanState(j){
   const c=fresh();
-  c.classes=j.classes;c.tasks=j.tasks;
-  c.events=j.events.map(e=>{const o={id:e.id,courseId:e.courseId,title:String(e.title||'').slice(0,200),date:e.date,type:e.type};if(e.early)o.early=true;if(e.src)o.src={owner:String(e.src.owner).slice(0,40),id:String(e.src.id).slice(0,40)};return o});
+  c.classes=j.classes.map(k=>({...k}));c.tasks=j.tasks.map(t=>({...t}));
+  c.events=j.events.map(e=>{const o={id:e.id,courseId:e.courseId,title:String(e.title||'').slice(0,200),date:e.date,type:e.type};if(e.early)o.early=true;if(e.src)o.src={owner:String(e.src.owner).slice(0,40),id:String(e.src.id).slice(0,40)};if(e.origin==='udec-demo')o.origin=e.origin;return o});
   c.sessions=j.sessions.map(s=>{const o={id:s.id,date:s.date,courseId:s.courseId,minutes:+s.minutes};if(s.taskId)o.taskId=s.taskId;if(s.socialId)o.socialId=s.socialId;return o});
   c.courses=(j.courses||[]).map(x=>({id:x.id,name:x.name,difficulty:x.difficulty,color:x.color,share:x.share===true,
     passGrade:Number.isFinite(x.passGrade)?x.passGrade:4,roundFinal:x.roundFinal!==false,
-    grades:(x.grades||[]).map(g=>({id:g.id,name:String(g.name||'').slice(0,80),score:+g.score,weight:+g.weight}))}));
+    ...(x.origin==='udec-demo'?{origin:x.origin,code:x.code,section:x.section}:{}),
+    grades:(x.grades||[]).map(g=>({id:g.id,name:String(g.name||'').slice(0,80),...(g.score!=null?{score:+g.score}:{}),weight:+g.weight}))}));
   c.settings={min:int15(j.settings&&j.settings.min)?j.settings.min:60,theme:themeOk(j.settings&&j.settings.theme)?j.settings.theme:'cian',mode:modeOk(j.settings&&j.settings.mode)?j.settings.mode:'light',arvis:!(j.settings&&j.settings.arvis===false)};
   const a=j.account&&typeof j.account==='object'&&!Array.isArray(j.account)?j.account:null;
   const known=a&&(a.type==='personal'||a.type==='institucional');

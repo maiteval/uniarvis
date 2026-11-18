@@ -55,7 +55,7 @@ function closeConfirm(value){
   const back=confirmReturn;confirmReturn=null;
   if(back&&document.contains(back))try{back.focus({preventScroll:true})}catch(e){}
 }
-function askConfirm({title='¿Confirmar?',text='',okLabel='Continuar',danger=false,requireWord=null}={}){
+function askConfirm({title='¿Confirmar?',text='',okLabel='Continuar',cancelLabel='Cancelar',danger=false,requireWord=null}={}){
   return new Promise(resolve=>{
     if(confirmResolve)closeConfirm(false);
     confirmResolve=resolve;confirmReturn=document.activeElement;
@@ -64,7 +64,7 @@ function askConfirm({title='¿Confirmar?',text='',okLabel='Continuar',danger=fal
     const word=requireWord?`<label class="confirm-word">Para confirmar, escribe <b>${esc(requireWord)}</b><input id="confirm-word" autocomplete="off" spellcheck="false"></label>`:'';
     box.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-text">
       <h2 id="confirm-title">${esc(title)}</h2><p id="confirm-text">${esc(text).replace(/\n/g,'<br>')}</p>${word}
-      <div class="row"><button type="button" class="btn sec" id="confirm-cancel">Cancelar</button>
+      <div class="row"><button type="button" class="btn sec" id="confirm-cancel">${esc(cancelLabel)}</button>
       <button type="button" class="btn ${danger?'danger':'sec'}" id="confirm-ok" ${requireWord?'disabled':''}>${esc(okLabel)}</button></div></div>`;
     box.hidden=false;
     const okBtn=$('#confirm-ok'),cancelBtn=$('#confirm-cancel'),input=$('#confirm-word');

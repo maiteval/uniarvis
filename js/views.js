@@ -64,11 +64,47 @@ function viewInstitutionalFlow(){
       <div class="card"><h3>Qué no ve nunca</h3>
         <ul><li>Check-in, energía, ánimo y sueño.</li><li>Diario y notas personales.</li><li>Calificaciones.</li></ul></div></div>
       <div class="row"><button class="btn" data-focus-id="inst-consent-ok" onclick="institutionalAccept()">Entendido</button>${back}</div>`;
+  }else if(f.step==='import'){
+    body=institutionImportHtml();
+  }else if(f.step==='preview'){
+    body=institutionPreviewHtml();
   }
   return `<div class="landing account-landing"><div class="landing-bg"></div><div class="landing-panel account-panel inst-flow">
     <div class="inst-steps" aria-label="Pasos del ingreso institucional">
       <span class="${f.step==='choose'?'on':''}">1. Universidad</span><span class="${f.step==='login'?'on':''}">2. Cuenta</span><span class="${f.step==='consent'?'on':''}">3. Consentimiento</span></div>
     ${body}</div></div>`;
+}
+function institutionImportHtml(){
+  const steps=INST_IMPORT_STEPS,current=instImport?instImport.step:0;
+  const done=instImport&&instImport.data&&instImport.step===4;
+  const icon=i=>done||i<current?'✓':(i===current?'…':'○');
+  return `<div class="landing account-landing"><div class="landing-bg"></div><div class="landing-panel account-panel inst-flow" id="inst-import">
+    <div class="inst-steps" aria-label="Pasos de la importación">${steps.map((s,i)=>`<span class="${done||i===current?'on':''}"><b aria-hidden="true">${icon(i)}</b> ${esc(s)}</span>`).join('')}</div>
+    <h2>Importando tus datos desde la UdeC…</h2>
+    <p class="mute">Estoy leyendo ramos inscritos, horario, fechas de evaluación y notas de este semestre. ${done?'Ya están listos para que los revises.':'Es solo un momento.'}</p>
+    ${instImport&&instImport.error?`<div class="banner go" role="alert">${esc(instImport.error)}</div>`:''}
+    <div class="banner info"><b>Datos de ejemplo</b><br>Esta importación es simulada: no hace peticiones de red ni lee tus datos de bienestar.</div>
+    <div class="row"><button class="btn sec" data-focus-id="inst-import-skip" onclick="cancelInstitutionImport()">Ahora no</button></div>
+  </div></div>`;
+}
+function institutionPreviewHtml(){
+  const s=institutionImportSummary();
+  const rows=instImport.courses.map((x,i)=>{
+    const c=x.course,ks=instImport.data.classes.filter(k=>k.courseId===c.id),evs=instImport.data.events.filter(e=>e.courseId===c.id);
+    const grade=gradeSummary(c.grades,c);
+    return `<tr><td><input type="checkbox" aria-label="Incluir ${esc(c.name)}" data-focus-id="inst-preview-keep-${i}" ${x.keep?'checked':''} onchange="setInstitutionCourse(${i},this.checked)"></td>
+      <td><b>${esc(c.name)}</b><br><span class="mute">${esc(c.code)} · Sección ${esc(c.section)}</span>${x.exists?'<br><span class="tag">Ya lo tienes</span>':''}</td>
+      <td>${ks.map(k=>`${DAYS[k.day]} ${k.start}–${k.end} <span class="mute">(${k.kind})</span>`).join('<br>')||'—'}</td>
+      <td>${evs.length} fecha(s)</td><td>${c.grades.length?gradeTxt(grade.avg)+' · nota necesaria '+gradeTxt(grade.need):'—'}</td></tr>`;
+  }).join('');
+  return `<div class="landing account-landing"><div class="landing-bg"></div><div class="landing-panel account-panel inst-flow" id="inst-preview">
+    <h2>Revisa lo que traigo desde la UdeC</h2>
+    <p class="mute">No guardé nada todavía. Marca los ramos que quieras agregar; los que ya tienes vienen sin marcar para no duplicarlos. <span class="tag inst-example">Datos de ejemplo</span></p>
+    <div class="banner info"><b>Resumen:</b> ${s.courses} ramo(s), ${s.classes} bloque(s) de horario, ${s.events} fecha(s) y ${s.grades} nota(s).</div>
+    <div style="overflow:auto"><table><tr><th></th><th>Ramo</th><th>Horario</th><th>Fechas</th><th>Notas</th></tr>${rows}</table></div>
+    <div class="row" style="margin-top:12px"><button class="btn" data-focus-id="inst-import-confirm" onclick="confirmInstitutionImport()">Agregar a mi Uarvis</button>
+      <button class="btn sec" data-focus-id="inst-import-later" onclick="cancelInstitutionImport()">Ahora no</button></div>
+  </div></div>`;
 }
 function homeNotice(){
   const t0=today();
@@ -95,6 +131,13 @@ function icsPendingHtml(){
     <div class="row" style="margin-top:8px"><button class="btn" onclick="confirmICS()">Confirmar y agregar al horario</button>
       <button class="btn sec" onclick="cancelICS()">Cancelar</button></div></div>`;
 }
+function institutionDoneNotice(){
+  if(!instImportNotice||!S.courses.some(c=>importedCourse(c)&&!hasSyllabus(c.id)))return '';
+  return `<div class="banner inst-done" id="inst-import-done"><b>Listo. Lo único que falta es el syllabus de cada ramo.</b><br>
+    Sube los syllabus para afinar las fechas y el plan. <button class="lnk" onclick="go('syllabus')">Ir a Académico → Syllabus y fechas</button>
+    <button class="lnk" onclick="dismissInstitutionDone()">Entendido</button>
+    <span class="tag inst-example">Datos de ejemplo</span></div>`;
+}
 function viewInicio(){
   const name=S.profile&&S.profile.name?esc(S.profile.name):'';
   const descs={planificacion:'Tu día y tu semana, sin sobrecargas.',academico:'Ramos, fechas, notas y carga.',bienestar:'Check-in, pausas y apoyo.',social:'Coordina sesiones con amigos.',ajustes:'Perfil, tema y privacidad.'};
@@ -110,6 +153,7 @@ function viewInicio(){
   ${isInstitutional()?`<div class="inst-inicio">${institutionIdentityHtml(currentInstitution().id)}<span class="tag inst-example">Prototipo · no oficial</span></div>`:''}
   <div class="home-head"><div><h2>Hola, ${name}</h2><p class="mute" style="margin-bottom:0">Elige por dónde empezar hoy.</p></div></div>
   ${arvisInicioHtml()}
+  ${institutionDoneNotice()}
   ${homeNotice()}
   ${arvisAlertaHtml()}
   <div class="home-menu">${cards}</div>`;
@@ -136,7 +180,14 @@ function viewCuenta(){
     <div class="row">
       ${i?'<button class="btn del" onclick="disconnectInstitution()">Desconectar de mi universidad</button>'
         :'<button class="btn" data-focus-id="connect-institution" onclick="startInstitutionalFlow(\'cuenta\')">Conectar con mi universidad</button>'}
-    </div></div>`;
+    </div>
+    ${i?`<div class="inst-account-data"><h3>Datos importados</h3>
+      <p class="mute" style="margin-top:0">La importación desde la UdeC es simulada (Datos de ejemplo): ramos, horario, fechas y notas, sin red y sin tocar tus datos de bienestar.</p>
+      <div class="row"><button class="btn sec" data-focus-id="reimport-institution" onclick="startInstitutionImport('cuenta')">Volver a importar desde la UdeC</button>
+        <button class="btn del" data-focus-id="remove-institution-data" onclick="removeInstitutionData()">Quitar los datos importados</button></div>
+      ${instImportNotice?`<p class="mute">${esc(instImportNotice)}</p>`:''}</div>`:''}
+    </div>
+    ${institutionDoneNotice()}`;
 }
 function consentCard(){
   return `<div class="card"><h3>Antes de empezar: tus datos de bienestar</h3>
@@ -370,7 +421,7 @@ function gradesCard(c){
     ?`Próxima evaluación por fecha: <b>${esc(next.title)}</b> (${dshort(next.date)} · ${TYPE_LABEL[next.type]}) — nota necesaria en ella: <b>${needShown}</b>.`
     :'Aún no registraste una fecha próxima para este ramo; la misma nota aplica a lo que falte.'}</div>`:'';
   return `<div class="card grades-card"><div class="row" style="justify-content:space-between;align-items:flex-start">
-      <div><h3 style="margin:0"><span aria-hidden="true" class="dot" style="background:${c.color};display:inline-block;margin-right:6px"></span>${esc(c.name)}</h3>
+      <div><h3 style="margin:0"><span aria-hidden="true" class="dot" style="background:${c.color};display:inline-block;margin-right:6px"></span>${esc(c.name)}${importedCourse(c)?' <span class="tag inst-example">Datos de ejemplo</span>':''}${importedCourse(c)&&!hasSyllabus(c.id)?'<br><span class="tag inst-pending">Syllabus pendiente</span>':''}</h3>
       <div class="mute">Promedio actual (ponderado): <b class="hud-num">${sum.shown!=null?comma(sum.shown.toFixed(sum.round?1:2)):'—'}</b> · Ponderado: ${comma(String(sum.wsum))}% · Restante: ${comma(String(Math.max(0,sum.rem)))}%</div>
       <div class="row" style="margin-top:8px"><label class="mute">Nota de aprobación <input id="gp-${c.id}" type="text" inputmode="decimal" style="width:70px" value="${gradeTxt(sum.pass)}" onchange="setGradeOption('${c.id}','passGrade',this.value)"></label>
         <label class="mute"><input type="checkbox" ${sum.round?'checked':''} onchange="setGradeOption('${c.id}','roundFinal',this.checked)"> Redondear promedio a 1 decimal</label></div></div></div>
@@ -392,7 +443,7 @@ function viewRamos(){
   return `${screenHelp('ramos')}
   <div class="grid2">
     <div class="card"><h2>Mis ramos</h2>
-      ${S.courses.map(c=>`<div class="task"><span aria-hidden="true" class="dot" style="background:${c.color}"></span><b style="flex:1">${esc(c.name)}</b>
+      ${S.courses.map(c=>`<div class="task"><span aria-hidden="true" class="dot" style="background:${c.color}"></span><b style="flex:1">${esc(c.name)}${importedCourse(c)?' <span class="tag inst-example">Datos de ejemplo</span>':''}${importedCourse(c)&&!hasSyllabus(c.id)?'<br><span class="tag inst-pending">Syllabus pendiente</span>':''}</b>
         <span class="mute">dificultad</span>
         <select data-focus-id="diff-${c.id}" aria-label="Dificultad de ${esc(c.name)}" onchange="setDiff('${c.id}',this.value)">${[1,2,3,4,5].map(n=>`<option ${n===c.difficulty?'selected':''}>${n}</option>`).join('')}</select>
         <button class="btn del" onclick="delCourse('${c.id}')">Eliminar</button></div>`).join('')||`${arvisVacioHtml('ramos')}<div class="empty">Aún no tienes ramos. Escribe el nombre y toca <b>Agregar</b> para crear tu primer ramo.</div>`}
@@ -419,6 +470,8 @@ function viewSyllabus(){
   const opts=S.courses.map(c=>`<option value="${c.id}" ${c.id===sylCourse?'selected':''}>${esc(c.name)}</option>`).join('');
   const sorted=[...S.events].sort((a,b)=>a.date.localeCompare(b.date));
   return `${screenHelp('syllabus')}
+  ${S.courses.filter(c=>importedCourse(c)&&!hasSyllabus(c.id)).length?`<div class="banner info inst-syllabus-pending"><b>Syllabus pendiente</b><br>
+    ${S.courses.filter(c=>importedCourse(c)&&!hasSyllabus(c.id)).map(c=>esc(c.name)).join(', ')}. Sube el syllabus de cada ramo para afinar las fechas. <span class="tag inst-example">Datos de ejemplo</span></div>`:''}
   ${certamenOffersHtml()}${certamenDraftHtml()}${certamenActiveHtml()}
   <div class="card"><h2>Subir syllabus</h2>
     <div class="row" style="margin-bottom:8px"><select onchange="sylCourse=this.value"><option value="">Elige el ramo…</option>${opts}</select>
