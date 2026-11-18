@@ -101,6 +101,16 @@ Los datos de ánimo, sueño y energía son **datos sensibles**, y se tratan así
 
 La **Ley 21.719** de protección de datos personales de Chile (vigente desde el 1 de diciembre de 2026) aplica a lo que se guarda en el servidor si activas Amigos. Esto no es asesoría legal. La configuración está en docs/SUPABASE.md.
 
+## Modo institucional (prototipo)
+
+La app ofrece al iniciar una pantalla para elegir **Personal** o **Institucional**. Puedes cambiar de modo en **Ajustes → Cuenta** sin borrar ramos, notas, diario ni calificaciones: solo cambian la apariencia, los contactos precargados y el calendario institucional.
+
+- **Personal:** todo sigue funcionando como antes; los datos quedan solo en este dispositivo.
+- **Institucional:** prototipo sin backend real. La única institución es la **Universidad de Concepción**. El acceso se simula validando que el correo termine en `@udec.cl` (no se envía nada: aquí irá el SSO con Google o Microsoft vía Supabase) y luego un consentimiento único. El catálogo está en `js/institutions.js`: agregar otra universidad es agregar un objeto. El logo es un SVG propio con la sigla UdeC; **no es el escudo ni un logo oficial**. La interfaz marca **«Prototipo · no oficial»** y los contactos de ejemplo como **«Dato de ejemplo»**.
+- Los contactos de apoyo y las fechas del calendario (inicio y fin de clases, certámenes, recesos y feriados) son **ejemplos relativos a hoy**, marcados con `TODO: completar con datos oficiales de la UdeC`. Las líneas nacionales \*4141 y Salud Responde se muestran siempre. «Quiero que me contacten» abre un `mailto:` solo con nombre y correo; no incluye datos de bienestar ni hace peticiones de red.
+- En modo institucional, las semanas de certámenes cuentan como semanas críticas; los feriados y recesos no reciben micro-tareas, y los ramos nuevos parten con nota de aprobación 4,0 (editable por ramo).
+- **Privacidad:** el check-in, la energía, el ánimo, el sueño, el diario, las notas personales y las calificaciones **nunca salen del dispositivo**, también en modo institucional. El prototipo no envía esos datos a la universidad ni a ningún servidor.
+
 ## Aviso importante
 
 Esta app es una guía de organización y autocuidado. **No es un dispositivo médico, no diagnostica ni reemplaza a un profesional de la salud.** Los umbrales de las alertas son heurísticos y no están validados clínicamente. Si estás pasando un mal momento, habla con alguien de confianza o con el servicio de apoyo de tu universidad. En Chile, la Línea de Prevención del Suicidio es el **\*4141** y Salud Responde el **600 360 7777**.
@@ -114,6 +124,7 @@ js/util.js            fechas y utilidades
 js/ics.js             parser de horarios .ics (sin librerías)
 js/crypto.js          cifrado opcional con contraseña
 js/state.js           estado y persistencia local
+js/institutions.js    catálogo institucional y flujo simulado (prototipo, sin red)
 js/capacity.js        capacidad realista del día
 js/planner.js         micro-tareas, semanas críticas y modo certamen
 js/wellbeing.js       check-in, alertas, pausas, respiración, patrones

@@ -77,7 +77,7 @@ function saveProfile(){
 }
 function addCourse(){
   const n=$('#cn').value.trim();if(!n)return;
-  S.courses.push({id:uid(),name:n,difficulty:parseInt($('#cd').value,10),color:COLORS[S.courses.length%COLORS.length],grades:[]});
+  S.courses.push({id:uid(),name:n,difficulty:parseInt($('#cd').value,10),color:COLORS[S.courses.length%COLORS.length],grades:[],passGrade:institutionPassGrade(),roundFinal:true});
   save();render();
 }
 function setDiff(id,v){course(id).difficulty=+v;replanAll();render()}
@@ -221,6 +221,13 @@ function cleanState(j){
     passGrade:Number.isFinite(x.passGrade)?x.passGrade:4,roundFinal:x.roundFinal!==false,
     grades:(x.grades||[]).map(g=>({id:g.id,name:String(g.name||'').slice(0,80),score:+g.score,weight:+g.weight}))}));
   c.settings={min:int15(j.settings&&j.settings.min)?j.settings.min:60,theme:themeOk(j.settings&&j.settings.theme)?j.settings.theme:'cian',mode:modeOk(j.settings&&j.settings.mode)?j.settings.mode:'light',arvis:!(j.settings&&j.settings.arvis===false)};
+  const a=j.account&&typeof j.account==='object'&&!Array.isArray(j.account)?j.account:null;
+  const known=a&&(a.type==='personal'||a.type==='institucional');
+  const knownInst=known&&a.type==='institucional'&&institutionById(a.institutionId);
+  c.account={type:known&&(a.type==='personal'||knownInst)?a.type:'personal',
+    institutionId:knownInst?a.institutionId:'',email:a&&typeof a.email==='string'?a.email.slice(0,120):'',
+    linkedAt:a&&RX.date.test(a.linkedAt||'')?a.linkedAt:null};
+  c.institutionConsentAt=RX.date.test(j.institutionConsentAt||'')?j.institutionConsentAt:null;
   c.tools=cleanTools(j.tools);
   c.wellbeing={diary:((j.wellbeing&&j.wellbeing.diary)||[]).map(e=>({date:e.date,mood:e.mood??null,energy:e.energy??null,sleep:e.sleep??null,tags:e.tags||[],note:e.note||'',ts:Number(e.ts)||0}))};
   c.support={name:String((j.support&&j.support.name)||'').slice(0,120),contact:String((j.support&&j.support.contact)||'').slice(0,300)};
@@ -308,7 +315,7 @@ function confirmICS(){
     let cid=b.courseId;
     if(!cid||cid==='new'||!course(cid)){
       const name=String(b.name||'').trim().slice(0,80);if(!name)return;
-      cid=uid();S.courses.push({id:cid,name:name,difficulty:3,color:COLORS[S.courses.length%COLORS.length],grades:[]});created++;
+      cid=uid();S.courses.push({id:cid,name:name,difficulty:3,color:COLORS[S.courses.length%COLORS.length],grades:[],passGrade:institutionPassGrade(),roundFinal:true});created++;
     }
     if(S.classes.some(k=>k.courseId===cid&&k.day===b.day&&k.start===b.start&&k.end===b.end))return;
     S.classes.push({id:uid(),courseId:cid,day:b.day,start:b.start,end:b.end});added++;
@@ -323,11 +330,13 @@ function saveSupport(){S.support={name:$('#sn').value.trim().slice(0,120),contac
 
 async function loadDemo(){
   if(S.courses.length&&!await askConfirm({title:'Cargar datos de ejemplo',text:'Esto reemplazará tus datos actuales por los del ejemplo.',okLabel:'Cargar'}))return;
-  const perfil=S.profile;
+  const perfil=S.profile,cuenta=S.account,consentAt=S.institutionConsentAt;
   S=fresh();inval();const t=today();
   if(perfil&&perfil.name)S.profile=perfil;
+  if(cuenta)S.account=cuenta;
+  if(consentAt)S.institutionConsentAt=consentAt;
   S.consent={health:true,at:t};                    // el ejemplo activa el check-in para poder probarlo
-  const C0=(n,d,i)=>({id:uid(),name:n,difficulty:d,color:COLORS[i]});
+  const C0=(n,d,i)=>({id:uid(),name:n,difficulty:d,color:COLORS[i],grades:[],passGrade:institutionPassGrade(),roundFinal:true});
   const cs=[C0('Cálculo III',5,0),C0('Termodinámica',4,1),C0('Estadística',3,2),C0('Economía',2,3)];
   S.courses=cs;
   [[0,0,'08:10','09:40'],[0,2,'08:10','09:40'],[1,1,'10:15','11:45'],[1,3,'10:15','11:45'],[2,0,'14:30','16:00'],[2,3,'14:30','16:00'],[3,4,'08:10','09:40']]

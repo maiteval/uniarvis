@@ -17,6 +17,8 @@ const fs=require('fs');
       await p.fill('#reg-career','Carrera');
       await p.locator('.hud-btn').click();
     }
+    const choice=p.locator('[data-focus-id="account-personal"]');
+    if(await choice.count())await choice.click();
   };
   const acceptConsent=async()=>{
     const b=p.locator('text=Acepto y quiero usar el check-in');

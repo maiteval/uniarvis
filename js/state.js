@@ -65,9 +65,18 @@ function cleanTools(t){
 }
 const migrateTools=t=>cleanTools(t);
 const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,theme:'cian',mode:'light',style:'calma',arvis:true},lastPlan:null,
-  wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},support:{name:'',contact:''},profile:{name:'',career:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools()});
+  wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},support:{name:'',contact:''},profile:{name:'',career:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
+  account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null},institutionConsentAt:null});
 function migrate(s){
+  const hadData=!!((Array.isArray(s.courses)&&s.courses.length)||(Array.isArray(s.events)&&s.events.length)||
+    (Array.isArray(s.tasks)&&s.tasks.length)||(Array.isArray(s.wellbeing)&&Array.isArray(s.wellbeing.diary)&&s.wellbeing.diary.length));
   const f=fresh();for(const k in f)if(s[k]===undefined)s[k]=f[k];
+  const a=s.account&&typeof s.account==='object'&&!Array.isArray(s.account)?s.account:null;
+  const validType=a&&(a.type==='personal'||a.type==='institucional');
+  const validInst=validType&&a.type==='institucional'&&typeof institutionById==='function'&&!!institutionById(a.institutionId);
+  if(validType&&(a.type==='personal'||validInst))s.account={type:a.type,institutionId:validInst?a.institutionId:'',email:typeof a.email==='string'?a.email.slice(0,120):'',linkedAt:typeof a.linkedAt==='string'?a.linkedAt:null};
+  else s.account=accountBlank(),s.account.type=hadData?'personal':null;
+  if(typeof s.institutionConsentAt!=='string')s.institutionConsentAt=null;
   if(!s.wellbeing||!Array.isArray(s.wellbeing.diary))s.wellbeing={diary:[]};
   if(!s.settings||typeof s.settings!=='object')s.settings={};
   if(!s.settings.min)s.settings.min=60;
@@ -98,7 +107,8 @@ function migrate(s){
 let S=fresh();                    // se carga en boot() (ver app.js)
 function boot(){                  // lee lo guardado; si está cifrado, queda en LOCKED hasta que se ponga la contraseña
   let j=null;try{j=JSON.parse(localStorage.getItem(KEY))}catch(e){}
-  if(j&&j.enc)LOCKED=j;else if(j&&j.courses)S=migrate(j);
+  if(j&&j.enc)LOCKED=j;
+  else if(j&&!Array.isArray(j)&&(j.courses||j.events||j.tasks||j.wellbeing||j.profile))S=migrate(j);
 }
 let C={};                         // caché de cálculos; se invalida en cada cambio
 const inval=()=>{C={}};

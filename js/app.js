@@ -6,7 +6,8 @@ const SECTIONS=[
   {key:'academico',label:'Académico',tabs:[['ramos','Mis ramos y horario'],['syllabus','Syllabus y fechas'],['notas','Notas y ponderaciones'],['herramientas','Herramientas'],['salud','Carga por semana']]},
   {key:'bienestar',label:'Bienestar',tabs:[['checkin','Check-in'],['respiracion','Respiración y meditaciones'],['pausas','Pausas rápidas'],['apoyo','Apoyo']]},
   {key:'social',label:'Social',tabs:[['amigos','Amigos']]},
-  {key:'ajustes',label:'Ajustes',tabs:[['perfil','Perfil'],['tema','Apariencia'],['privacidad','Privacidad'],['ejemplos','Datos de ejemplo']]}
+  {key:'ajustes',label:'Ajustes',tabs:[['perfil','Perfil'],['cuenta','Cuenta'],['tema','Apariencia'],['privacidad','Privacidad'],['ejemplos','Datos de ejemplo']]}
+
 ];
 const ROUTE={
   inicio:{section:'inicio',tab:'inicio'},
@@ -16,7 +17,7 @@ const ROUTE={
   checkin:{section:'bienestar',tab:'checkin'},bienestar:{section:'bienestar',tab:'checkin'},respiracion:{section:'bienestar',tab:'respiracion'},
   pausas:{section:'bienestar',tab:'pausas'},apoyo:{section:'bienestar',tab:'apoyo'},
   amigos:{section:'social',tab:'amigos'},
-  perfil:{section:'ajustes',tab:'perfil'},tema:{section:'ajustes',tab:'tema'},apariencia:{section:'ajustes',tab:'tema'},
+  perfil:{section:'ajustes',tab:'perfil'},cuenta:{section:'ajustes',tab:'cuenta'},tema:{section:'ajustes',tab:'tema'},apariencia:{section:'ajustes',tab:'tema'},
   privacidad:{section:'ajustes',tab:'privacidad'},ejemplos:{section:'ajustes',tab:'ejemplos'}
 };
 const FIRST={inicio:'inicio',planificacion:'hoy',academico:'ramos',bienestar:'checkin',social:'amigos',ajustes:'perfil'};
@@ -53,7 +54,8 @@ function mobileNavHtml(){
   return `<nav class="mobile-nav" aria-label="Secciones">${items}</nav>`;
 }
 function render(){
-  const key=LOCKED?'lock':(!S.profile||!S.profile.name?'landing':section+'/'+tab);
+  const key=LOCKED?'lock':(typeof InstitutionalFlow!=='undefined'&&InstitutionalFlow.get()?'flow':
+    (!S.profile||!S.profile.name?'landing':(!S.account||!S.account.type?'account-choice':section+'/'+tab)));
   const same=key===lastRenderKey;
   const active=document.activeElement;
   const focus=active&&active!==document.body?{id:active.id||'',data:(active.dataset&&active.dataset.focusId)||''}:null;
@@ -88,14 +90,22 @@ function render(){
     let mob=$('#mobile-nav');if(mob)mob.remove();
     app.innerHTML=lockView();finish($('#lp'));return;
   }
-  if(!S.profile||!S.profile.name){
+  if(key==='flow'||key==='account-choice'){
+    document.body.classList.add('landing-active');$('#nav').innerHTML='';
+    let mob=$('#mobile-nav');if(mob)mob.remove();
+    app.innerHTML=key==='flow'?viewInstitutionalFlow():viewAccountChoice();
+    finish(key==='flow'?$('#inst-email'):$('#reg-name'));return;
+  }
+  if(key==='landing'){
     document.body.classList.add('landing-active');$('#nav').innerHTML='';
     let mob=$('#mobile-nav');if(mob)mob.remove();
     app.innerHTML=viewLanding();finish($('#reg-name'));return;
   }
   document.body.classList.remove('landing-active');
   const who=S.profile&&S.profile.name?`<span class="hud-user"> · ${esc(S.profile.name)}</span>`:'';
-  const brand=document.querySelector('.brand');if(brand)brand.innerHTML='U.A.R.V.I.S.'+who;
+  const inst=typeof currentInstitution==='function'?currentInstitution():null;
+  const brand=document.querySelector('.brand');
+  if(brand)brand.innerHTML=(inst?institutionLogo(inst.id,true):'')+'U.A.R.V.I.S.'+who;
   if(section==='inicio'){
     $('#nav').innerHTML='';
     let mob=$('#mobile-nav');if(mob)mob.remove();
@@ -109,7 +119,7 @@ function render(){
   }
   const views={inicio:viewInicio,hoy:viewHoy,semana:viewSemana,ramos:viewRamos,syllabus:viewSyllabus,notas:viewNotas,herramientas:viewTools,salud:viewSalud,
     checkin:viewCheckin,bienestar:viewBienestar,respiracion:viewRespiracion,pausas:viewPausas,apoyo:viewApoyo,
-    amigos:viewAmigos,perfil:viewPerfil,tema:viewTema,privacidad:viewPrivacidad,ejemplos:viewDatosEjemplo};
+    amigos:viewAmigos,perfil:viewPerfil,cuenta:viewCuenta,tema:viewTema,privacidad:viewPrivacidad,ejemplos:viewDatosEjemplo};
   const sec=SECTIONS.find(s=>s.key===section);
   let chips='';
   if(sec&&sec.tabs.length&&section!=='inicio'){

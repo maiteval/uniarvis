@@ -120,6 +120,7 @@ const fs=require('fs');
       await p.fill('#reg-name','Estudiante');await p.fill('#reg-career','Carrera');
       await p.locator('.hud-btn').click();
     }
+    const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
   };
   const open=async(p,sec,sub)=>{
     await p.locator('.brand').click();
@@ -150,7 +151,7 @@ const fs=require('fs');
   p.on('dialog',d=>d.accept());
   await p.goto(base);await onboard(p);
   const ids=await p.evaluate(()=>{
-    S=fresh();S.profile={name:'Estudiante',career:'Carrera'};
+    S=fresh();S.profile={name:'Estudiante',career:'Carrera'};S.account.type='personal';
     S.consent={health:true,at:today()};
     S.courses=[{id:'c1',name:'Cálculo III',difficulty:3,color:'#3b6df0',grades:[]},
       {id:'c2',name:'Economía',difficulty:2,color:'#e0693a',grades:[]}];

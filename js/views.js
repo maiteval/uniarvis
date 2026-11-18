@@ -24,6 +24,52 @@ function viewLanding(){
     <p class="mute hud-note">Los datos se guardan solo en este navegador (localStorage).</p>
   </div></div>`;
 }
+function viewAccountChoice(){
+  const calma=(S.settings&&S.settings.style)==='calma';
+  return `<div class="landing account-landing ${calma?'landing-calma':''}"><div class="landing-bg"></div><div class="landing-panel account-panel">
+    <h1 class="landing-title">¿Cómo quieres usar Uarvis?</h1>
+    <p class="landing-sub">Puedes cambiar de modo cuando quieras en Ajustes → Cuenta. Tus datos no se borran.</p>
+    <div class="account-choices">
+      <button class="account-choice" data-focus-id="account-personal" onclick="choosePersonal()">
+        <span class="account-icon" aria-hidden="true">◈</span><b>Personal</b>
+        <span>Úsala por tu cuenta. Todo queda en tu dispositivo.</span><span class="home-arrow" aria-hidden="true">→</span></button>
+      <button class="account-choice" data-focus-id="account-institucional" onclick="startInstitutionalFlow('selection')">
+        <span class="account-icon" aria-hidden="true">▣</span><b>Institucional</b>
+        <span>Tu universidad tiene Uarvis.</span><span class="home-arrow" aria-hidden="true">→</span></button>
+    </div>
+    <p class="mute hud-note">El check-in, la energía, el ánimo, el sueño, el diario, las notas personales y las calificaciones nunca salen del dispositivo.</p>
+  </div></div>`;
+}
+function viewInstitutionalFlow(){
+  const f=InstitutionalFlow.get();if(!f)return viewAccountChoice();
+  const inst=INSTITUTIONS[0],logo=institutionLogo(inst.id),proto='<span class="tag inst-example">Prototipo · no oficial</span>';
+  const back=`<button class="btn sec" data-focus-id="account-back" onclick="institutionalBack()">Volver</button>`;
+  let body='';
+  if(f.step==='choose'){
+    body=`<h2>Elige tu universidad</h2><p class="mute">Por ahora hay una sola opción en este prototipo.</p>
+      ${INSTITUTIONS.map(i=>`<button class="inst-option" data-focus-id="inst-option-${i.id}" onclick="institutionalNext()">
+        ${institutionLogo(i.id)}<span><b>${esc(i.name)}</b><br><span class="mute">${esc(i.short)} · ${esc(i.emailDomain)}</span></span><span class="home-arrow" aria-hidden="true">→</span></button>`).join('')}
+      <div class="row" style="margin-top:14px">${back}</div>`;
+  }else if(f.step==='login'){
+    body=`<h2>${logo} ${proto}</h2><p>Esta es una simulación: escribe tu correo ${esc(inst.name)} y validaremos el dominio. No se envía nada.</p>
+      <div class="hud-form"><label>Correo institucional<input id="inst-email" type="email" autocomplete="email" placeholder="nombre@${esc(inst.emailDomain)}" value="${esc(f.email)}" oninput="institutionalEmail(this.value)"></label>
+      <button class="btn" data-focus-id="inst-login" onclick="institutionalSubmitEmail()">Ingresar con mi cuenta institucional</button></div>
+      ${f.error?`<div class="banner go" role="alert">${esc(f.error)}</div>`:''}
+      <p class="mute">Aquí irá el SSO real con Google o Microsoft vía Supabase. Este prototipo no hace peticiones de red.</p>
+      <div class="row">${back}</div>`;
+  }else if(f.step==='consent'){
+    body=`<h2>Consentimiento</h2><p class="mute">Único aviso antes de vincular tu cuenta ${esc(inst.short)}. ${proto}</p>
+      <div class="grid2"><div class="card"><h3>Qué ve la universidad</h3>
+        <ul><li>Estadísticas generales de uso y de carga académica.</li><li>Solo de grupos de 10 o más personas.</li><li>Nunca datos que permitan identificarte en esos informes.</li></ul></div>
+      <div class="card"><h3>Qué no ve nunca</h3>
+        <ul><li>Check-in, energía, ánimo y sueño.</li><li>Diario y notas personales.</li><li>Calificaciones.</li></ul></div></div>
+      <div class="row"><button class="btn" data-focus-id="inst-consent-ok" onclick="institutionalAccept()">Entendido</button>${back}</div>`;
+  }
+  return `<div class="landing account-landing"><div class="landing-bg"></div><div class="landing-panel account-panel inst-flow">
+    <div class="inst-steps" aria-label="Pasos del ingreso institucional">
+      <span class="${f.step==='choose'?'on':''}">1. Universidad</span><span class="${f.step==='login'?'on':''}">2. Cuenta</span><span class="${f.step==='consent'?'on':''}">3. Consentimiento</span></div>
+    ${body}</div></div>`;
+}
 function homeNotice(){
   const t0=today();
   const crit=criticalClusters().filter(g=>diffDays(t0,g.start)<=28)[0];
@@ -61,6 +107,7 @@ function viewInicio(){
     <span class="home-copy"><b>${s.label}</b><span>${descs[s.key]||''}</span></span>
     <span class="home-arrow" aria-hidden="true">→</span></button>`}).join('');
   return `${screenHelp('inicio')}
+  ${isInstitutional()?`<div class="inst-inicio">${institutionIdentityHtml(currentInstitution().id)}<span class="tag inst-example">Prototipo · no oficial</span></div>`:''}
   <div class="home-head"><div><h2>Hola, ${name}</h2><p class="mute" style="margin-bottom:0">Elige por dónde empezar hoy.</p></div></div>
   ${arvisInicioHtml()}
   ${homeNotice()}
@@ -75,6 +122,20 @@ function viewPerfil(){
       <label>Nombre<input id="pf-name" type="text" maxlength="60" value="${esc(p.name||'')}"></label>
       <label>Carrera / Programa<input id="pf-career" type="text" maxlength="80" value="${esc(p.career||'')}"></label>
       <button class="btn" data-focus-id="save-profile" onclick="saveProfile()">Guardar cambios</button>
+    </div></div>`;
+}
+function viewCuenta(){
+  const a=S.account||accountBlank(),i=typeof currentInstitution==='function'?currentInstitution():null;
+  const modo=a.type==='institucional'?'Institucional':'Personal';
+  return `${screenHelp('cuenta')}<div class="card"><h2>Cuenta</h2>
+    <p class="mute" style="margin-top:0">Cambiar de modo no borra ningún dato: solo cambia la apariencia, los contactos precargados y el calendario institucional.</p>
+    <div class="account-status"><span class="tag">Modo: <b>${modo}</b></span>
+      ${i?`<span class="inst-identity">${institutionLogo(i.id,true)}<b>${esc(i.name)}</b></span>`:'<span class="mute">Sin universidad vinculada</span>'}</div>
+    ${i?`<p class="mute">Correo: ${esc(a.email||'—')} · Vinculada el ${a.linkedAt?dshort(a.linkedAt):'—'}</p>
+      <p>${institutionLogo(i.id)} <span class="tag inst-example">Prototipo · no oficial</span></p>`:''}
+    <div class="row">
+      ${i?'<button class="btn del" onclick="disconnectInstitution()">Desconectar de mi universidad</button>'
+        :'<button class="btn" data-focus-id="connect-institution" onclick="startInstitutionalFlow(\'cuenta\')">Conectar con mi universidad</button>'}
     </div></div>`;
 }
 function consentCard(){
@@ -263,7 +324,7 @@ function viewSemana(){
     <button class="btn sec" aria-label="Semana siguiente" onclick="weekStart=addDays(weekStart,7);render()">→</button></div></div>
     <div class="mute" style="margin-bottom:8px">Subrayado ámbar = tramo exigente (3 fechas importantes en 5 días).</div>
     <div class="calwrap"><div class="cal">`;
-  h+='<div class="hd"></div>'+days.map((d,i)=>`<div class="hd ${d===t0?'today':''} ${isCrit(d)?'crit':''}">${DAYS[i]} ${parse(d).getDate()}</div>`).join('');
+  h+='<div class="hd"></div>'+days.map((d,i)=>{const im=institutionDayMark(d);return `<div class="hd ${d===t0?'today':''} ${isCrit(d)?'crit':''} ${im?'inst-day '+im.cls:''}" ${im?'title="'+esc(im.mark+' '+im.cls)+'"':''}>${DAYS[i]} ${parse(d).getDate()}${im?' '+im.mark:''}</div>`}).join('');
   h+='<div class="lbl">Fechas</div>'+days.map(d=>`<div>${S.events.filter(e=>e.date===d).map(e=>
     `<div class="chip" style="border-color:${ccolor(e.courseId)}" title="${esc(e.title)}"><b>${TYPE_LABEL[e.type]}</b> ${esc(cname(e.courseId))}<br>${esc(e.title)}</div>`).join('')}</div>`).join('');
   h+='<div class="lbl">Plan</div>'+days.map(d=>`<div>${S.tasks.filter(t=>t.date===d).map(t=>
@@ -274,7 +335,7 @@ function viewSemana(){
     return `<div class="blk" style="top:${top}px;height:${ht}px;background:${ccolor(k.courseId)}">${esc(cname(k.courseId))}<br>${k.start}–${k.end}</div>`}).join('')}${socialWeekBlocks(d,i)}</div>`).join('');
   h+='</div></div></div>';
   h+='<div class="agenda-movil">'+days.map((d,i)=>agendaHtml(d,`${DAYS[i]} ${parse(d).getDate()}${d===t0?' · hoy':''}`)).join('')+'</div>';
-  return h+criticalHtml();
+  return h+institutionCalendarHtml(days)+criticalHtml();
 }
 const gradeTxt=v=>Number(v).toFixed(1).replace('.',',');
 const roundedAvg=(v,on)=>v==null||!isFinite(v)?null:(on?Math.round((v+1e-9)*10)/10:Math.round(v*100)/100);
@@ -469,10 +530,13 @@ function viewApoyo(){
   <div class="grid2">
     <div class="card"><h3>Apoyo en tu universidad</h3>
       <p class="mute">Muchas universidades tienen atención psicológica o de bienestar estudiantil gratuita para sus alumnos. Revisa el contacto vigente en el sitio oficial de la tuya y guárdalo aquí para tenerlo a mano.</p>
+      ${isInstitutional()?institutionSupportHtml():''}
       <div class="row" style="flex-direction:column;align-items:stretch">
         <input id="sn" placeholder="Nombre del servicio (ej. Bienestar estudiantil)" value="${esc(sp.name)}">
         <input id="sc" placeholder="Teléfono, correo o enlace" value="${esc(sp.contact)}">
         <button class="btn" data-focus-id="save-support" onclick="saveSupport()">Guardar</button></div>
+      ${isInstitutional()?`<div class="inst-contact"><p class="mute">Si quieres que te contacten, se avisará al servicio de apoyo de ${esc(currentInstitution().short)}. El correo se prepara solo con tu nombre y tu correo institucional: <b>no se incluye ningún dato de bienestar</b> y no se hace ninguna petición de red.</p>
+        <a class="btn" id="inst-contact-mailto" data-focus-id="inst-contact" href="${esc(institutionContactHref())}">Quiero que me contacten</a></div>`:''}
       ${sp.name||sp.contact?'':`<div class="banner info" style="margin:10px 0 0">¿Estudias en la Universidad de Concepción? La DISE (Dirección de Servicios Estudiantiles) publica su contacto de Bienestar Estudiantil en bienestar@udec.cl y dise.udec.cl; pregunta ahí por apoyo en salud mental. <button class="lnk" onclick="fillUdeC()">Guardar estos datos</button></div>`}
       ${sp.name||sp.contact?`<div class="banner lock" style="margin:10px 0 0"><b>${esc(sp.name||'Mi servicio de apoyo')}</b><br>${esc(sp.contact)}</div>`:''}
     </div>

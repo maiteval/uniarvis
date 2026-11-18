@@ -37,9 +37,10 @@ const fs=require('fs');
   if(await p.locator('#reg-name').count()){
     await p.fill('#reg-name','Estudiante');await p.fill('#reg-career','Carrera');
     await p.locator('.hud-btn').click();
+    const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
   }
   await p.evaluate(()=>{
-    S=fresh();S.profile={name:'Estudiante',career:'Carrera'};
+    S=fresh();S.profile={name:'Estudiante',career:'Carrera'};S.account.type='personal';
     S.consent={health:true,at:today()};
     S.courses=[{id:'c1',name:'Cálculo III',difficulty:3,color:'#3b6df0',grades:[],share:false},
       {id:'c2',name:'Economía',difficulty:2,color:'#e0693a',grades:[],share:false}];

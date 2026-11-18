@@ -73,6 +73,10 @@
 :root[data-mode="light"][data-accent="naranjo"]{--accent-strong:#c2410c}
 :root[data-mode="light"][data-accent="morado"]{--accent-strong:#7e22ce}
 :root[data-mode="light"][data-accent="amarillo"]{--accent-strong:#a16207}
+/* Acento institucional: se superpone al tema elegido, sin tocar Calma/HUD ni claro/oscuro */
+:root[data-institution="udec"]{--accent-rgb:11,61,145;--accent:#0b3d91;--accent-strong:#0b3d91;--on-accent:#fffdf7;--inst-gold:#8a5a00}
+:root[data-institution="udec"][data-mode="dark"]{--accent-rgb:138,180,255;--accent:#8ab4ff;--accent-strong:#bcd4ff;--on-accent:#08152b;--inst-gold:#ffd166}
+:root[data-mode="light"][data-institution="udec"]{--accent:#0b3d91;--accent-strong:#0b3d91;--on-accent:#fffdf7;--inst-gold:#8a5a00}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;background:radial-gradient(1200px 800px at 20% -10%,var(--bg-grad-1),transparent 50%),radial-gradient(900px 700px at 100% 0,var(--bg-grad-2),transparent 45%),var(--bg);color:var(--ink);font:15px/1.6 var(--body-font);-webkit-font-smoothing:antialiased;min-height:100vh}
@@ -374,3 +378,48 @@ filter:blur(10px);opacity:.9;animation:hudPulse 8s ease-in-out infinite alternat
 .tour-dot.on{width:22px;border-radius:999px;background:var(--accent);opacity:1;box-shadow:0 0 10px rgba(var(--accent-rgb),.35)}
 .tour-actions{display:flex;justify-content:space-between;gap:12px}
 @media (max-width:640px){.tour-modal{padding:24px 18px 18px}.tour-actions{gap:8px}.modal-card{padding:16px}}
+
+/* Modo institucional (prototipo) */
+.inst-logo{width:136px;height:44px;display:block;flex:none}
+.inst-logo-sm{width:68px;height:22px}
+.inst-identity{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
+.inst-identity b{font-size:15px}
+.brand .inst-logo-sm{margin-right:8px;vertical-align:middle}
+.inst-inicio{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.inst-example,.tag.inst-example{border-color:var(--inst-gold,#8a5a00);color:var(--inst-gold,#8a5a00);font-weight:700}
+.account-panel{width:min(720px,100%)}
+.account-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.account-choice{display:flex;flex-direction:column;align-items:flex-start;gap:8px;position:relative;text-align:left;min-height:170px;padding:18px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);cursor:pointer;box-shadow:var(--shadow-sm);transition:border-color .2s,transform .15s,box-shadow .2s}
+.account-choice:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.account-choice b{font-size:19px}
+.account-choice>span:nth-of-type(2){color:var(--mute);font-size:14px;line-height:1.5}
+.account-choice .home-arrow{position:absolute;right:16px;bottom:16px}
+.account-icon{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-strong);font-size:22px}
+.inst-flow .landing-title,.inst-flow h2{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.inst-steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;color:var(--mute);font-size:12px}
+.inst-steps span{padding:4px 10px;border:1px solid var(--line);border-radius:999px}
+.inst-steps .on{border-color:var(--accent);color:var(--accent-strong);background:var(--accent-soft)}
+.inst-option{width:100%;display:flex;align-items:center;gap:14px;text-align:left;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);cursor:pointer}
+.inst-option:hover{border-color:var(--accent);box-shadow:var(--shadow-sm)}
+.inst-option .home-arrow{margin-left:auto}
+.inst-flow .grid2{gap:12px}
+.inst-flow .card{margin-bottom:0}
+.inst-support{margin:10px 0}
+.inst-contact{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.inst-contact .btn{display:inline-block;text-decoration:none}
+.account-status{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:12px 0}
+.inst-calendar .inst-item{border-left:3px solid var(--line)}
+.inst-calendar .inst-item.exam{border-left-color:var(--warn)}
+.inst-calendar .inst-item.break{border-left-color:var(--soft)}
+.inst-calendar .inst-item.holiday{border-left-color:var(--accent)}
+.hd.inst-day.exam{box-shadow:inset 0 -3px 0 var(--warn)}
+.hd.inst-day.break{box-shadow:inset 0 -3px 0 var(--soft)}
+.hd.inst-day.holiday{box-shadow:inset 0 -3px 0 var(--accent)}
+@media (max-width:640px){
+  .inst-logo{width:112px;height:37px}
+  .inst-logo-sm{width:56px;height:19px}
+  .brand .inst-logo-sm{margin-right:5px}
+  .inst-inicio{gap:8px}
+  .account-panel{padding:20px 16px}
+  .account-choice{min-height:0}
+}

@@ -20,6 +20,7 @@ const fs=require('fs');
       await p.fill('#reg-career','Carrera');
       await p.locator('.hud-btn').click();
     }
+    const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
   };
   const open=async(sec,sub)=>{
     await p.locator('.brand').click();

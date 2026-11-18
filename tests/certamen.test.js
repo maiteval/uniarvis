@@ -13,9 +13,10 @@ const path=require('path');
   if(await p.locator('#reg-name').count()){
     await p.fill('#reg-name','Prueba');await p.fill('#reg-career','Carrera');
     await p.locator('.hud-btn').click();
+    const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
   }
   await p.evaluate(()=>{
-    S=fresh();S.profile={name:'Ana',career:'Medicina'};
+    S=fresh();S.profile={name:'Ana',career:'Medicina'};S.account.type='personal';
     S.courses=[{id:'c1',name:'Cálculo',difficulty:3,color:'#3b6df0',grades:[],share:false,passGrade:4,roundFinal:true},
       {id:'c2',name:'Física',difficulty:4,color:'#e0693a',grades:[],share:false,passGrade:4,roundFinal:true}];
     S.events=[{id:'ev1',courseId:'c1',title:'Certamen de Cálculo',date:addDays(today(),7),type:'evaluacion'}];

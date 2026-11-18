@@ -32,6 +32,8 @@ function applyTheme(){
   el.setAttribute('data-accent',themeOk(st.theme)?st.theme:'cian');
   el.setAttribute('data-mode',modeOk(st.mode)?st.mode:'light');
   el.setAttribute('data-style',styleOk(st.style)?st.style:'calma');
+  const inst=typeof currentInstitution==='function'?currentInstitution():null;
+  el.setAttribute('data-institution',inst?inst.id:'');
   const meta=document.querySelector('meta[name="theme-color"]');
   if(meta)meta.content=st.mode==='light'?'#f4f7fb':'#050b14';
 }

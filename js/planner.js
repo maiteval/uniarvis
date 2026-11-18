@@ -25,7 +25,9 @@ function planEvent(ev){
   let end=addDays(ev.date,(diff>=4&&ev.type==='evaluacion')?-2:-1);        // día de respiro antes de evaluaciones difíciles
   if(end<start)end=addDays(ev.date,-1);
   if(end<start)return 0;
-  const days=[];for(let d=start;d<=end;d=addDays(d,1))days.push(d);
+  const sinTarea=typeof institutionNoTaskDates==='function'?institutionNoTaskDates():[];
+  const days=[];for(let d=start;d<=end;d=addDays(d,1))if(!sinTarea.includes(d))days.push(d);
+  if(!days.length)return 0;
   const chunk=ev.type==='control'?15:(diff>=4?25:30);                      // micro-tareas de 15 a 30 min
   const picks=[];let overflow=0;
   const load=d=>dayLoad(d)+picks.filter(p=>p.date===d).reduce((a,p)=>a+p.minutes,0);
@@ -57,6 +59,12 @@ function replanAll(){                                   // reprogramación sin c
 }
 
 /* ===================== Semanas críticas ===================== */
+function institutionCriticalClusters(){
+  const i=typeof currentInstitution==='function'?currentInstitution():null;if(!i)return [];
+  const c=institutionCalendar(i),t0=today();
+  return c.examWeeks.filter(w=>w.end>=t0).map((w,n)=>({start:w.start,end:w.end,
+    events:[{id:'inst-exam-'+n,title:w.label,type:'evaluacion',courseId:'',institution:true}]}));
+}
 function criticalClusters(){
   const t0=today(),ev=S.events.filter(e=>e.type!=='otro'&&e.date>=t0).sort((a,b)=>a.date.localeCompare(b.date));
   const marked=new Set();
@@ -66,7 +74,7 @@ function criticalClusters(){
     const g=out[out.length-1];
     if(g&&diffDays(g.end,e.date)<=4){g.events.push(e);g.end=e.date}else out.push({start:e.date,end:e.date,events:[e]});
   });
-  return out;
+  return out.concat(institutionCriticalClusters());
 }
 function applyEarly(ids){
   const set=ids.split(',');S.events.forEach(e=>{if(set.includes(e.id))e.early=true});
@@ -81,16 +89,18 @@ function recentLow(){const r=S.wellbeing.diary.filter(e=>e.energy!=null).sort((a
 function criticalHtml(){
   const t0=today();
   return criticalClusters().filter(g=>diffDays(t0,g.start)<=28).map(g=>{
-    const allEarly=g.events.every(e=>e.early),ids=g.events.map(e=>e.id).join(',');
-    const names=g.events.map(e=>`${esc(cname(e.courseId))} (${TYPE_LABEL[e.type].toLowerCase()})`).join(', ');
+    const real=g.events.filter(e=>!e.institution);
+    const allEarly=real.length>0&&real.every(e=>e.early),ids=real.map(e=>e.id).join(',');
+    const names=g.events.map(e=>e.institution?esc(e.title):`${esc(cname(e.courseId))} (${TYPE_LABEL[e.type].toLowerCase()})`).join(', ');
     const f=firstTaskDate(g.events);
     const low=S.consent&&S.consent.health&&recentLow();
     return `<div class="banner go"><b>Semana exigente a la vista: ${dshort(g.start)} – ${dshort(g.end)}</b><br>
       Se juntan ${g.events.length} fechas importantes en pocos días: ${names}.<br>
-      ${allEarly?`Ya reservé margen extra${f?`: tu preparación parte el ${dshort(f)}`:''}. Nada más que hacer por ahora.`
-        :'Conviene empezar antes: puedo adelantar el inicio de la preparación y repartirla en más días, con micro-tareas más livianas.'}
+      ${!real.length?`El calendario institucional marca este período como exigente${f?`; tu preparación parte el ${dshort(f)}`:''}.`
+        :(allEarly?`Ya reservé margen extra${f?`: tu preparación parte el ${dshort(f)}`:''}. Nada más que hacer por ahora.`
+        :'Conviene empezar antes: puedo adelantar el inicio de la preparación y repartirla en más días, con micro-tareas más livianas.')}
       ${low?'<br>Además tus últimos días vienen pesados: cuida tus pausas y mira las opciones de apoyo.':''}
-      <div class="row" style="margin-top:8px">${allEarly?'':`<button class="btn" onclick="applyEarly('${ids}')">Reservar margen extra</button>`}
+      <div class="row" style="margin-top:8px">${!real.length||allEarly?'':`<button class="btn" onclick="applyEarly('${ids}')">Reservar margen extra</button>`}
       ${low?`<button class="btn sec" onclick="go('apoyo')">Ver apoyo</button>`:''}</div></div>`;
   }).join('');
 }
@@ -183,8 +193,11 @@ function buildCertamenTasks(t0,previous){
     const limit=Math.max(15,Math.min(cap,Math.floor(cap*share/15)*15));
     return {limit,fit:Math.min(b.minutes,Math.floor(Math.max(0,limit-dayLoad(date))/5)*5)};
   };
+  const sinTarea=typeof institutionNoTaskDates==='function'?institutionNoTaskDates():[];
   const place=b=>{
     let target=b.date;
+    while(sinTarea.includes(target)&&target<b.plan.date)target=addDays(target,1);   // recesos y feriados: sin micro-tareas
+    if(sinTarea.includes(target))return;
     if(b.phase==='ensayo'&&roomFor(target,b).fit<b.minutes){
       const last=addDays(b.plan.date,-1);
       for(let d=addDays(target,1);d<=last;d=addDays(d,1))if(roomFor(d,b).fit>=b.minutes){target=d;break}
