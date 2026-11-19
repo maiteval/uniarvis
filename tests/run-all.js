@@ -36,6 +36,7 @@ server.listen(0, '127.0.0.1', async () => {
     await run('herramientas.test.js', [path.join(root, 'index.html')]),                                   // Pomodoro y flashcards
     await run('certamen.test.js', [path.join(root, 'index.html')]),                                       // modo certamen
     await run('arvis.test.js', [path.join(root, 'index.html')]),                                          // mascota Arvis
+    await run('arvis-estudio.test.js', [path.join(root, 'index.html')]),                                  // Arvis acompaña el estudio
     await run('ics.test.js', [path.join(root, 'index.html'), path.join(out, 'ics')]),                    // parser .ics y confirmación
     await run('pwa.test.js', [base, path.join(out, 'pwa')]),                          // por http: PWA, respaldo, .ics, PDF
     await run('crypto.test.js', [base, path.join(out, 'crypto')]),                    // cifrado con contraseña

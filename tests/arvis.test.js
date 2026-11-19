@@ -72,12 +72,12 @@ const path=require('path');
   const pom=await p.evaluate(()=>{
     S.tools.pomodoro={...freshPomodoro(),running:true,endsAt:Date.now()+600000,leftMs:600000,sound:false};
     save();go('herramientas');
-    const estudio=document.querySelector('#arvis-estudiando'),small=estudio&&estudio.classList.contains('arvis-sm');
+    const estudio=document.querySelector('#arvis-estudiando'),small=estudio&&estudio.classList.contains('arvis-md');
     S.tools.pomodoro.endsAt=Date.now()-1;pomAdvance();
     const c=document.querySelector('#arvis-celebrando'),i=c&&c.querySelector('img');
     return {estudio:!!estudio,small,src:i&&i.getAttribute('src'),phase:S.tools.pomodoro.phase};
   });
-  ok('durante el foco Arvis estudia en pequeño',pom.estudio&&pom.small,JSON.stringify(pom));
+  ok('durante el foco Arvis estudia en tamaño mediano',pom.estudio&&pom.small,JSON.stringify(pom));
   ok('al terminar un pomodoro Arvis celebra',pom.src==='icons/arvis/arvis-celebrando.svg'&&pom.phase==='short',JSON.stringify(pom.src));
 
   const alerta=await p.evaluate(()=>{
