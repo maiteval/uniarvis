@@ -1,11 +1,20 @@
 /* Componentes reutilizables: botón/panel de ayuda y tour de bienvenida */
 let tourIndex=0;
 
-function screenHelp(key){
-  if(typeof LOCKED!=='undefined'&&LOCKED)return '';
-  if(typeof S!=='undefined'&&S.profile&&!S.profile.name)return '';
-  if(typeof AYUDA==='undefined'||!AYUDA[key])return '';
-  return `<div class="help-bar"><button class="help-btn" type="button" title="Ayuda" aria-label="Ayuda" onclick="openHelp('${key}')">?</button></div>`;
+function screenHelp(){return ''}
+let helpBtnKey='';
+function placeHelpButton(key){
+  if(key!==undefined)helpBtnKey=key||'';
+  let btn=document.getElementById('help-btn');
+  if(!helpBtnKey){if(btn)btn.remove();return}
+  if(!btn){
+    btn=document.createElement('button');btn.type='button';btn.id='help-btn';btn.className='help-btn';
+    btn.title='Ayuda';btn.setAttribute('aria-label','Ayuda');btn.textContent='?';
+    btn.onclick=()=>openHelp(helpBtnKey);
+  }
+  const mobile=window.matchMedia&&window.matchMedia('(max-width:640px)').matches;
+  const target=(mobile&&document.querySelector('.subchips-wrap'))||document.querySelector('.hwrap');
+  if(target&&btn.parentNode!==target)target.appendChild(btn);
 }
 
 function openHelp(key){

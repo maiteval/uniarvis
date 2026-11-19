@@ -11,7 +11,7 @@
 try{
   var s=JSON.parse(localStorage.getItem('entrenador-academico-v1')||'{}');
   var c=s&&s.settings&&s.settings.theme,m=s&&s.settings&&s.settings.mode,st=s&&s.settings&&s.settings.style;
-  document.documentElement.setAttribute('data-accent',/^(cian|rosa|celeste|azul|verde|naranjo|morado|amarillo)$/.test(c)?c:'cian');
+  document.documentElement.setAttribute('data-accent',/^(cian|rosa|celeste|azul|verde|naranjo|morado|amarillo|udec)$/.test(c)?c:'cian');
   document.documentElement.setAttribute('data-mode',m==='dark'?'dark':'light');
   document.documentElement.setAttribute('data-style',/^(calma|hud)$/.test(st)?st:(s&&s.courses?'hud':'calma'));
 }catch(e){document.documentElement.setAttribute('data-style','calma')}

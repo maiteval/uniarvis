@@ -72,7 +72,7 @@ function cleanTools(t){
   return out;
 }
 const migrateTools=t=>cleanTools(t);
-const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,theme:'cian',mode:'light',style:'calma',arvis:true},lastPlan:null,
+const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,theme:'cian',themeTouched:false,mode:'light',style:'calma',arvis:true},lastPlan:null,
   wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},support:{name:'',contact:''},profile:{name:'',career:'',university:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
   account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null},institutionConsentAt:null});
 function migrate(s){
@@ -89,6 +89,10 @@ function migrate(s){
   if(!s.settings||typeof s.settings!=='object')s.settings={};
   if(!s.settings.min)s.settings.min=60;
   if(!themeOk(s.settings.theme))s.settings.theme='cian';
+  if(typeof s.settings.themeTouched!=='boolean'){
+    const autoUdec=s.settings.theme==='udec'&&s.account&&s.account.type==='institucional';
+    s.settings.themeTouched=s.settings.theme!=='cian'&&!autoUdec;
+  }
   if(!modeOk(s.settings.mode))s.settings.mode='light';
   if(!styleOk(s.settings.style))s.settings.style='hud';
   if(typeof s.settings.arvis!=='boolean')s.settings.arvis=true;

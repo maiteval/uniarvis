@@ -57,6 +57,7 @@ function renderCore(){
   const key=LOCKED?'lock':(typeof InstitutionalFlow!=='undefined'&&InstitutionalFlow.get()?'flow':
     (typeof instImport!=='undefined'&&instImport?'inst-import':
     (!S.profile||!S.profile.name?'landing':(!S.account||!S.account.type?'account-choice':section+'/'+tab))));
+  const helpKey=(LOCKED||key==='flow'||key==='account-choice'||key==='inst-import'||!S.profile||!S.profile.name||typeof AYUDA==='undefined'||!AYUDA[tab])?'':tab;
   const same=key===lastRenderKey;
   const active=document.activeElement;
   const focus=active&&active!==document.body?{id:active.id||'',data:(active.dataset&&active.dataset.focusId)||''}:null;
@@ -84,6 +85,7 @@ function renderCore(){
       try{window.scrollTo(0,0)}catch(e){}
       lastRenderKey=key;
     }
+    if(typeof placeHelpButton==='function')placeHelpButton(helpKey);
   };
   applyTheme();
   if(LOCKED){
@@ -123,7 +125,7 @@ function renderCore(){
   const sec=SECTIONS.find(s=>s.key===section);
   let chips='';
   if(sec&&sec.tabs.length&&section!=='inicio'){
-    chips=`<div class="subchips-wrap"><div class="subchips" data-scroll-id="subchips">${sec.tabs.map(([k,v])=>`<button class="subchip ${k===tab?'on':''}" ${k===tab?'aria-current="page"':''} onclick="go('${k}')">${v}</button>`).join('')}</div><span class="subchips-hint" aria-hidden="true"></span></div>`;
+    chips=`<div class="subchips-wrap"><div class="subchips" data-scroll-id="subchips">${sec.tabs.map(([k,v])=>`<button class="subchip ${k===tab?'on':''}" ${k===tab?'aria-current="page"':''} onclick="go('${k}')">${v}</button>`).join('')}</div></div>`;
   }
   app.innerHTML=chips+(views[tab]||viewInicio)();
   finish();
@@ -149,6 +151,7 @@ function start(){
   const h=hashFor(r);
   try{if(location.hash!==h)history.replaceState(null,'',h)}catch(e){try{location.hash=h}catch(f){}}
   render();
+  window.addEventListener('resize',()=>{if(typeof placeHelpButton==='function')placeHelpButton()});
   if(typeof socialBoot==='function')socialBoot();
   if(tab==='amigos'&&typeof socialOpenTab==='function')socialOpenTab();
   if(typeof metricsTrack==='function')metricsTrack('app_abierta');

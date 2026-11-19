@@ -57,7 +57,7 @@ function setMin(){
 }
 function setTheme(id){
   if(!themeOk(id))return;
-  S.settings.theme=id;save();render();
+  S.settings.theme=id;S.settings.themeTouched=true;save();render();
 }
 function setMode(id){
   if(!modeOk(id))return;
@@ -211,6 +211,7 @@ function validState(j){
   if(j.settings!==undefined){
     if(!j.settings||typeof j.settings!=='object'||Array.isArray(j.settings))return 'ajustes';
     if(j.settings.arvis!==undefined&&typeof j.settings.arvis!=='boolean')return 'ajustes';
+    if(j.settings.themeTouched!==undefined&&typeof j.settings.themeTouched!=='boolean')return 'ajustes';
   }
   const dia=j.wellbeing&&j.wellbeing.diary;
   if(dia!==undefined){
@@ -242,7 +243,7 @@ function cleanState(j){
     passGrade:Number.isFinite(x.passGrade)?x.passGrade:4,roundFinal:x.roundFinal!==false,
     ...(x.origin==='udec-demo'?{origin:x.origin,code:x.code,section:x.section}:{}),
     grades:(x.grades||[]).map(g=>({id:g.id,name:String(g.name||'').slice(0,80),...(g.score!=null?{score:+g.score}:{}),weight:+g.weight}))}));
-  c.settings={min:int15(j.settings&&j.settings.min)?j.settings.min:60,theme:themeOk(j.settings&&j.settings.theme)?j.settings.theme:'cian',mode:modeOk(j.settings&&j.settings.mode)?j.settings.mode:'light',arvis:!(j.settings&&j.settings.arvis===false)};
+  c.settings={min:int15(j.settings&&j.settings.min)?j.settings.min:60,theme:themeOk(j.settings&&j.settings.theme)?j.settings.theme:'cian',themeTouched:!!(j.settings&&j.settings.themeTouched===true),mode:modeOk(j.settings&&j.settings.mode)?j.settings.mode:'light',arvis:!(j.settings&&j.settings.arvis===false)};
   const a=j.account&&typeof j.account==='object'&&!Array.isArray(j.account)?j.account:null;
   const known=a&&(a.type==='personal'||a.type==='institucional');
   const knownInst=known&&a.type==='institucional'&&institutionById(a.institutionId);

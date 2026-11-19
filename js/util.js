@@ -20,7 +20,7 @@ const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 const DAYS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const COLORS=['#3b6df0','#e0693a','#2e9e6a','#a855c7','#d6a21f','#16a0b8','#d6507a','#6b7384'];
 const TYPE_LABEL={evaluacion:'Evaluación',entrega:'Entrega',control:'Control',otro:'Otro'};
-const THEMES=[['cian','Cian','#00e5ff'],['rosa','Rosa claro','#ff8fc7'],['celeste','Celeste','#38bdf8'],['azul','Azul','#2563eb'],['verde','Verde','#22c55e'],['naranjo','Naranjo','#f97316'],['morado','Morado','#a855f7'],['amarillo','Amarillo','#eab308']];
+const THEMES=[['cian','Cian','#00e5ff'],['rosa','Rosa claro','#ff8fc7'],['celeste','Celeste','#38bdf8'],['azul','Azul','#2563eb'],['verde','Verde','#22c55e'],['naranjo','Naranjo','#f97316'],['morado','Morado','#a855f7'],['amarillo','Amarillo','#eab308'],['udec','UdeC','#0b3d91']];
 const MODES=[['dark','Oscuro'],['light','Claro']];
 const STYLES=[['calma','Calma'],['hud','HUD']];
 const themeOk=id=>THEMES.some(t=>t[0]===id);
@@ -36,6 +36,11 @@ function applyTheme(){
   el.setAttribute('data-institution',inst?inst.id:'');
   const meta=document.querySelector('meta[name="theme-color"]');
   if(meta)meta.content=st.mode==='light'?'#f4f7fb':'#050b14';
+}
+function showFileLabel(input){
+  const box=input&&input.closest?input.closest('.file-pick'):null;
+  const out=box&&box.querySelector('.file-name');
+  if(out)out.textContent=(input&&input.files&&input.files[0]&&input.files[0].name)||'Ningún archivo';
 }
 function toast(msg,undo){
   const t=$('#toast');if(!t)return;

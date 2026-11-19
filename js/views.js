@@ -433,7 +433,8 @@ function gradesCard(c){
     ?`Próxima evaluación por fecha: <b>${esc(next.title)}</b> (${dshort(next.date)} · ${TYPE_LABEL[next.type]}) — nota necesaria en ella: <b>${needShown}</b>.`
     :'Aún no registraste una fecha próxima para este ramo; la misma nota aplica a lo que falte.'}</div>`:'';
   return `<div class="card grades-card"><div class="row" style="justify-content:space-between;align-items:flex-start">
-      <div><h3 style="margin:0"><span aria-hidden="true" class="dot" style="background:${c.color};display:inline-block;margin-right:6px"></span>${esc(c.name)}${importedCourse(c)?' <span class="tag inst-example">Datos de ejemplo</span>':''}${importedCourse(c)&&!hasSyllabus(c.id)?'<br><span class="tag inst-pending">Syllabus pendiente</span>':''}</h3>
+      <div><h3 style="margin:0"><span aria-hidden="true" class="dot" style="background:${c.color};display:inline-block;margin-right:6px"></span>${esc(c.name)}</h3>
+      ${importedCourse(c)&&!hasSyllabus(c.id)?'<div class="course-tags"><span class="tag inst-pending">Syllabus pendiente</span></div>':''}
       <div class="mute">Promedio actual (ponderado): <b class="hud-num">${sum.shown!=null?comma(sum.shown.toFixed(sum.round?1:2)):'—'}</b> · Ponderado: ${comma(String(sum.wsum))}% · Restante: ${comma(String(Math.max(0,sum.rem)))}%</div>
       <div class="row" style="margin-top:8px"><label class="mute">Nota de aprobación <input id="gp-${c.id}" type="text" inputmode="decimal" style="width:70px" value="${gradeTxt(sum.pass)}" onchange="setGradeOption('${c.id}','passGrade',this.value)"></label>
         <label class="mute"><input type="checkbox" ${sum.round?'checked':''} onchange="setGradeOption('${c.id}','roundFinal',this.checked)"> Redondear promedio a 1 decimal</label></div></div></div>
@@ -457,11 +458,13 @@ function viewRamos(){
   return `${screenHelp('ramos')}
   <div class="grid2">
     <div class="card"><h2>Mis ramos</h2>
-      ${S.courses.map(c=>`<div class="task"><span aria-hidden="true" class="dot" style="background:${c.color}"></span><b style="flex:1">${esc(c.name)}${importedCourse(c)?' <span class="tag inst-example">Datos de ejemplo</span>':''}${importedCourse(c)&&!hasSyllabus(c.id)?'<br><span class="tag inst-pending">Syllabus pendiente</span>':''}</b>
+      ${S.courses.map(c=>`<div class="task course-row"><span aria-hidden="true" class="dot" style="background:${c.color}"></span>
+        <div class="course-main"><b class="course-name">${esc(c.name)}</b>
+        ${importedCourse(c)&&!hasSyllabus(c.id)?'<div class="course-tags"><span class="tag inst-pending">Syllabus pendiente</span></div>':''}</div>
         <span class="diff-field"><label class="mute" for="diff-${c.id}">Dificultad percibida</label>
         <select id="diff-${c.id}" data-focus-id="diff-${c.id}" aria-label="Dificultad de ${esc(c.name)}" onchange="setDiff('${c.id}',this.value)">${difficultyOptions(c.difficulty)}</select></span>
         <button class="btn del" onclick="delCourse('${c.id}')">Eliminar</button></div>`).join('')||`${arvisVacioHtml('ramos')}<div class="empty">Aún no tienes ramos. Escribe el nombre y toca <b>Agregar</b> para crear tu primer ramo.</div>`}
-      <div class="row" style="margin-top:10px"><input id="cn" placeholder="Nombre del ramo">
+      <div class="row form-stack" style="margin-top:10px"><input id="cn" placeholder="Nombre del ramo">
         <span class="diff-field"><label for="cd">Dificultad percibida</label>
           <select id="cd" title="Dificultad percibida">${difficultyOptions(3)}</select></span>
         <button class="btn" data-focus-id="add-course" onclick="addCourse()">Agregar</button></div>
@@ -489,8 +492,10 @@ function viewSyllabus(){
     ${S.courses.filter(c=>importedCourse(c)&&!hasSyllabus(c.id)).map(c=>esc(c.name)).join(', ')}. Sube el syllabus de cada ramo para afinar las fechas. <span class="tag inst-example">Datos de ejemplo</span></div>`:''}
   ${certamenOffersHtml()}${certamenDraftHtml()}${certamenActiveHtml()}
   <div class="card"><h2>Subir syllabus</h2>
-    <div class="row" style="margin-bottom:8px"><select onchange="sylCourse=this.value"><option value="">Elige el ramo…</option>${opts}</select>
-      <input type="file" accept=".pdf,.txt,.md,.csv" onchange="onFile(this)"></div>
+    <div class="row form-stack" style="margin-bottom:8px"><select onchange="sylCourse=this.value"><option value="">Ramo…</option>${opts}</select>
+      <div class="file-pick"><label class="btn sec" for="syl-file">Elegir archivo (PDF o texto)</label>
+        <input id="syl-file" class="file-input" type="file" accept=".pdf,.txt,.md,.csv" onchange="showFileLabel(this);onFile(this)">
+        <span class="file-name mute">Ningún archivo</span></div></div>
     <textarea placeholder="…o pega aquí el texto del syllabus (calendario de evaluaciones)" oninput="sylText=this.value">${esc(sylText)}</textarea>
     <div class="row" style="margin-top:8px"><button class="btn" onclick="analyze()">Analizar syllabus</button>
       <span class="mute">La lectura automática puede equivocarse: siempre te pido confirmar antes de agregar.</span></div>
@@ -503,7 +508,7 @@ function viewSyllabus(){
       <button class="btn" style="margin-top:8px" onclick="addPending()">Confirmar y agregar al calendario</button>`:''}
   </div>
   <div class="card"><h2>Fechas importantes</h2>
-    <div class="row" style="margin-bottom:8px"><select id="ec">${S.courses.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
+    <div class="row form-stack" style="margin-bottom:8px"><select id="ec"><option value="">Ramo…</option>${S.courses.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
       <input id="et" placeholder="Título"><input id="ed" type="date">
       <select id="ey">${Object.entries(TYPE_LABEL).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
       <button class="btn" data-focus-id="add-event" onclick="addEvent()">Agregar manualmente</button>
@@ -697,6 +702,7 @@ function viewTema(){
   const th=themeOk(S.settings&&S.settings.theme)?S.settings.theme:'cian';
   const md=modeOk(S.settings&&S.settings.mode)?S.settings.mode:'light';
   const st=styleOk(S.settings&&S.settings.style)?S.settings.style:'calma';
+  const themes=THEMES.filter(([k])=>k!=='udec'||isInstitutional());
   const sdescs={calma:'Sin brillo ni mayúsculas forzadas, con textos cálidos.',hud:'Interfaz futurista con brillo y estilo tecnológico.'};
   return `${screenHelp('tema')}
   <div class="card"><h2>Apariencia</h2>
@@ -705,7 +711,7 @@ function viewTema(){
     <div class="modes">${STYLES.map(([k,label])=>`<button type="button" class="mode-btn ${k===st?'on':''}" aria-pressed="${k===st}" onclick="setStyle('${k}')"><span>${label}</span></button>`).join('')}</div>
     <p class="mute" style="margin-bottom:0">${sdescs[st]||''}</p>
     <h3 style="margin-top:20px">Color de la aplicación</h3>
-    <div class="swatches">${THEMES.map(([k,label,hex])=>`<button type="button" class="swatch ${k===th?'on':''}" style="--sw:${hex}" aria-pressed="${k===th}" onclick="setTheme('${k}')"><span class="swatch-dot"></span><span>${label}</span></button>`).join('')}</div>
+    <div class="swatches">${themes.map(([k,label,hex])=>`<button type="button" class="swatch ${k===th?'on':''}" style="--sw:${hex}" aria-pressed="${k===th}" onclick="setTheme('${k}')"><span class="swatch-dot"></span><span>${label}</span></button>`).join('')}</div>
     <h3 style="margin-top:20px">Modo</h3>
     <div class="modes">${MODES.map(([k,label])=>`<button type="button" class="mode-btn ${k===md?'on':''}" aria-pressed="${k===md}" onclick="setMode('${k}')"><span class="mode-preview ${k}"></span><span>${label}</span></button>`).join('')}</div>
     <p class="mute" style="margin-bottom:0">El modo claro suaviza los fondos y mantiene el contraste para leer; el oscuro cuida la vista con poca luz.</p>

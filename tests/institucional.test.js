@@ -88,12 +88,39 @@ const fs=require('fs');
   ok('tras el consentimiento ofrece la importación simulada',(await text()).includes('Importando tus datos desde la UdeC'));
   await p.click('[data-focus-id="inst-import-skip"]');
   ok('tras la importación vuelve a Ajustes → Cuenta',(await text()).includes('Cuenta')&&await p.evaluate(()=>section==='ajustes'&&tab==='cuenta'));
+  ok('vincular aplica el color UdeC si no se eligió uno a mano',await p.evaluate(()=>S.settings.theme==='udec'&&document.documentElement.getAttribute('data-accent')==='udec'&&getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()==='#0b3d91'));
   const acc=await p.evaluate(()=>({...S.account}));
   ok('cuenta vinculada a la UdeC',acc.type==='institucional'&&acc.institutionId==='udec'&&/udec\.cl$/.test(acc.email)&&/^\d{4}-\d{2}-\d{2}$/.test(acc.linkedAt),JSON.stringify(acc));
 
   // Apariencia, contactos y privacidad en modo institucional
   ok('sin logo UdeC y con el nombre en Cuenta',await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0&&(await p.textContent('.account-status')).includes('Universidad de Concepción')&&(await text()).includes('Prototipo'));
-  ok('acento institucional sobre el tema actual',await p.evaluate(()=>document.documentElement.getAttribute('data-institution')==='udec'));
+  ok('marca institucional sin fijar el acento',await p.evaluate(()=>document.documentElement.getAttribute('data-institution')==='udec'));
+  await p.evaluate(()=>go('tema'));
+  ok('Apariencia institucional ofrece 9 colores, incluido UdeC',await p.locator('.swatch').count()===9&&await p.locator('.swatch').filter({hasText:'UdeC'}).count()===1);
+  const colores=[['cian','Cian','#00e5ff'],['rosa','Rosa claro','#ff8fc7'],['celeste','Celeste','#38bdf8'],['azul','Azul','#2563eb'],['verde','Verde','#22c55e'],['naranjo','Naranjo','#f97316'],['morado','Morado','#a855f7'],['amarillo','Amarillo','#eab308'],['udec','UdeC','#0b3d91']];
+  const probarColores=async esperado=>{
+    let anterior='',navAnterior='',bien=true;
+    for(const [id,label,hex] of colores){
+      await p.locator('.swatch').filter({hasText:label}).click();
+      const got=await p.evaluate(()=>({
+        attr:document.documentElement.getAttribute('data-accent'),
+        accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+        nav:getComputedStyle(document.querySelector('nav button.on')).color,
+        borde:getComputedStyle(document.querySelector('.swatch.on')).borderColor
+      }));
+      bien=bien&&got.attr===id&&got.accent===esperado[id]&&got.borde!==anterior&&got.nav!==navAnterior;
+      anterior=got.borde;navAnterior=got.nav;
+    }
+    return bien;
+  };
+  ok('cada color cambia el acento real en claro: pestañas activas y botones',await probarColores(Object.fromEntries(colores.map(([id,,hex])=>[id,hex]))));
+  await p.locator('.mode-btn').filter({hasText:'Oscuro'}).click();
+  ok('cada color cambia el acento real en oscuro, con UdeC azul claro',await probarColores({...Object.fromEntries(colores.map(([id,,hex])=>[id,hex])),udec:'#8ab4ff'}));
+  await p.locator('.swatch').filter({hasText:'Rosa claro'}).click();
+  await p.evaluate(()=>linkInstitution('udec','ana@udec.cl'));
+  ok('un color elegido a mano se respeta al volver a vincular',await p.evaluate(()=>S.settings.theme==='rosa'&&S.settings.themeTouched===true&&document.documentElement.getAttribute('data-accent')==='rosa'));
+  await p.evaluate(()=>{S.settings.theme='udec';S.settings.themeTouched=false;save();applyTheme();render()});
+  await p.evaluate(()=>go('cuenta'));
   ok('etiqueta Prototipo visible en Cuenta',(await text()).includes('Prototipo'));
   await p.evaluate(()=>go('inicio'));
   ok('Inicio muestra el nombre sin logo',await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0&&(await text()).includes('Universidad de Concepción')&&(await text()).includes('Prototipo'));
@@ -214,7 +241,7 @@ const fs=require('fs');
   ok('el horario importado aparece en Semana',await p.locator('.blk').count()>=data.keepK);
   await p.evaluate(()=>go('ramos'));
   const ramos=await text();
-  ok('cada ramo importado lleva Datos de ejemplo y Syllabus pendiente',(ramos.match(/Datos de ejemplo/g)||[]).length>=4&&(ramos.match(/Syllabus pendiente/g)||[]).length>=4&&await p.evaluate(()=>hasSyllabus('c1')));
+  ok('los ramos importados ya no muestran Datos de ejemplo, pero sí Syllabus pendiente',await p.locator('.course-row .tag.inst-example').count()===0&&await p.locator('.course-row .course-tags .inst-pending').count()>=4&&await p.evaluate(()=>hasSyllabus('c1')));
   await p.evaluate(()=>go('notas'));
   ok('Notas muestra la nota necesaria calculada',(await text()).includes('Nota necesaria en lo que queda'));
   await p.evaluate(()=>go('hoy'));
@@ -246,6 +273,10 @@ const fs=require('fs');
   await p.evaluate(()=>go('cuenta'));
   await p.click('text=Desconectar de mi universidad');await confirmOk();
   ok('al desconectar Conservar mis datos mantiene lo importado',await p.evaluate(()=>S.account.type==='personal'&&importedCount()>0));
+  ok('al desconectar vuelve al color cian',await p.evaluate(()=>S.settings.theme==='cian'&&S.settings.themeTouched===false&&document.documentElement.getAttribute('data-accent')==='cian'));
+  await p.evaluate(()=>go('tema'));
+  ok('sin universidad Apariencia ofrece 8 colores y no muestra UdeC',await p.locator('.swatch').count()===8&&await p.locator('.swatch').filter({hasText:'UdeC'}).count()===0);
+  await p.evaluate(()=>go('cuenta'));
   await p.evaluate(()=>{S.account={type:'institucional',institutionId:'udec',email:'ana@udec.cl',linkedAt:today()};save();go('cuenta')});
   await p.click('text=Desconectar de mi universidad');await confirmCancel();
   ok('al desconectar Quitar los importados borra solo lo importado',await p.evaluate(()=>S.account.type==='personal'&&S.courses.length===1&&S.classes.length===0&&S.events.length===0&&S.wellbeing.diary[0].note==='SECRETO_IMPORT'));

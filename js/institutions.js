@@ -87,6 +87,8 @@ function linkInstitution(id,email){
   const i=institutionById(id);if(!i)return false;
   S.account={type:'institucional',institutionId:id,email:String(email||'').trim().slice(0,120),linkedAt:today()};
   S.institutionConsentAt=today();
+  if(!S.settings||typeof S.settings!=='object')S.settings=fresh().settings;
+  if(!S.settings.themeTouched)S.settings.theme='udec';
   if(!S.profile||typeof S.profile!=='object')S.profile={name:'',career:'',university:''};
   S.profile.university=i.name;
   if(typeof metricsTrack==='function')metricsTrack('modo_elegido','institucional');
@@ -96,6 +98,7 @@ function linkInstitution(id,email){
 }
 function unlinkInstitution(){
   S.account=accountBlank();S.account.type='personal';
+  if(S.settings&&S.settings.theme==='udec'){S.settings.theme='cian';S.settings.themeTouched=false}
   if(typeof save==='function')save();
 }
 

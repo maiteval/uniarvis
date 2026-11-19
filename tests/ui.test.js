@@ -301,18 +301,59 @@ const fs=require('fs');
   }
   await open('Planificación','Semana');
   ok('navegación de semanas tiene nombres accesibles',await p.locator('button[aria-label="Semana anterior"]').count()===1&&await p.locator('button[aria-label="Semana siguiente"]').count()===1);
+  ok('en escritorio el header ocupa todo el ancho',await p.evaluate(()=>{const r=document.querySelector('header').getBoundingClientRect();return Math.round(r.width)===innerWidth&&Math.round(r.left)===0}));
+  ok('sin scroll horizontal en escritorio',await p.evaluate(()=>document.documentElement.scrollWidth<=1100));
   // 14. Móvil
   await p.setViewportSize({width:390,height:800});await open('Planificación','Hoy');
   const sw=await p.evaluate(()=>document.documentElement.scrollWidth);
   ok('sin scroll horizontal en móvil (390px)',sw<=392,'ancho '+sw);
   ok('móvil muestra barra de navegación inferior',await p.locator('#mobile-nav .mobile-nav, .mobile-nav').first().isVisible());
   ok('móvil muestra subpestañas como chips',await p.locator('.subchips').isVisible());
+  const head=await p.evaluate(()=>{
+    const h=document.querySelector('header').getBoundingClientRect(),b=document.getElementById('help-btn'),wrap=document.querySelector('.subchips-wrap');
+    const r=b&&b.getBoundingClientRect(),w=wrap&&wrap.getBoundingClientRect();
+    return {ancho:Math.round(h.width),alto:Math.round(h.height),ayuda:!!(r&&w&&r.top>=w.top-4&&r.bottom<=w.bottom+4&&r.right<=w.right+1)};
+  });
+  ok('header móvil compacto, a ancho completo y ? alineado con las subpestañas',head.ancho===390&&head.alto<=60&&head.ayuda,JSON.stringify(head));
   await p.screenshot({path:shots+'/mobile-hoy.png',fullPage:false});
   await open('Planificación','Semana');
   ok('Semana móvil usa agenda vertical',await p.locator('.agenda-movil').isVisible()&&!await p.locator('.calwrap').isVisible());
   const sw2=await p.evaluate(()=>document.documentElement.scrollWidth);
   ok('agenda móvil sin scroll horizontal',sw2<=392,'ancho '+sw2);
   await p.screenshot({path:shots+'/mobile-semana.png',fullPage:false});
+  const revisarMovil=async ancho=>{
+    await p.setViewportSize({width:ancho,height:800});
+    await p.evaluate(()=>{if(S.courses[0]){S.courses[0].origin='udec-demo';S.certamen.topicsByCourse={};save();render()}});
+    await open('Académico','Mis ramos y horario');
+    const r=await p.evaluate(()=>{
+      const row=document.querySelector('.course-row');if(!row)return null;
+      const main=row.querySelector('.course-main').getBoundingClientRect(),diff=row.querySelector('.diff-field').getBoundingClientRect();
+      const del=row.querySelector('.btn.del').getBoundingClientRect(),sel=row.querySelector('select'),pending=row.querySelector('.inst-pending');
+      return {sw:document.documentElement.scrollWidth,filas:main.bottom<=diff.top+1&&diff.right<=del.left+1,
+        sel:sel.getBoundingClientRect().width,texto:sel.options[sel.selectedIndex].textContent.trim(),
+        etiqueta:row.querySelector('label').textContent.trim(),pending:!!pending&&getComputedStyle(pending).whiteSpace==='nowrap',
+        contraste:pending?getComputedStyle(pending).color:'',sinTag:!row.querySelector('.tag.inst-example'),padding:getComputedStyle(row).padding};
+    });
+    ok('Mis ramos sin desborde en '+ancho+'px',r&&r.sw<=ancho+2,String(r&&r.sw));
+    ok('Mis ramos en 2 filas, etiqueta y dificultad legible en '+ancho+'px',r&&r.filas&&r.sel>=128&&/^[1-5] · /.test(r.texto)&&r.etiqueta==='Dificultad percibida'&&r.pending&&r.contraste==='rgb(138, 90, 0)'&&r.sinTag&&r.padding==='12px',JSON.stringify(r));
+    await open('Académico','Syllabus y fechas');
+    const s=await p.evaluate(()=>{
+      const input=document.getElementById('syl-file'),label=document.querySelector('label[for="syl-file"]'),name=input.closest('.file-pick').querySelector('.file-name');
+      const ec=document.getElementById('ec'),card=ec.closest('.card').getBoundingClientRect();
+      const over=[...document.querySelectorAll('.card input,.card select,.card textarea')].filter(el=>{const b=el.getBoundingClientRect();return b.width>0&&(b.right>card.right+1||b.left<card.left-1)}).length;
+      return {sw:document.documentElement.scrollWidth,oculto:getComputedStyle(input).opacity==='0',label:label.textContent.trim(),
+        nombre:name.textContent.trim(),opcion:ec.options[0].textContent.trim(),anchoEc:ec.getBoundingClientRect().width,sobre:over};
+    });
+    ok('Syllabus usa selector de archivo propio y sin desborde en '+ancho+'px',s.sw<=ancho+2&&s.oculto&&s.label==='Elegir archivo (PDF o texto)'&&s.nombre==='Ningún archivo'&&s.opcion==='Ramo…'&&s.anchoEc>250&&s.sobre===0,JSON.stringify(s));
+    for(const modo of ['light','dark']){
+      await p.evaluate(m=>{S.settings.mode=m;save();applyTheme()},modo);
+      const sw=await p.evaluate(()=>document.documentElement.scrollWidth);
+      ok('Syllabus sin desborde en '+ancho+'px modo '+modo,sw<=ancho+2,String(sw));
+    }
+    await p.evaluate(()=>{S.settings.mode='light';save();applyTheme()});
+  };
+  await revisarMovil(390);
+  await revisarMovil(375);
 
   ok('sin errores de JavaScript en consola',errs.length===0,errs.join(' || '));
   console.log(res.join('\n'));
