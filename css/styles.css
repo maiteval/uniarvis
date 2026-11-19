@@ -380,11 +380,8 @@ filter:blur(10px);opacity:.9;animation:hudPulse 8s ease-in-out infinite alternat
 @media (max-width:640px){.tour-modal{padding:24px 18px 18px}.tour-actions{gap:8px}.modal-card{padding:16px}}
 
 /* Modo institucional (prototipo) */
-.inst-logo{width:136px;height:44px;display:block;flex:none}
-.inst-logo-sm{width:68px;height:22px}
 .inst-identity{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
 .inst-identity b{font-size:15px}
-.brand .inst-logo-sm{margin-right:8px;vertical-align:middle}
 .inst-inicio{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .inst-example,.tag.inst-example{border-color:var(--inst-gold,#8a5a00);color:var(--inst-gold,#8a5a00);font-weight:700}
 .account-panel{width:min(720px,100%)}
@@ -425,9 +422,6 @@ filter:blur(10px);opacity:.9;animation:hudPulse 8s ease-in-out infinite alternat
 .inst-done{margin:10px 0}
 .inst-syllabus-pending{margin-bottom:12px}
 @media (max-width:640px){
-  .inst-logo{width:112px;height:37px}
-  .inst-logo-sm{width:56px;height:19px}
-  .brand .inst-logo-sm{margin-right:5px}
   .inst-inicio{gap:8px}
   .account-panel{padding:20px 16px}
   .account-choice{min-height:0}

@@ -42,16 +42,16 @@ function viewAccountChoice(){
 }
 function viewInstitutionalFlow(){
   const f=InstitutionalFlow.get();if(!f)return viewAccountChoice();
-  const inst=INSTITUTIONS[0],logo=institutionLogo(inst.id),proto='<span class="tag inst-example">Prototipo · no oficial</span>';
+  const inst=INSTITUTIONS[0],proto='<span class="tag inst-example">Prototipo · no oficial</span>';
   const back=`<button class="btn sec" data-focus-id="account-back" onclick="institutionalBack()">Volver</button>`;
   let body='';
   if(f.step==='choose'){
     body=`<h2>Elige tu universidad</h2><p class="mute">Por ahora hay una sola opción en este prototipo.</p>
       ${INSTITUTIONS.map(i=>`<button class="inst-option" data-focus-id="inst-option-${i.id}" onclick="institutionalNext()">
-        ${institutionLogo(i.id)}<span><b>${esc(i.name)}</b><br><span class="mute">${esc(i.short)} · ${esc(i.emailDomain)}</span></span><span class="home-arrow" aria-hidden="true">→</span></button>`).join('')}
+        <span><b>${esc(i.name)}</b><br><span class="mute">${esc(i.short)} · ${esc(i.emailDomain)}</span></span><span class="home-arrow" aria-hidden="true">→</span></button>`).join('')}
       <div class="row" style="margin-top:14px">${back}</div>`;
   }else if(f.step==='login'){
-    body=`<h2>${logo} ${proto}</h2><p>Esta es una simulación: escribe tu correo ${esc(inst.name)} y validaremos el dominio. No se envía nada.</p>
+    body=`<h2>${esc(inst.name)} ${proto}</h2><p>Esta es una simulación: escribe tu correo ${esc(inst.name)} y validaremos el dominio. No se envía nada.</p>
       <div class="hud-form"><label>Correo institucional<input id="inst-email" type="email" autocomplete="email" placeholder="nombre@${esc(inst.emailDomain)}" value="${esc(f.email)}" oninput="institutionalEmail(this.value)"></label>
       <button class="btn" data-focus-id="inst-login" onclick="institutionalSubmitEmail()">Ingresar con mi cuenta institucional</button></div>
       ${f.error?`<div class="banner go" role="alert">${esc(f.error)}</div>`:''}
@@ -150,7 +150,7 @@ function viewInicio(){
     <span class="home-copy"><b>${s.label}</b><span>${descs[s.key]||''}</span></span>
     <span class="home-arrow" aria-hidden="true">→</span></button>`}).join('');
   return `${screenHelp('inicio')}
-  ${isInstitutional()?`<div class="inst-inicio">${institutionIdentityHtml(currentInstitution().id)}<span class="tag inst-example">Prototipo · no oficial</span></div>`:''}
+  ${isInstitutional()?`<div class="inst-inicio"><span class="inst-identity"><b>${esc(currentInstitution().name)}</b></span><span class="tag inst-example">Prototipo · no oficial</span></div>`:''}
   <div class="home-head"><div><h2>Hola, ${name}</h2><p class="mute" style="margin-bottom:0">Elige por dónde empezar hoy.</p></div></div>
   ${arvisInicioHtml()}
   ${institutionDoneNotice()}
@@ -186,9 +186,9 @@ function viewCuenta(){
   return `${screenHelp('cuenta')}<div class="card"><h2>Cuenta</h2>
     <p class="mute" style="margin-top:0">Cambiar de modo no borra ningún dato: solo cambia la apariencia, los contactos precargados y el calendario institucional.</p>
     <div class="account-status"><span class="tag">Modo: <b>${modo}</b></span>
-      ${i?`<span class="inst-identity">${institutionLogo(i.id,true)}<b>${esc(i.name)}</b></span>`:'<span class="mute">Sin universidad vinculada</span>'}</div>
+      ${i?`<span class="inst-identity"><b>${esc(i.name)}</b></span>`:'<span class="mute">Sin universidad vinculada</span>'}</div>
     ${i?`<p class="mute">Correo: ${esc(a.email||'—')} · Vinculada el ${a.linkedAt?dshort(a.linkedAt):'—'}</p>
-      <p>${institutionLogo(i.id)} <span class="tag inst-example">Prototipo · no oficial</span></p>`:''}
+      <p>${esc(i.name)} <span class="tag inst-example">Prototipo · no oficial</span></p>`:''}
     <div class="row">
       ${i?'<button class="btn del" onclick="disconnectInstitution()">Desconectar de mi universidad</button>'
         :'<button class="btn" data-focus-id="connect-institution" onclick="startInstitutionalFlow(\'cuenta\')">Conectar con mi universidad</button>'}

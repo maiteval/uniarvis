@@ -39,7 +39,7 @@ const fs=require('fs');
   ok('perfil nuevo ve el selector con dos tarjetas grandes',sel.includes('Personal')&&sel.includes('Úsala por tu cuenta')&&sel.includes('Institucional')&&sel.includes('Tu universidad tiene Uarvis'));
   await p.click('[data-focus-id="account-personal"]');
   ok('Personal entra a Inicio igual que antes',(await text()).includes('Elige por dónde empezar hoy')&&await p.evaluate(()=>S.account.type==='personal'));
-  ok('Personal no muestra el logo institucional',await p.locator('.inst-logo').count()===0);
+  ok('Personal no muestra identidad institucional',await p.locator('svg[aria-label^="Logo"], .inst-identity, .inst-logo').count()===0);
 
   // 2. Perfil existente con datos: migrate lo deja en personal y no ve el selector
   const diario='2026-01-01';
@@ -73,7 +73,7 @@ const fs=require('fs');
   ok('flujo: elige tu universidad con la UdeC como única opción',(await text()).includes('Elige tu universidad')&&await p.locator('[data-focus-id="inst-option-udec"]').count()===1);
   await p.click('[data-focus-id="inst-option-udec"]');
   const login=await text();
-  ok('flujo: acceso simulado y etiqueta de prototipo',login.includes('Ingresar con mi cuenta institucional')&&login.includes('Prototipo · no oficial')&&login.includes('SSO real'));
+  ok('flujo: acceso simulado, nombre y etiqueta sin logo',login.includes('Ingresar con mi cuenta institucional')&&login.includes('Prototipo · no oficial')&&login.includes('SSO real')&&login.includes('Universidad de Concepción')&&await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0);
   await p.fill('#inst-email','ana@gmail.com');await p.click('[data-focus-id="inst-login"]');
   ok('correo con otro dominio rechazado',(await text()).includes('@udec.cl')&&await p.evaluate(()=>InstitutionalFlow.get().step==='login'));
   await p.fill('#inst-email','ana@udec.cl');await p.click('[data-focus-id="inst-login"]');
@@ -92,9 +92,11 @@ const fs=require('fs');
   ok('cuenta vinculada a la UdeC',acc.type==='institucional'&&acc.institutionId==='udec'&&/udec\.cl$/.test(acc.email)&&/^\d{4}-\d{2}-\d{2}$/.test(acc.linkedAt),JSON.stringify(acc));
 
   // Apariencia, contactos y privacidad en modo institucional
-  ok('logo institucional fuera del encabezado y en Cuenta',await p.locator('.brand .inst-logo').count()===0&&await p.locator('.account-status .inst-logo').count()===1);
+  ok('sin logo UdeC y con el nombre en Cuenta',await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0&&(await p.textContent('.account-status')).includes('Universidad de Concepción')&&(await text()).includes('Prototipo · no oficial'));
   ok('acento institucional sobre el tema actual',await p.evaluate(()=>document.documentElement.getAttribute('data-institution')==='udec'));
   ok('prototipo no oficial visible en Cuenta',(await text()).includes('Prototipo · no oficial'));
+  await p.evaluate(()=>go('inicio'));
+  ok('Inicio muestra el nombre sin logo',await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0&&(await text()).includes('Universidad de Concepción')&&(await text()).includes('Prototipo · no oficial'));
   await p.evaluate(()=>go('cuenta'));
   ok('Ajustes → Cuenta muestra modo, universidad y etiqueta',(await text()).includes('Institucional')&&(await text()).includes('Universidad de Concepción')&&(await text()).includes('Prototipo · no oficial'));
   await p.evaluate(()=>go('apoyo'));
@@ -125,7 +127,7 @@ const fs=require('fs');
   if(desDialog){ok('al desconectar pregunta si conservar o quitar lo importado',(await p.textContent('#confirm-dialog')).includes('importados'));await confirmOk()}
   const despues=await p.evaluate(()=>({type:S.account.type,...{c:S.courses.length,g:S.courses[0].grades.length,d:S.wellbeing.diary.length,n:S.wellbeing.diary[0].note}}));
   ok('desconectar vuelve a personal sin borrar datos',despues.type==='personal'&&JSON.stringify(antes)===JSON.stringify({c:despues.c,g:despues.g,d:despues.d,n:despues.n}),JSON.stringify(despues));
-  ok('al desconectar desaparece el logo institucional',await p.locator('.inst-logo').count()===0);
+  ok('al desconectar desaparece la identidad institucional',await p.locator('svg[aria-label^="Logo"], .inst-identity, .inst-logo').count()===0);
   await p.click('[data-focus-id="connect-institution"]');
   await p.click('[data-focus-id="inst-option-udec"]');
   await p.fill('#inst-email','ana@udec.cl');await p.click('[data-focus-id="inst-login"]');

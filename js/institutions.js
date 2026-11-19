@@ -33,19 +33,6 @@ const institutionById=id=>INSTITUTIONS.find(i=>i.id===id)||null;
 const currentInstitution=()=> S&&S.account&&S.account.type==='institucional'?institutionById(S.account.institutionId):null;
 const isInstitutional=()=>!!currentInstitution();
 const institutionPassGrade=()=>{const i=currentInstitution();return i?i.passGrade:4};
-function institutionLogo(id,small){
-  const i=institutionById(id)||INSTITUTIONS[0];
-  return `<svg class="inst-logo${small?' inst-logo-sm':''}" viewBox="0 0 136 44" role="img" aria-label="Logo ${esc(i.short)}, prototipo no oficial">
-    <rect x="1" y="1" width="134" height="42" rx="10" fill="#fffdf7" stroke="#0b3d91" stroke-width="2"/>
-    <path d="M10 38h116" stroke="#8a5a00" stroke-width="3" stroke-linecap="round"/>
-    <text x="14" y="31" font-family="Segoe UI,Arial,sans-serif" font-size="25" font-weight="700" fill="#0b3d91">Ude</text>
-    <text x="82" y="31" font-family="Segoe UI,Arial,sans-serif" font-size="25" font-weight="700" fill="#8a5a00">C</text>
-  </svg>`;
-}
-function institutionIdentityHtml(id){
-  const i=institutionById(id);if(!i)return '';
-  return `<span class="inst-identity">${institutionLogo(i.id,true)}<span><b>U.A.R.V.I.S.</b> · ${esc(i.name)}</span></span>`;
-}
 function institutionSupportHtml(){
   const i=currentInstitution();if(!i)return '';
   const s=i.support;
