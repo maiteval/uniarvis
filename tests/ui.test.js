@@ -115,6 +115,15 @@ const fs=require('fs');
   await onboard();
   await open('Académico','Mis ramos y horario');
   ok('Ramos mantiene visible Cargar datos de ejemplo',await p.locator('[data-focus-id="load-demo"]').count()===1);
+  const dif=await p.evaluate(()=>({
+    label:document.querySelector('label[for="cd"]').textContent.trim(),
+    opts:[...document.querySelectorAll('#cd option')].map(o=>o.value+'|'+o.textContent.trim()),
+    listLabel:document.querySelector('.task label[for^="diff-"]').textContent.trim(),
+    help:document.querySelector('label[for="cd"]').closest('.row').nextElementSibling.textContent.trim()
+  }));
+  ok('dificultad con etiqueta, pistas y valores numéricos',dif.label==='Dificultad percibida'&&dif.listLabel==='Dificultad percibida'&&
+    dif.opts.join(',')==='1|1 · Muy fácil,2|2 · Fácil,3|3 · Media,4|4 · Difícil,5|5 · Muy difícil'&&
+    dif.help.startsWith('La dificultad percibida es qué tan pesado sientes el ramo, de 1 a 5.'),JSON.stringify(dif));
   await open('Académico','Syllabus y fechas');
   ok('Syllabus mantiene visible Cargar datos de ejemplo',await p.locator('[data-focus-id="load-demo"]').count()===1);
   await open('Planificación','Hoy');
@@ -286,7 +295,8 @@ const fs=require('fs');
     ['amigos','Social'],['perfil','Ajustes','Perfil'],['tema','Ajustes','Apariencia'],['privacidad','Ajustes','Privacidad'],['ejemplos','Ajustes','Datos de ejemplo']];
   for(const [k,sec,sub] of screens){
     await open(sec,sub);
-    const len=(await p.textContent('#app')).length;ok('sección '+(sub||sec)+' renderiza',len>180,len+' caracteres');
+    const txt=await p.textContent('#app'),len=txt.length;
+    ok('sección '+(sub||sec)+' renderiza',k==='amigos'?(len>40&&txt.includes('Probar con datos de ejemplo')):len>180,len+' caracteres');
     await p.screenshot({path:shots+'/tab-'+k+'.png',fullPage:true});
   }
   await open('Planificación','Semana');

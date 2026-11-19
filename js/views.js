@@ -42,7 +42,7 @@ function viewAccountChoice(){
 }
 function viewInstitutionalFlow(){
   const f=InstitutionalFlow.get();if(!f)return viewAccountChoice();
-  const inst=INSTITUTIONS[0],proto='<span class="tag inst-example">Prototipo · no oficial</span>';
+  const inst=INSTITUTIONS[0],proto='<span class="tag inst-example">Prototipo</span>';
   const back=`<button class="btn sec" data-focus-id="account-back" onclick="institutionalBack()">Volver</button>`;
   let body='';
   if(f.step==='choose'){
@@ -150,7 +150,7 @@ function viewInicio(){
     <span class="home-copy"><b>${s.label}</b><span>${descs[s.key]||''}</span></span>
     <span class="home-arrow" aria-hidden="true">→</span></button>`}).join('');
   return `${screenHelp('inicio')}
-  ${isInstitutional()?`<div class="inst-inicio"><span class="inst-identity"><b>${esc(currentInstitution().name)}</b></span><span class="tag inst-example">Prototipo · no oficial</span></div>`:''}
+  ${isInstitutional()?`<div class="inst-inicio"><span class="inst-identity"><b>${esc(currentInstitution().name)}</b></span><span class="tag inst-example">Prototipo</span></div>`:''}
   <div class="home-head"><div><h2>Hola, ${name}</h2><p class="mute" style="margin-bottom:0">Elige por dónde empezar hoy.</p></div></div>
   ${arvisInicioHtml()}
   ${institutionDoneNotice()}
@@ -188,7 +188,7 @@ function viewCuenta(){
     <div class="account-status"><span class="tag">Modo: <b>${modo}</b></span>
       ${i?`<span class="inst-identity"><b>${esc(i.name)}</b></span>`:'<span class="mute">Sin universidad vinculada</span>'}</div>
     ${i?`<p class="mute">Correo: ${esc(a.email||'—')} · Vinculada el ${a.linkedAt?dshort(a.linkedAt):'—'}</p>
-      <p>${esc(i.name)} <span class="tag inst-example">Prototipo · no oficial</span></p>`:''}
+      <p>${esc(i.name)} <span class="tag inst-example">Prototipo</span></p>`:''}
     <div class="row">
       ${i?'<button class="btn del" onclick="disconnectInstitution()">Desconectar de mi universidad</button>'
         :'<button class="btn" data-focus-id="connect-institution" onclick="startInstitutionalFlow(\'cuenta\')">Conectar con mi universidad</button>'}
@@ -451,18 +451,21 @@ function demoCardHtml(){
     <div class="row"><button class="btn sec" data-focus-id="load-demo" onclick="loadDemo()">Cargar datos de ejemplo</button>
       <span class="mute">Reemplaza tus datos actuales. También está en Ajustes → Datos de ejemplo.</span></div></div>`;
 }
+const DIFFICULTY_HINTS={1:'Muy fácil',2:'Fácil',3:'Media',4:'Difícil',5:'Muy difícil'};
+const difficultyOptions=selected=>[1,2,3,4,5].map(n=>`<option value="${n}" ${n===selected?'selected':''}>${n} · ${DIFFICULTY_HINTS[n]}</option>`).join('');
 function viewRamos(){
   return `${screenHelp('ramos')}
   <div class="grid2">
     <div class="card"><h2>Mis ramos</h2>
       ${S.courses.map(c=>`<div class="task"><span aria-hidden="true" class="dot" style="background:${c.color}"></span><b style="flex:1">${esc(c.name)}${importedCourse(c)?' <span class="tag inst-example">Datos de ejemplo</span>':''}${importedCourse(c)&&!hasSyllabus(c.id)?'<br><span class="tag inst-pending">Syllabus pendiente</span>':''}</b>
-        <span class="mute">dificultad</span>
-        <select data-focus-id="diff-${c.id}" aria-label="Dificultad de ${esc(c.name)}" onchange="setDiff('${c.id}',this.value)">${[1,2,3,4,5].map(n=>`<option ${n===c.difficulty?'selected':''}>${n}</option>`).join('')}</select>
+        <span class="diff-field"><label class="mute" for="diff-${c.id}">Dificultad percibida</label>
+        <select id="diff-${c.id}" data-focus-id="diff-${c.id}" aria-label="Dificultad de ${esc(c.name)}" onchange="setDiff('${c.id}',this.value)">${difficultyOptions(c.difficulty)}</select></span>
         <button class="btn del" onclick="delCourse('${c.id}')">Eliminar</button></div>`).join('')||`${arvisVacioHtml('ramos')}<div class="empty">Aún no tienes ramos. Escribe el nombre y toca <b>Agregar</b> para crear tu primer ramo.</div>`}
       <div class="row" style="margin-top:10px"><input id="cn" placeholder="Nombre del ramo">
-        <select id="cd" title="Dificultad">${[1,2,3,4,5].map(n=>`<option ${n===3?'selected':''}>${n}</option>`).join('')}</select>
+        <span class="diff-field"><label for="cd">Dificultad percibida</label>
+          <select id="cd" title="Dificultad percibida">${difficultyOptions(3)}</select></span>
         <button class="btn" data-focus-id="add-course" onclick="addCourse()">Agregar</button></div>
-      <p class="mute">Más dificultad = más minutos de preparación, más días de margen y micro-tareas más cortas.</p>
+      <p class="mute">La dificultad percibida es qué tan pesado sientes el ramo, de 1 a 5. Más dificultad = más minutos de preparación, más días de margen y micro-tareas más cortas.</p>
     </div>
     <div class="card"><h2>Horario de clases</h2>
       <div class="row"><select id="kc">${S.courses.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
@@ -725,9 +728,7 @@ function viewTema(){
     <div class="row"><button class="btn sec" onclick="startTour(true)">Ver tutorial de nuevo</button></div></div>`;
 }
 function viewAmigos(){
-  if(!socialConfigured())return `${screenHelp('amigos')}<div class="card"><h2>Amigos</h2>
-    <p style="margin-top:0">Esta función es opcional y <b>todavía no está configurada</b>. Para activarla, sigue la guía en <i>docs/SUPABASE.md</i> y completa <i>js/config.js</i> con la URL y la anon key de tu proyecto.</p>
-    <p class="mute">Mientras tanto la app funciona exactamente como antes: todo se guarda solo en este navegador y no se envía nada a ningún servidor.</p>
+  if(!socialConfigured())return `${screenHelp('amigos')}<div class="card"><h2>Amigos <span class="tag inst-example">Prototipo</span></h2>
     <button class="btn" onclick="socialStartDemo()">Probar con datos de ejemplo</button></div>`;
   if(!socialAuth())return `${screenHelp('amigos')}<div class="card"><h2>Amigos</h2>
     ${socialDemoBanner()}

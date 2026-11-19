@@ -48,6 +48,12 @@ const fs=require('fs');
     panel.includes('Prototipo')&&panel.includes('Demo sin IA real')&&panel.includes('no se envía nada'));
   ok('el historial es un log accesible',await p.getAttribute('#chat-log','role')==='log'&&await p.getAttribute('#chat-log','aria-live')==='polite');
   ok('saluda con el nombre y ofrece cinco sugerencias',(await last()).includes('Ana')&&await p.locator('.chat-chip').count()===5);
+  ok('ocupa toda la ventana, tapa la app y bloquea el scroll',await p.evaluate(()=>{
+    const el=document.getElementById('chat-panel'),r=el.getBoundingClientRect(),s=getComputedStyle(el);
+    return s.position==='fixed'&&Math.round(r.width)===innerWidth&&Math.round(r.height)===innerHeight&&
+      s.borderRadius==='0px'&&getComputedStyle(document.body).overflow==='hidden'&&
+      getComputedStyle(document.getElementById('chat-fab')).display==='none';
+  }));
 
   await send('hola');
   ok('muestra el indicador de escribiendo antes de responder',await p.locator('.chat-typing').count()===1);
@@ -83,14 +89,20 @@ const fs=require('fs');
   await say('llévame a notas');
   ok('navega sin cerrar el panel',await p.evaluate(()=>tab)==='notas'&&await p.locator('#chat-panel').count()===1);
   await p.setViewportSize({width:390,height:780});
-  ok('en móvil solo muestra el avatar sobre la barra inferior',await p.locator('#chat-fab .chat-fab-txt').isHidden()&&
-    await p.evaluate(()=>document.getElementById('chat-fab').getBoundingClientRect().bottom<=document.getElementById('mobile-nav').getBoundingClientRect().top));
+  ok('en móvil el fab queda oculto tras el panel a pantalla completa',await p.locator('#chat-fab').isHidden()&&await p.locator('#chat-panel').isVisible()&&
+    await p.evaluate(()=>Math.round(document.getElementById('chat-panel').getBoundingClientRect().height)===innerHeight));
   await p.setViewportSize({width:1100,height:850});
   const filtrado=await p.evaluate(()=>({s:JSON.stringify(S).includes('no quiero vivir'),ls:(localStorage.getItem('entrenador-academico-v1')||'').includes('no quiero vivir')}));
   ok('la conversación no queda en S ni en el respaldo local',!filtrado.s&&!filtrado.ls);
 
+  await p.click('#chat-panel .icon-btn');
+  ok('el botón ✕ cierra, devuelve el foco y libera el scroll',await p.locator('#chat-panel').count()===0&&
+    await p.evaluate(()=>document.activeElement.id==='chat-fab'&&getComputedStyle(document.body).overflow!=='hidden'));
+  await p.click('#chat-fab');
+  ok('vuelve a abrir el chat',await p.locator('#chat-panel').count()===1);
   await p.keyboard.press('Escape');
-  ok('Escape cierra el panel',await p.locator('#chat-panel').count()===0);
+  ok('Escape cierra el panel y devuelve el foco',await p.locator('#chat-panel').count()===0&&
+    await p.evaluate(()=>document.activeElement.id==='chat-fab'&&getComputedStyle(document.body).overflow!=='hidden'));
 
   await p.evaluate(()=>{S.settings.arvis=false;save();document.getElementById('chat-root').innerHTML='';chatSync()});
   ok('sin Arvis el chat sigue pero sin imagen de la mascota',await p.locator('#chat-fab').count()===1&&

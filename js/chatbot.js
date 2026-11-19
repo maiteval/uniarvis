@@ -239,13 +239,14 @@ const CHAT_SUGGESTIONS=['¿Qué tengo hoy?','Próximas evaluaciones','¿Cómo vo
 
 function chatToggle(force){
   chatOpen=typeof force==='boolean'?force:!chatOpen;
+  document.body.classList.toggle('chat-open',chatOpen);
   if(chatOpen&&!chatMsgs.length){
     const inst=currentInstitution();
     chatSay({text:`¡Hola, ${S.profile.name}! Soy Arvis, tu asistente de ${inst?inst.short:'tu universidad'}. Puedo ayudarte a organizarte y resolver dudas de la app.`,suggest:true});
   }
   chatRender();
   if(chatOpen){const i=document.getElementById('chat-input');if(i)try{i.focus()}catch(e){}}
-  else{const f=document.getElementById('chat-fab');if(f)try{f.focus()}catch(e){}}
+  else{const f=document.getElementById('chat-fab');if(f){void document.body.offsetWidth;try{f.focus()}catch(e){}}}
 }
 function chatAvatar(estado){
   const on=typeof arvisOn==='function'?arvisOn():true;
@@ -263,7 +264,7 @@ function chatMsgHtml(m){
 }
 function chatRender(){
   const root=document.getElementById('chat-root');if(!root)return;
-  if(!chatAvailable()){root.innerHTML='';chatOpen=false;return}
+  if(!chatAvailable()){root.innerHTML='';chatOpen=false;document.body.classList.remove('chat-open');return}
   const inst=currentInstitution();
   let fab=document.getElementById('chat-fab');
   if(!fab){
@@ -302,6 +303,7 @@ function chatSync(){
   if(!ok&&chatWasAvailable){chatMsgs=[];chatProposals={};chatOpen=false}
   chatWasAvailable=ok;
   document.body.classList.toggle('has-chat',ok);
+  if(!ok)document.body.classList.remove('chat-open');
   const root=document.getElementById('chat-root');
   if(!root)return;
   if(!ok){root.innerHTML='';return}

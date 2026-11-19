@@ -136,7 +136,7 @@ const fs=require('fs');
   await p0.route('https://supabase.test/**',r=>{sinConfig++;r.abort()});
   await p0.goto(base);await onboard(p0);
   await open(p0,'Social');
-  ok('sin configurar muestra el aviso',(await p0.textContent('#app')).includes('todavía no está configurada'));
+  ok('sin configurar muestra el prototipo y la opción de ejemplo',(await p0.textContent('#app')).includes('Prototipo')&&(await p0.textContent('#app')).includes('Probar con datos de ejemplo'));
   ok('sin configurar no contacta a Supabase',sinConfig===0,String(sinConfig));
   await open(p0,'Planificación','Hoy');
   ok('sin configurar el resto de la app funciona',(await p0.textContent('#app')).includes('Hoy'));

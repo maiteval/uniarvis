@@ -91,7 +91,7 @@ const fs=require('fs');
 
   await confirmClick('text=Salir del modo demo');
   await waitFor(()=>p.evaluate(()=>!SOC.demo));
-  ok('salir vuelve al aviso sin configurar',(await p.textContent('#app')).includes('todavía no está configurada'));
+  ok('salir vuelve al aviso sin configurar',(await p.textContent('#app')).includes('Prototipo')&&(await p.textContent('#app')).includes('Probar con datos de ejemplo'));
   ok('ningún flujo demo hizo peticiones de red',external.length===0,external.slice(0,3).join(' | '));
   ok('sin errores de JavaScript',errs.length===0,errs.join(' || '));
   console.log(res.join('\n'));

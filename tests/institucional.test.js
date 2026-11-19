@@ -73,7 +73,7 @@ const fs=require('fs');
   ok('flujo: elige tu universidad con la UdeC como única opción',(await text()).includes('Elige tu universidad')&&await p.locator('[data-focus-id="inst-option-udec"]').count()===1);
   await p.click('[data-focus-id="inst-option-udec"]');
   const login=await text();
-  ok('flujo: acceso simulado, nombre y etiqueta sin logo',login.includes('Ingresar con mi cuenta institucional')&&login.includes('Prototipo · no oficial')&&login.includes('SSO real')&&login.includes('Universidad de Concepción')&&await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0);
+  ok('flujo: acceso simulado, nombre y etiqueta sin logo',login.includes('Ingresar con mi cuenta institucional')&&login.includes('Prototipo')&&login.includes('SSO real')&&login.includes('Universidad de Concepción')&&await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0);
   await p.fill('#inst-email','ana@gmail.com');await p.click('[data-focus-id="inst-login"]');
   ok('correo con otro dominio rechazado',(await text()).includes('@udec.cl')&&await p.evaluate(()=>InstitutionalFlow.get().step==='login'));
   await p.fill('#inst-email','ana@udec.cl');await p.click('[data-focus-id="inst-login"]');
@@ -92,13 +92,13 @@ const fs=require('fs');
   ok('cuenta vinculada a la UdeC',acc.type==='institucional'&&acc.institutionId==='udec'&&/udec\.cl$/.test(acc.email)&&/^\d{4}-\d{2}-\d{2}$/.test(acc.linkedAt),JSON.stringify(acc));
 
   // Apariencia, contactos y privacidad en modo institucional
-  ok('sin logo UdeC y con el nombre en Cuenta',await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0&&(await p.textContent('.account-status')).includes('Universidad de Concepción')&&(await text()).includes('Prototipo · no oficial'));
+  ok('sin logo UdeC y con el nombre en Cuenta',await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0&&(await p.textContent('.account-status')).includes('Universidad de Concepción')&&(await text()).includes('Prototipo'));
   ok('acento institucional sobre el tema actual',await p.evaluate(()=>document.documentElement.getAttribute('data-institution')==='udec'));
-  ok('prototipo no oficial visible en Cuenta',(await text()).includes('Prototipo · no oficial'));
+  ok('etiqueta Prototipo visible en Cuenta',(await text()).includes('Prototipo'));
   await p.evaluate(()=>go('inicio'));
-  ok('Inicio muestra el nombre sin logo',await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0&&(await text()).includes('Universidad de Concepción')&&(await text()).includes('Prototipo · no oficial'));
+  ok('Inicio muestra el nombre sin logo',await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0&&(await text()).includes('Universidad de Concepción')&&(await text()).includes('Prototipo'));
   await p.evaluate(()=>go('cuenta'));
-  ok('Ajustes → Cuenta muestra modo, universidad y etiqueta',(await text()).includes('Institucional')&&(await text()).includes('Universidad de Concepción')&&(await text()).includes('Prototipo · no oficial'));
+  ok('Ajustes → Cuenta muestra modo, universidad y etiqueta',(await text()).includes('Institucional')&&(await text()).includes('Universidad de Concepción')&&(await text()).includes('Prototipo'));
   await p.evaluate(()=>go('apoyo'));
   const apoyo=await text();
   ok('contactos UdeC precargados con etiqueta de ejemplo',apoyo.includes('DISE')&&apoyo.includes('bienestar@udec.cl')&&apoyo.includes('Dato de ejemplo')&&await p.evaluate(()=>/DISE/.test(S.support.name)&&/udec\.cl/.test(S.support.contact)));

@@ -113,25 +113,25 @@ function pomodoroTick(){
 }
 function pomodoroHtml(){
   const p=pomCfg(),breath=p.phase!=='focus';
-  return `${arvisMomentoHtml()}${arvisEstudiandoHtml()}<div class="card" id="pomodoro"><h2>Pomodoro</h2>
-    <div class="stats"><div class="stat"><b id="pom-time">${pomClock(pomRemaining(p))}</b><span class="mute" id="pom-phase">${POM_PHASES[p.phase]} · ${pomCount(p)} de ${p.longEvery}</span></div></div>
-    <div class="box" id="pom-progress" style="--f:0%" aria-hidden="true"></div>
-    <div class="row" style="margin-top:10px">
+  return `${arvisMomentoHtml()}${arvisEstudiandoHtml()}<div class="card tools-card" id="pomodoro"><h2>Pomodoro</h2>
+    <div class="stats"><div class="stat pom-clock"><b id="pom-time">${pomClock(pomRemaining(p))}</b><span class="mute" id="pom-phase">${POM_PHASES[p.phase]} · ${pomCount(p)} de ${p.longEvery}</span>
+      <div class="pom-bar" id="pom-progress" aria-hidden="true"></div></div></div>
+    <div class="pom-actions">
       <button class="btn" data-focus-id="pom-start" onclick="pomStart()" ${p.running?'disabled':''}>Iniciar</button>
       <button class="btn sec" data-focus-id="pom-pause" onclick="pomPause()" ${p.running?'':'disabled'}>Pausar</button>
       <button class="btn sec" data-focus-id="pom-reset" onclick="pomReset()">Reiniciar</button>
       <button class="btn sec" data-focus-id="pom-skip" onclick="pomSkip()">Saltar fase</button></div>
-    ${breath?`<div class="pause" style="margin-top:12px"><span style="flex:1">Descanso: si quieres, haz la respiración por defecto de Bienestar (exhalación larga 4-6).</span><button class="btn sec" onclick="goBreath('larga')">Respirar</button></div>`:''}
-    <details><summary>Configuración y registro</summary>
-      <div class="row" style="margin-top:10px">
-        <label class="mute">Foco <input id="pom-focus" type="number" min="1" max="180" style="width:70px" value="${p.focusMin}" onchange="pomSetConfig('focusMin',this.value)"> min</label>
-        <label class="mute">Descanso corto <input id="pom-short" type="number" min="1" max="180" style="width:70px" value="${p.shortMin}" onchange="pomSetConfig('shortMin',this.value)"> min</label>
-        <label class="mute">Descanso largo <input id="pom-long" type="number" min="1" max="180" style="width:70px" value="${p.longMin}" onchange="pomSetConfig('longMin',this.value)"> min</label>
-        <label class="mute">Largo cada <input id="pom-every" type="number" min="2" max="12" style="width:60px" value="${p.longEvery}" onchange="pomSetConfig('longEvery',this.value)"> focos</label></div>
-      <label class="mute" style="display:block;margin-top:10px"><input type="checkbox" ${p.sound?'checked':''} onchange="pomSetSound(this.checked)"> Sonido suave al terminar cada fase</label>
-      <label class="mute" style="display:block;margin-top:10px">Trabajar en
-        <select style="width:100%" onchange="pomSetTarget(this.value)">${pomTargetOptions()}</select></label>
-      <p class="mute" style="margin-bottom:0">Si eliges una micro-tarea de hoy, al terminar un foco se suman esos minutos como estudio. Las notificaciones solo aparecen si ya diste permiso en el navegador; aquí no se pide.</p>
+    ${breath?`<div class="pom-breath"><span>Descanso: si quieres, haz la respiración por defecto de Bienestar (exhalación larga 4-6).</span><button class="btn sec" onclick="goBreath('larga')">Respirar</button></div>`:''}
+    <details class="pom-settings"><summary><span class="pom-chevron" aria-hidden="true">▸</span>Configuración y registro</summary>
+      <div class="pom-config-grid">
+        <label class="mute"><span>Foco (min)</span><input id="pom-focus" type="number" min="1" max="180" value="${p.focusMin}" onchange="pomSetConfig('focusMin',this.value)"></label>
+        <label class="mute"><span>Descanso corto (min)</span><input id="pom-short" type="number" min="1" max="180" value="${p.shortMin}" onchange="pomSetConfig('shortMin',this.value)"></label>
+        <label class="mute"><span>Descanso largo (min)</span><input id="pom-long" type="number" min="1" max="180" value="${p.longMin}" onchange="pomSetConfig('longMin',this.value)"></label>
+        <label class="mute"><span>Largo cada (focos)</span><input id="pom-every" type="number" min="2" max="12" value="${p.longEvery}" onchange="pomSetConfig('longEvery',this.value)"></label></div>
+      <label class="mute pom-check"><input type="checkbox" ${p.sound?'checked':''} onchange="pomSetSound(this.checked)"> Sonido suave al terminar cada fase</label>
+      <label class="mute pom-target">Trabajar en
+        <select onchange="pomSetTarget(this.value)">${pomTargetOptions()}</select></label>
+      <p class="tools-help">Si eliges una micro-tarea de hoy, al terminar un foco se suman esos minutos como estudio. Las notificaciones solo aparecen si ya diste permiso en el navegador; aquí no se pide.</p>
     </details>
   </div>`;
 }
@@ -262,7 +262,7 @@ function fcStudyHtml(){
   if(fcSession&&!fcSession.queue.length)return `<div class="card"><h3>Resumen del repaso</h3>
     <div class="banner info">Repasaste <b>${fcSession.reviewed}</b> tarjeta(s). Vuelven mañana <b>${fcSession.tomorrow}</b>.</div>
     <button class="btn sec" data-focus-id="fc-finish" onclick="finishFlashcards()">Cerrar resumen</button></div>`;
-  if(!fcSession)return `<div class="row"><button class="btn" data-focus-id="fc-study" onclick="startFlashcards()">Estudiar lo que toca hoy</button>
+  if(!fcSession)return `<div class="fc-study-row"><button class="btn" data-focus-id="fc-study" onclick="startFlashcards()">Estudiar lo que toca hoy</button>
     <span class="mute">Tope: ${F.limit} tarjeta(s) por sesión.</span></div>`;
   const d=F.decks.find(x=>x.id===fcSession.deckId),c=d&&d.cards.find(x=>x.id===fcSession.queue[0]);
   if(!c){fcSession=null;return ''}
@@ -277,52 +277,55 @@ function fcStudyHtml(){
 }
 function flashcardsHtml(){
   const F=fcCfg(),decks=F.decks,active=fcActiveDeck(),courseOpts=sel=>`<option value="">Sin ramo</option>`+S.courses.map(c=>`<option value="${c.id}" ${sel===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
-  const deckRows=decks.map(d=>`<div class="task" style="flex-wrap:wrap;align-items:flex-start">
-      <span class="dot" style="background:${ccolor(d.courseId)};margin-top:8px"></span>
-      <span style="flex:1;min-width:160px"><input aria-label="Nombre del mazo" value="${esc(d.name)}" maxlength="80" style="width:100%" onchange="renameFlashcardDeck('${d.id}',this.value)">
+  const deckRows=decks.map(d=>`<div class="task fc-list-row">
+      <span class="dot fc-dot" style="background:${ccolor(d.courseId)}"></span>
+      <span class="fc-grow"><input class="fc-name-input" aria-label="Nombre del mazo" value="${esc(d.name)}" maxlength="80" onchange="renameFlashcardDeck('${d.id}',this.value)">
         <span class="mute">${(d.cards||[]).length} tarjeta(s) · ${d.courseId?esc(cname(d.courseId)):'sin ramo'}</span></span>
       <select aria-label="Ramo del mazo" onchange="setFlashcardDeckCourse('${d.id}',this.value)">${courseOpts(d.courseId)}</select>
       <button class="btn sec" onclick="setActiveFlashcardDeck('${d.id}')">${d.id===F.activeDeckId?'Activo':'Abrir'}</button>
       <button class="btn sec" onclick="exportFlashcardDeck('${d.id}')">Exportar</button>
       <button class="btn del" onclick="delFlashcardDeck('${d.id}')">Borrar</button></div>`).join('');
   const cards=active?(active.cards||[]):[];
-  const cardRows=cards.map(c=>`<div class="task" style="flex-wrap:wrap;align-items:flex-start">
-      ${fcEditId===c.id?`<div style="flex:1;min-width:200px"><textarea id="fce-front" maxlength="1000" aria-label="Frente de la tarjeta">${esc(c.front)}</textarea>
-        <textarea id="fce-back" maxlength="1000" aria-label="Reverso de la tarjeta" style="margin-top:6px">${esc(c.back)}</textarea>
-        <div class="row" style="margin-top:6px"><button class="btn sec" onclick="updateFlashcard('${c.id}')">Guardar</button>
+  const cardRows=cards.map(c=>`<div class="task fc-list-row">
+      ${fcEditId===c.id?`<div class="fc-grow"><textarea id="fce-front" class="fc-textarea" maxlength="1000" aria-label="Frente de la tarjeta">${esc(c.front)}</textarea>
+        <textarea id="fce-back" class="fc-textarea" maxlength="1000" aria-label="Reverso de la tarjeta">${esc(c.back)}</textarea>
+        <div class="fc-actions"><button class="btn sec" onclick="updateFlashcard('${c.id}')">Guardar</button>
         <button class="btn sec" onclick="cancelFlashcardEdit()">Cancelar</button></div></div>`
-      :`<span style="flex:1;min-width:200px"><b>Frente</b><div class="tools-pre">${esc(c.front)}</div>
+      :`<span class="fc-grow"><b>Frente</b><div class="tools-pre">${esc(c.front)}</div>
         <b>Reverso</b><div class="tools-pre mute">${esc(c.back)}</div>
         <span class="tag">Caja ${c.box} · vuelve ${dshort(c.due)}</span></span>
         <button class="btn sec" onclick="editFlashcard('${c.id}')">Editar</button>
         <button class="btn del" onclick="delFlashcard('${c.id}')">Quitar</button>`}</div>`).join('');
-  const preview=fcPreview.map((c,i)=>`<div class="task" style="flex-wrap:wrap"><span style="flex:1;min-width:180px">
+  const preview=fcPreview.map((c,i)=>`<div class="task fc-list-row"><span class="fc-grow">
       <b>${i+1}. ${esc(c.front.replace(/\n/g,' / '))}</b><div class="tools-pre mute">${esc(c.back)}</div></span></div>`).join('');
-  return `<div class="card" id="flashcards"><h2>Flashcards</h2>
-    <p class="mute" style="margin-top:0">Mazos por ramo (o sin ramo), con repaso espaciado en 5 cajas: 1, 2, 4, 8 y 16 días.</p>
-    <div class="row"><input id="fd-name" maxlength="80" placeholder="Nombre del mazo"><select id="fd-course">${courseOpts('')}</select>
+  return `<div class="card tools-card" id="flashcards"><h2>Flashcards</h2>
+    <p class="tools-help">Mazos por ramo (o sin ramo), con repaso espaciado en 5 cajas: 1, 2, 4, 8 y 16 días.</p>
+    <div class="fc-new-row"><input id="fd-name" maxlength="80" placeholder="Nombre del mazo"><select id="fd-course">${courseOpts('')}</select>
       <button class="btn sec" data-focus-id="fc-add-deck" onclick="createFlashcardDeck()">Crear mazo</button></div>
-    ${decks.length?`<div style="margin-top:10px">${deckRows}</div>`:'<div class="empty">Aún no hay mazos.</div>'}
-    ${active?`<details style="margin-top:10px"><summary>Tarjetas de ${esc(active.name)}</summary>
-      <div class="row" style="margin-top:10px"><textarea id="fc-front" maxlength="1000" placeholder="Frente" style="min-height:70px"></textarea>
-        <textarea id="fc-back" maxlength="1000" placeholder="Reverso" style="min-height:70px"></textarea></div>
-      <div class="row"><button class="btn sec" data-focus-id="fc-add-card" onclick="addFlashcard()">Agregar tarjeta</button>
+    ${decks.length?`<div class="fc-list">${deckRows}</div>`:'<div class="fc-empty">Aún no hay mazos.</div>'}
+    ${active?`<details class="fc-details"><summary>Tarjetas de ${esc(active.name)}</summary>
+      <div class="fc-card-form"><textarea id="fc-front" class="fc-textarea" maxlength="1000" placeholder="Frente"></textarea>
+        <textarea id="fc-back" class="fc-textarea" maxlength="1000" placeholder="Reverso"></textarea></div>
+      <div class="fc-actions"><button class="btn sec" data-focus-id="fc-add-card" onclick="addFlashcard()">Agregar tarjeta</button>
         <span class="mute">Los saltos de línea se conservan. Hasta 1000 caracteres por lado y 5000 tarjetas en total.</span></div>
-      ${cards.length?`<div style="margin-top:10px">${cardRows}</div>`:'<div class="empty">Este mazo aún no tiene tarjetas.</div>'}
+      ${cards.length?`<div class="fc-list">${cardRows}</div>`:'<div class="fc-empty">Este mazo aún no tiene tarjetas.</div>'}
       <details><summary>Importar texto (tabulación o " ; ")</summary>
-        <textarea id="fc-import" placeholder="frente&#9;reverso&#10;otra pregunta ; otra respuesta" style="min-height:90px"></textarea>
-        <div class="row"><button class="btn sec" data-focus-id="fc-preview" onclick="previewFlashcardsImport()">Ver vista previa</button></div>
-        ${fcPreview.length?`<div style="margin-top:10px"><b>Vista previa · ${fcPreview.length} tarjeta(s)</b>${preview}
-          <div class="row"><button class="btn" data-focus-id="fc-import-confirm" onclick="confirmFlashcardsImport()">Confirmar importación</button>
+        <textarea id="fc-import" class="fc-textarea fc-import-textarea" placeholder="frente&#9;reverso&#10;otra pregunta ; otra respuesta"></textarea>
+        <div class="fc-actions"><button class="btn sec" data-focus-id="fc-preview" onclick="previewFlashcardsImport()">Ver vista previa</button></div>
+        ${fcPreview.length?`<div class="fc-list"><b>Vista previa · ${fcPreview.length} tarjeta(s)</b>${preview}
+          <div class="fc-actions"><button class="btn" data-focus-id="fc-import-confirm" onclick="confirmFlashcardsImport()">Confirmar importación</button>
           <button class="btn sec" onclick="cancelFlashcardsImport()">Cancelar</button></div></div>`:''}
       </details></details>`:''}
-    <div class="row" style="margin-top:12px"><label class="mute">Tope diario <input id="fc-limit" type="number" min="1" max="200" style="width:80px" value="${F.limit}" onchange="setFlashcardLimit(this.value)"></label></div>
-    ${fcStudyHtml()}
+    <div class="fc-review"><h3 class="fc-review-title">Repaso</h3>
+      <div class="fc-limit-row"><label class="mute" for="fc-limit">Tope diario</label>
+        <input id="fc-limit" class="fc-limit-input" type="number" min="1" max="200" value="${F.limit}" onchange="setFlashcardLimit(this.value)"></div>
+      ${fcStudyHtml()}
+    </div>
   </div>`;
 }
 function viewTools(){
   return `${screenHelp('herramientas')}<div class="card"><h2>Herramientas</h2>
     <p class="mute" style="margin-top:0">Un temporizador que no se desfasa y tarjetas con repaso espaciado. Todo se guarda solo en este navegador y funciona sin conexión.</p></div>
-    <div class="grid2"><div>${pomodoroHtml()}</div><div>${flashcardsHtml()}</div></div>`;
+    <div class="grid2 tools-grid"><div class="tools-column">${pomodoroHtml()}</div><div class="tools-column">${flashcardsHtml()}</div></div>`;
 }
 setInterval(pomodoroTick,1000);
