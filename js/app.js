@@ -54,7 +54,10 @@ function mobileNavHtml(){
   return `<nav class="mobile-nav" aria-label="Secciones">${items}</nav>`;
 }
 function renderCore(){
-  const key=LOCKED?'lock':(typeof InstitutionalFlow!=='undefined'&&InstitutionalFlow.get()?'flow':
+  const needLogin=!LOCKED&&typeof needsInstLogin==='function'&&needsInstLogin();
+  if(!LOCKED&&!needLogin&&typeof ensureInstitutionSetup==='function')ensureInstitutionSetup();
+  const flowActive=typeof InstitutionalFlow!=='undefined'&&InstitutionalFlow.get();
+  const key=LOCKED?'lock':(flowActive?'flow':needLogin?'inst-login':
     (typeof instImport!=='undefined'&&instImport?'inst-import':
     (!S.profile||!S.profile.name?'landing':(!S.account||!S.account.type?'account-choice':section+'/'+tab))));
   const same=key===lastRenderKey;
@@ -91,11 +94,17 @@ function renderCore(){
     let mob=$('#mobile-nav');if(mob)mob.remove();
     app.innerHTML=lockView();finish($('#lp'));return;
   }
+  if(key==='inst-login'){
+    document.body.classList.add('landing-active');$('#nav').innerHTML='';
+    let mob=$('#mobile-nav');if(mob)mob.remove();
+    app.innerHTML=viewInstLogin();finish($('#inst-login-pass'));return;
+  }
   if(key==='flow'||key==='account-choice'||key==='inst-import'){
     document.body.classList.add('landing-active');$('#nav').innerHTML='';
     let mob=$('#mobile-nav');if(mob)mob.remove();
     app.innerHTML=key==='inst-import'?(instImport&&instImport.data?institutionPreviewHtml():institutionImportHtml()):(key==='flow'?viewInstitutionalFlow():viewAccountChoice());
-    finish(key==='flow'?$('#inst-email'):null);return;
+    const focusSel=key==='flow'&&typeof instFlowFocus==='function'?instFlowFocus():null;
+    finish(key==='flow'?(focusSel?$(focusSel):null):null);return;
   }
   if(key==='landing'){
     document.body.classList.add('landing-active');$('#nav').innerHTML='';
@@ -128,7 +137,7 @@ function renderCore(){
   app.innerHTML=chips+(views[tab]||viewInicio)();
   finish();
 }
-function render(){renderCore();if(typeof chatSync==='function')chatSync()}
+function render(){renderCore();if(typeof instAuthSyncTimer==='function')instAuthSyncTimer();if(typeof chatSync==='function')chatSync()}
 let lastPlanDay=today();
 function checkNewDay(previous){
   const prev=previous||lastPlanDay,d=today();

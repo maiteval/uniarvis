@@ -29,6 +29,18 @@ const fs=require('fs');
   p.on('pageerror',e=>errs.push('pageerror: '+e.message));
   p.on('console',m=>{if(m.type()==='error')errs.push('console: '+m.text())});
   p.on('dialog',d=>d.accept());
+  const verifyCode=async()=>{
+    const code=(await p.textContent('.inst-code')).trim();
+    await p.fill('#inst-code-input',code);await p.click('[data-focus-id="inst-code-submit"]');
+  };
+  const createPass=async(pass='Clave1234')=>{
+    await p.fill('#inst-pass1',pass);await p.fill('#inst-pass2',pass);await p.click('[data-focus-id="inst-pass-submit"]');
+    await p.waitForFunction(()=>!InstitutionalFlow.get()||!!document.querySelector('[data-focus-id="inst-consent-ok"]')||!!document.querySelector('[data-focus-id="inst-import-skip"]'));
+  };
+  const signIn=async()=>{
+    await p.fill('#inst-login-pass','Clave1234');await p.click('[data-focus-id="inst-login-submit"]');
+    await p.waitForSelector('#inst-login-pass',{state:'detached'});
+  };
 
   // 1. Perfil nuevo: selector, y Personal entra a Inicio como antes
   await p.goto(base);
@@ -70,26 +82,35 @@ const fs=require('fs');
   await p.evaluate(()=>go('cuenta'));
   ok('Cuenta existe en Ajustes',(await text()).includes('Conectar con mi universidad'));
   await p.click('[data-focus-id="connect-institution"]');
-  ok('flujo: elige tu universidad con la UdeC como única opción',(await text()).includes('Elige tu universidad')&&await p.locator('[data-focus-id="inst-option-udec"]').count()===1);
+  const choiceText=await text();
+  ok('flujo: elige tu universidad con la UdeC como única opción',choiceText.includes('Elige tu universidad')&&await p.locator('[data-focus-id="inst-option-udec"]').count()===1);
+  ok('la pantalla de universidad ya no dice que hay una sola opción',!choiceText.includes('Por ahora hay una sola opción en este prototipo.'));
+  ok('indicador del flujo tiene 5 pasos',await p.locator('.inst-steps span').count()===5&&choiceText.includes('1. Universidad')&&choiceText.includes('5. Consentimiento'));
   await p.click('[data-focus-id="inst-option-udec"]');
   const login=await text();
-  ok('flujo: acceso simulado, nombre y etiqueta sin logo',login.includes('Ingresar con mi cuenta institucional')&&login.includes('Prototipo · no oficial')&&login.includes('SSO real')&&login.includes('Universidad de Concepción')&&await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0);
+  ok('flujo: correo institucional y etiqueta sin logo',login.includes('Enviar código de verificación')&&login.includes('Prototipo · no oficial')&&login.includes('Universidad de Concepción')&&await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0);
   await p.fill('#inst-email','ana@gmail.com');await p.click('[data-focus-id="inst-login"]');
   ok('correo con otro dominio rechazado',(await text()).includes('@udec.cl')&&await p.evaluate(()=>InstitutionalFlow.get().step==='login'));
   await p.fill('#inst-email','ana@udec.cl');await p.click('[data-focus-id="inst-login"]');
-  ok('correo @udec.cl aceptado',await p.evaluate(()=>InstitutionalFlow.get().step==='consent'));
+  const codeText=await text();
+  ok('correo @udec.cl aceptado: paso Código con bandeja simulada',await p.evaluate(()=>InstitutionalFlow.get().step==='code')&&codeText.includes('Bandeja de entrada simulada')&&codeText.includes('Uarvis · UdeC')&&codeText.includes('Tu código de verificación')&&codeText.includes('Simulación: en la versión real llegará a tu correo'));
+  const code=(await p.textContent('.inst-code')).trim();
+  ok('el código simulado tiene 6 dígitos',/^\d{6}$/.test(code),code);
+  await verifyCode();
+  ok('código correcto: paso Contraseña',await p.evaluate(()=>InstitutionalFlow.get().step==='password')&&await p.locator('#inst-pass1').count()===1);
+  await createPass();
   const consent=await text();
   ok('consentimiento explica qué ve y qué no ve la universidad',consent.includes('Estadísticas generales')&&consent.includes('10 o más')&&consent.includes('Check-in')&&consent.includes('Diario')&&consent.includes('Calificaciones'));
   ok('consentimiento ofrece Entendido y Volver',await p.locator('[data-focus-id="inst-consent-ok"]').count()===1&&await p.locator('[data-focus-id="account-back"]').count()===1);
   await p.click('[data-focus-id="account-back"]');
-  ok('desde el consentimiento se puede volver al correo',await p.evaluate(()=>InstitutionalFlow.get().step==='login'));
-  await p.fill('#inst-email','ana@udec.cl');await p.click('[data-focus-id="inst-login"]');
+  ok('desde el consentimiento se retrocede a Contraseña',await p.evaluate(()=>InstitutionalFlow.get().step==='password'));
+  await createPass();
   await p.click('[data-focus-id="inst-consent-ok"]');
   ok('tras el consentimiento ofrece la importación simulada',(await text()).includes('Importando tus datos desde la UdeC'));
   await p.click('[data-focus-id="inst-import-skip"]');
   ok('tras la importación vuelve a Ajustes → Cuenta',(await text()).includes('Cuenta')&&await p.evaluate(()=>section==='ajustes'&&tab==='cuenta'));
   const acc=await p.evaluate(()=>({...S.account}));
-  ok('cuenta vinculada a la UdeC',acc.type==='institucional'&&acc.institutionId==='udec'&&/udec\.cl$/.test(acc.email)&&/^\d{4}-\d{2}-\d{2}$/.test(acc.linkedAt),JSON.stringify(acc));
+  ok('cuenta vinculada a la UdeC con hash de contraseña',acc.type==='institucional'&&acc.institutionId==='udec'&&/udec\.cl$/.test(acc.email)&&/^\d{4}-\d{2}-\d{2}$/.test(acc.linkedAt)&&!!acc.auth&&acc.auth.it===250000&&!('password' in acc),JSON.stringify(acc));
 
   // Apariencia, contactos y privacidad en modo institucional
   ok('sin logo UdeC y con el nombre en Cuenta',await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0&&(await p.textContent('.account-status')).includes('Universidad de Concepción')&&(await text()).includes('Prototipo · no oficial'));
@@ -131,6 +152,7 @@ const fs=require('fs');
   await p.click('[data-focus-id="connect-institution"]');
   await p.click('[data-focus-id="inst-option-udec"]');
   await p.fill('#inst-email','ana@udec.cl');await p.click('[data-focus-id="inst-login"]');
+  await verifyCode();await createPass();
   ok('el consentimiento se pide una sola vez',await p.evaluate(()=>InstitutionalFlow.get()===null&&S.account.type==='institucional'&&S.account.email==='ana@udec.cl'));
   ok('reconectar conserva ramos, notas y diario',await p.evaluate(a=>S.courses.length===a.c&&S.courses[0].grades.length===a.g&&S.wellbeing.diary[0].note===a.n,antes));
   if(await p.locator('[data-focus-id="inst-import-skip"]').count())await p.click('[data-focus-id="inst-import-skip"]');
@@ -144,12 +166,13 @@ const fs=require('fs');
   await p.click('[data-focus-id="account-institucional"]');
   await p.click('[data-focus-id="inst-option-udec"]');
   await p.fill('#inst-email','ana@udec.cl');await p.click('[data-focus-id="inst-login"]');
-  ok('selector → Institucional entra a Inicio',(await text()).includes('Elige por dónde empezar hoy')&&await p.evaluate(()=>section==='inicio'&&S.account.type==='institucional'));
+  await verifyCode();await createPass();
+  ok('selector → Institucional vuelve a Inicio vinculado',(await text()).includes('Elige por dónde empezar hoy')&&await p.evaluate(()=>section==='inicio'&&S.account.type==='institucional'));
 
   await p.evaluate(()=>{S.account.type='personal';save();render()});
 
   // 5. Respaldo y restauración de S.account, con validación del catálogo
-  await p.evaluate(()=>{S.account={type:'institucional',institutionId:'udec',email:'ana@udec.cl',linkedAt:today()};save();go('privacidad')});
+  await p.evaluate(async()=>{S.account={type:'institucional',institutionId:'udec',email:'ana@udec.cl',linkedAt:today(),auth:await makeInstAuth('Clave1234')};instSessionSet();save();go('privacidad')});
   const [bk]=await Promise.all([p.waitForEvent('download'),p.click('text=Descargar respaldo (JSON)')]);
   const bkPath=tmp+'/respaldo-institucional.json';fs.copyFileSync(await bk.path(),bkPath);
   const bj=JSON.parse(fs.readFileSync(bkPath,'utf8'));
@@ -161,9 +184,11 @@ const fs=require('fs');
   ok('institutionId inválido vuelve a personal',await p.evaluate(()=>S.account.type==='personal'&&S.account.institutionId===''));
   await p.setInputFiles('input[onchange="importData(this)"]',bkPath);await confirmOk();await p.waitForTimeout(200);
   ok('un respaldo válido restaura la cuenta institucional',await p.evaluate(()=>S.account.type==='institucional'&&S.account.institutionId==='udec'&&S.account.email==='ana@udec.cl'));
+  ok('al restaurar pide la contraseña del respaldo',await p.locator('#inst-login-pass').count()===1);
+  await signIn();
 
   // 6. Importación simulada desde la UdeC: pasos, vista previa, confirmación y datos.
-  await p.evaluate(()=>{S=fresh();S.profile={name:'Ana',career:'Ingeniería Civil'};S.account={type:'institucional',institutionId:'udec',email:'ana@udec.cl',linkedAt:today()};
+  await p.evaluate(async()=>{S=fresh();S.profile={name:'Ana',career:'Ingeniería Civil'};S.account={type:'institucional',institutionId:'udec',email:'ana@udec.cl',linkedAt:today(),auth:await makeInstAuth('Clave1234')};instSessionSet();
     S.institutionConsentAt=today();S.courses=[{id:'c1',name:'Cálculo Numérico',difficulty:3,color:'#3b6df0',grades:[],passGrade:4,roundFinal:true}];
     S.wellbeing.diary=[{date:today(),mood:4,energy:3,sleep:3,tags:[],note:'SECRETO_IMPORT',ts:1}];
     S.events=[];S.tasks=[];S.sessions=[];S.certamen={plans:[],topicsByCourse:{c1:['Derivadas']}};save();go('cuenta');
@@ -174,6 +199,7 @@ const fs=require('fs');
   await p.click('[data-focus-id="connect-institution"]');
   await p.click('[data-focus-id="inst-option-udec"]');
   await p.fill('#inst-email','ana@udec.cl');await p.click('[data-focus-id="inst-login"]');
+  await verifyCode();await createPass();
   await p.click('[data-focus-id="inst-consent-ok"]');
   const importing=await text();
   ok('justo tras el consentimiento aparece la pantalla de importación con pasos',
@@ -229,6 +255,7 @@ const fs=require('fs');
   ok('el respaldo conserva origin y el syllabus pendiente',bj2.courses.filter(c=>c.origin==='udec-demo').length===data.keepC&&bj2.classes.filter(k=>k.origin==='udec-demo').length===data.keepK&&bj2.events.filter(e=>e.origin==='udec-demo').length===data.keepE&&bj2.certamen.topicsByCourse.c1.length===1);
   await p.setInputFiles('input[onchange="importData(this)"]',bk2Path);await confirmOk();await p.waitForTimeout(200);
   ok('la restauración conserva origin',await p.evaluate(d=>S.courses.filter(c=>c.origin==='udec-demo').length===d.keepC&&S.events.filter(e=>e.origin==='udec-demo').length===d.keepE,data));
+  await signIn();
 
   // 7. Quitar los datos importados y "Ahora no".
   await p.evaluate(()=>go('cuenta'));
@@ -246,7 +273,7 @@ const fs=require('fs');
   await p.evaluate(()=>go('cuenta'));
   await p.click('text=Desconectar de mi universidad');await confirmOk();
   ok('al desconectar Conservar mis datos mantiene lo importado',await p.evaluate(()=>S.account.type==='personal'&&importedCount()>0));
-  await p.evaluate(()=>{S.account={type:'institucional',institutionId:'udec',email:'ana@udec.cl',linkedAt:today()};save();go('cuenta')});
+  await p.evaluate(async()=>{S.account={type:'institucional',institutionId:'udec',email:'ana@udec.cl',linkedAt:today(),auth:await makeInstAuth('Clave1234')};instSessionSet();save();go('cuenta')});
   await p.click('text=Desconectar de mi universidad');await confirmCancel();
   ok('al desconectar Quitar los importados borra solo lo importado',await p.evaluate(()=>S.account.type==='personal'&&S.courses.length===1&&S.classes.length===0&&S.events.length===0&&S.wellbeing.diary[0].note==='SECRETO_IMPORT'));
 

@@ -72,6 +72,20 @@ function cleanTools(t){
   return out;
 }
 const migrateTools=t=>cleanTools(t);
+const AUTH_B64=/^[A-Za-z0-9+/]+={0,2}$/,AUTH_KEYS=['salt','hash','it','createdAt'];
+function validAuth(a){
+  if(!a||typeof a!=='object'||Array.isArray(a))return false;
+  if(Object.keys(a).some(k=>AUTH_KEYS.indexOf(k)<0))return false;
+  return typeof a.salt==='string'&&AUTH_B64.test(a.salt)&&a.salt.length>=20&&a.salt.length<=64&&
+    typeof a.hash==='string'&&AUTH_B64.test(a.hash)&&a.hash.length>=40&&a.hash.length<=128&&
+    Number.isInteger(a.it)&&a.it>=100000&&a.it<=2000000&&
+    (typeof a.createdAt==='string'||typeof a.createdAt==='number')&&!Number.isNaN(new Date(a.createdAt).getTime());
+}
+function cleanAuth(a){
+  if(!a||typeof a!=='object'||Array.isArray(a))return null;
+  const out={salt:a.salt,hash:a.hash,it:a.it,createdAt:a.createdAt};
+  return validAuth(out)?out:null;
+}
 const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,theme:'cian',mode:'light',style:'calma',arvis:true},lastPlan:null,
   wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},support:{name:'',contact:''},profile:{name:'',career:'',university:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
   account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null},institutionConsentAt:null});
@@ -82,8 +96,9 @@ function migrate(s){
   const a=s.account&&typeof s.account==='object'&&!Array.isArray(s.account)?s.account:null;
   const validType=a&&(a.type==='personal'||a.type==='institucional');
   const validInst=validType&&a.type==='institucional'&&typeof institutionById==='function'&&!!institutionById(a.institutionId);
-  if(validType&&(a.type==='personal'||validInst))s.account={type:a.type,institutionId:validInst?a.institutionId:'',email:typeof a.email==='string'?a.email.slice(0,120):'',linkedAt:typeof a.linkedAt==='string'?a.linkedAt:null};
+  if(validType&&(a.type==='personal'||validInst))s.account={type:a.type,institutionId:validInst?a.institutionId:'',email:typeof a.email==='string'?a.email.slice(0,120):'',linkedAt:typeof a.linkedAt==='string'?a.linkedAt:null,auth:cleanAuth(a&&a.auth)};
   else s.account=accountBlank(),s.account.type=hadData?'personal':null;
+  if(s.account.type!=='institucional')s.account.auth=null;
   if(typeof s.institutionConsentAt!=='string')s.institutionConsentAt=null;
   if(!s.wellbeing||!Array.isArray(s.wellbeing.diary))s.wellbeing={diary:[]};
   if(!s.settings||typeof s.settings!=='object')s.settings={};

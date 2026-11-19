@@ -35,7 +35,7 @@ const fs=require('fs');
   ok('modo Personal no muestra ni monta el chat',await p.locator('#chat-fab').count()===0&&
     await p.evaluate(()=>document.getElementById('chat-root').innerHTML===''&&!document.body.classList.contains('has-chat')));
 
-  await p.evaluate(()=>{linkInstitution('udec','ana@udec.cl');render()});
+  await p.evaluate(async()=>{linkInstitution('udec','ana@udec.cl',await makeInstAuth('Clave1234'));instSessionSet();render()});
   ok('modo Institucional muestra el botón flotante con Arvis',await p.locator('#chat-fab').count()===1&&
     (await p.locator('#chat-fab').innerText()).includes('Pregúntale a Arvis')&&
     (await p.getAttribute('#chat-fab img.chat-av','src'))==='icons/arvis/arvis-normal.svg');

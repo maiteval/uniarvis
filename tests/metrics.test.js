@@ -175,7 +175,7 @@ const fs=require('fs');
   await p5.goto(base);
   const mig=await p5.evaluate(()=>({u:S.profile.university,old:cleanState({courses:[],classes:[],events:[],tasks:[],sessions:[],profile:{name:'X'}}).profile.university}));
   ok('perfiles y respaldos antiguos migran con university vacía',mig.u===''&&mig.old==='',JSON.stringify(mig));
-  await p5.evaluate(()=>{linkInstitution('udec','ana@udec.cl');save();go('perfil')});
+  await p5.evaluate(async()=>{linkInstitution('udec','ana@udec.cl',await makeInstAuth('Clave1234'));instSessionSet();save();go('perfil')});
   const inst=await p5.evaluate(()=>({u:S.profile.university,disabled:document.querySelector('#pf-university').disabled,
     value:document.querySelector('#pf-university').value}));
   ok('modo institucional completa la universidad desde la cuenta',inst.u==='Universidad de Concepción'&&inst.disabled&&inst.value===inst.u,JSON.stringify(inst));

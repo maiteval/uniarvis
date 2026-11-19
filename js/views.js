@@ -44,18 +44,52 @@ function viewInstitutionalFlow(){
   const f=InstitutionalFlow.get();if(!f)return viewAccountChoice();
   const inst=INSTITUTIONS[0],proto='<span class="tag inst-example">Prototipo · no oficial</span>';
   const back=`<button class="btn sec" data-focus-id="account-back" onclick="institutionalBack()">Volver</button>`;
+  const idx={choose:0,login:1,code:2,password:3,consent:4}[f.step]||0;
+  const steps=`<div class="inst-steps" aria-label="Pasos del ingreso institucional">${INST_FLOW_STEPS.map((s,i)=>
+    `<span class="${i<idx?'done':(i===idx?'on':'')}" ${i===idx?'aria-current="step"':''}>${i+1}. ${esc(s)}</span>`).join('')}</div>`;
   let body='';
   if(f.step==='choose'){
-    body=`<h2>Elige tu universidad</h2><p class="mute">Por ahora hay una sola opción en este prototipo.</p>
+    body=`<h2>Elige tu universidad ${proto}</h2>
       ${INSTITUTIONS.map(i=>`<button class="inst-option" data-focus-id="inst-option-${i.id}" onclick="institutionalNext()">
         <span><b>${esc(i.name)}</b><br><span class="mute">${esc(i.short)} · ${esc(i.emailDomain)}</span></span><span class="home-arrow" aria-hidden="true">→</span></button>`).join('')}
       <div class="row" style="margin-top:14px">${back}</div>`;
   }else if(f.step==='login'){
-    body=`<h2>${esc(inst.name)} ${proto}</h2><p>Esta es una simulación: escribe tu correo ${esc(inst.name)} y validaremos el dominio. No se envía nada.</p>
+    body=`<h2>${esc(inst.name)} ${proto}</h2><p>Escribe tu correo ${esc(inst.name)}. Te enviaremos un código de 6 dígitos para verificarlo.</p>
       <div class="hud-form"><label>Correo institucional<input id="inst-email" type="email" autocomplete="email" placeholder="nombre@${esc(inst.emailDomain)}" value="${esc(f.email)}" oninput="institutionalEmail(this.value)"></label>
-      <button class="btn" data-focus-id="inst-login" onclick="institutionalSubmitEmail()">Ingresar con mi cuenta institucional</button></div>
+      <button class="btn" data-focus-id="inst-login" onclick="institutionalSubmitEmail()">Enviar código de verificación</button></div>
       ${f.error?`<div class="banner go" role="alert">${esc(f.error)}</div>`:''}
-      <p class="mute">Aquí irá el SSO real con Google o Microsoft vía Supabase. Este prototipo no hace peticiones de red.</p>
+      <p class="mute">Prototipo: no se envía ningún correo ni se hacen peticiones de red. Verás la bandeja simulada en el siguiente paso.</p>
+      <div class="row">${back}</div>`;
+  }else if(f.step==='code'){
+    const wait=Math.max(0,Math.ceil((f.resendAt-Date.now())/1000));
+    body=`<h2>Verifica tu correo ${proto}</h2>
+      <p>Enviamos un código de 6 dígitos a <b>${esc(f.email)}</b>. <button type="button" class="lnk" data-focus-id="inst-change-email" onclick="institutionalChangeEmail()">Cambiar correo</button></p>
+      ${f.verified?`<div class="banner info"><b>Código verificado.</b> Ya puedes crear tu contraseña.</div>
+        <div class="row"><button class="btn" data-focus-id="inst-code-continue" onclick="institutionalCodeContinue()">Continuar</button>${back}</div>`
+      :`<div class="hud-form"><label>Código de 6 dígitos<input id="inst-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" value="${esc(f.codeInput||'')}" oninput="institutionalCode(this.value)"></label>
+        <div class="row"><button class="btn" data-focus-id="inst-code-submit" onclick="institutionalSubmitCode()">Verificar código</button>
+          <button class="btn sec" data-focus-id="inst-resend" onclick="institutionalResendCode()" ${wait?'disabled':''}>Reenviar código${wait?` (<span data-auth-countdown>${wait} s)</span>`:''}</button></div></div>
+        <p class="mute" style="margin-bottom:4px">Intentos restantes: <b>${Math.max(0,INST_CODE_ATTEMPTS-f.attempts)}</b>. El código vence a los 10 minutos.</p>
+        ${f.error?`<div class="banner go" role="alert">${esc(f.error)}</div>`:''}
+        <div class="sim-inbox"><b>Bandeja de entrada simulada</b>
+          <p class="mute">Simulación: en la versión real llegará a tu correo</p>
+          <div class="sim-mail"><span>De: <b>Uarvis · UdeC</b></span><span>Asunto: <b>Tu código de verificación</b></span>
+            <strong class="inst-code" aria-label="Código de verificación">${esc(f.code||'——————')}</strong></div></div>
+        <div class="row">${back}</div>`}`;
+  }else if(f.step==='password'){
+    const rules=instPassRules($('#inst-pass1')?$('#inst-pass1').value:'');
+    body=`<h2>Crea tu contraseña ${proto}</h2>
+      <p class="mute">La usarás en los siguientes inicios de sesión. Nunca se guarda en texto: solo un hash en este dispositivo.</p>
+      <div class="hud-form"><label>Contraseña<span class="pass-field"><input id="inst-pass1" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres" oninput="instPasswordInput()"><button type="button" class="btn sec inst-pass-toggle" onclick="instTogglePass('inst-pass1',this)" aria-label="Mostrar contraseña">Ver</button></span></label>
+      <label>Repite la contraseña<span class="pass-field"><input id="inst-pass2" type="password" autocomplete="new-password" placeholder="Repite tu contraseña" oninput="instPasswordInput()"><button type="button" class="btn sec inst-pass-toggle" onclick="instTogglePass('inst-pass2',this)" aria-label="Mostrar contraseña">Ver</button></span></label>
+      <ul class="inst-rules" id="inst-pass-rules" aria-label="Requisitos de la contraseña">
+        <li id="inst-rule-len" class="${rules.len?'ok':''}">${rules.len?'✓':'○'} Mínimo 8 caracteres</li>
+        <li id="inst-rule-letter" class="${rules.letter?'ok':''}">${rules.letter?'✓':'○'} Al menos una letra</li>
+        <li id="inst-rule-number" class="${rules.number?'ok':''}">${rules.number?'✓':'○'} Al menos un número</li>
+        <li id="inst-rule-match" class="">○ Las contraseñas coinciden</li></ul>
+      <p class="inst-strength">Fortaleza: <b id="inst-pass-strength">Débil</b></p>
+      <button class="btn" data-focus-id="inst-pass-submit" onclick="institutionalSubmitPassword(event)">Continuar</button></div>
+      ${f.error?`<div class="banner go" role="alert">${esc(f.error)}</div>`:''}
       <div class="row">${back}</div>`;
   }else if(f.step==='consent'){
     body=`<h2>Consentimiento</h2><p class="mute">Único aviso antes de vincular tu cuenta ${esc(inst.short)}. ${proto}</p>
@@ -70,9 +104,24 @@ function viewInstitutionalFlow(){
     body=institutionPreviewHtml();
   }
   return `<div class="landing account-landing"><div class="landing-bg"></div><div class="landing-panel account-panel inst-flow">
-    <div class="inst-steps" aria-label="Pasos del ingreso institucional">
-      <span class="${f.step==='choose'?'on':''}">1. Universidad</span><span class="${f.step==='login'?'on':''}">2. Cuenta</span><span class="${f.step==='consent'?'on':''}">3. Consentimiento</span></div>
-    ${body}</div></div>`;
+    ${steps}${body}</div></div>`;
+}
+function viewInstLogin(){
+  if(typeof instLoginResetExpiredLock==='function')instLoginResetExpiredLock();
+  const inst=currentInstitution()||INSTITUTIONS[0];
+  const wait=Math.ceil(instLoginLockRemaining()/1000),locked=wait>0;
+  return `<div class="landing account-landing"><div class="landing-bg"></div><div class="landing-panel account-panel inst-flow" id="inst-login-panel">
+    <h2>Iniciar sesión · ${esc(inst.name)} <span class="tag inst-example">Prototipo · no oficial</span></h2>
+    <p class="mute">Tu cuenta institucional. La contraseña se pide solo en este dispositivo.</p>
+    <div class="hud-form"><label>Correo institucional<input id="inst-login-email" type="email" value="${esc(S.account.email||'')}" readonly aria-readonly="true"></label>
+      <form onsubmit="instLogin(event);return false"><label>Contraseña<input id="inst-login-pass" type="password" autocomplete="current-password" placeholder="Tu contraseña institucional" ${locked?'disabled':''}></label>
+        <div class="row" style="margin-top:12px"><button class="btn" data-focus-id="inst-login-submit" type="submit" ${locked?'disabled':''}>Iniciar sesión</button>
+        <button class="btn sec" type="button" data-focus-id="inst-forgot-pass" onclick="instForgotPassword()">¿Olvidaste tu contraseña?</button></div></form>
+      ${locked?`<p class="mute" data-auth-countdown>Demasiados intentos. Espera ${wait} s antes de reintentar.</p>`:''}
+      ${instLoginError?`<div class="banner go" role="alert">${esc(instLoginError)}</div>`:''}
+    </div>
+    <div class="row" style="margin-top:14px"><button class="btn sec" data-focus-id="inst-use-personal" onclick="instUsePersonal()">Usar sin mi cuenta universitaria</button></div>
+  </div></div>`;
 }
 function institutionImportHtml(){
   const steps=INST_IMPORT_STEPS,current=instImport?instImport.step:0;
@@ -193,6 +242,16 @@ function viewCuenta(){
       ${i?'<button class="btn del" onclick="disconnectInstitution()">Desconectar de mi universidad</button>'
         :'<button class="btn" data-focus-id="connect-institution" onclick="startInstitutionalFlow(\'cuenta\')">Conectar con mi universidad</button>'}
     </div>
+    ${i&&a.auth?`<div class="inst-session-actions"><h3>Sesión universitaria</h3>
+      <div class="row"><button class="btn sec" data-focus-id="inst-logout" onclick="instLogout()">Cerrar sesión</button>
+        <button class="btn sec" data-focus-id="inst-change-password" onclick="instStartChangePassword()">Cambiar contraseña</button></div>
+      ${instPwMode==='change'?`<div class="hud-form inst-change-pass" style="margin-top:10px;max-width:520px">
+        <label>Contraseña actual<span class="pass-field"><input id="inst-current-pass" type="password" autocomplete="current-password"><button type="button" class="btn sec inst-pass-toggle" onclick="instTogglePass('inst-current-pass',this)" aria-label="Mostrar contraseña">Ver</button></span></label>
+        <label>Nueva contraseña<span class="pass-field"><input id="inst-new-pass" type="password" autocomplete="new-password"><button type="button" class="btn sec inst-pass-toggle" onclick="instTogglePass('inst-new-pass',this)" aria-label="Mostrar contraseña">Ver</button></span></label>
+        <label>Repite la nueva contraseña<span class="pass-field"><input id="inst-new-pass2" type="password" autocomplete="new-password"><button type="button" class="btn sec inst-pass-toggle" onclick="instTogglePass('inst-new-pass2',this)" aria-label="Mostrar contraseña">Ver</button></span></label>
+        <div class="row"><button class="btn" data-focus-id="inst-save-password" onclick="instSaveNewPassword()">Guardar contraseña</button>
+          <button class="btn sec" onclick="instCancelChangePassword()">Cancelar</button></div></div>`:''}
+      </div>`:''}
     ${i?`<div class="inst-account-data"><h3>Datos importados</h3>
       <p class="mute" style="margin-top:0">La importación desde la UdeC es simulada (Datos de ejemplo): ramos, horario, fechas y notas, sin red y sin tocar tus datos de bienestar.</p>
       <div class="row"><button class="btn sec" data-focus-id="reimport-institution" onclick="startInstitutionImport('cuenta')">Volver a importar desde la UdeC</button>

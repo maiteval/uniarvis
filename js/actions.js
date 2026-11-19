@@ -212,6 +212,12 @@ function validState(j){
     if(!j.settings||typeof j.settings!=='object'||Array.isArray(j.settings))return 'ajustes';
     if(j.settings.arvis!==undefined&&typeof j.settings.arvis!=='boolean')return 'ajustes';
   }
+  if(j.account!==undefined){
+    if(!j.account||typeof j.account!=='object'||Array.isArray(j.account))return 'cuenta';
+    if(j.account.type!==undefined&&j.account.type!=='personal'&&j.account.type!=='institucional')return 'cuenta';
+    if(j.account.auth!==undefined&&j.account.auth!==null&&!validAuth(j.account.auth))return 'cuenta';
+    if(j.account.password!==undefined||j.account.code!==undefined)return 'cuenta';
+  }
   const dia=j.wellbeing&&j.wellbeing.diary;
   if(dia!==undefined){
     if(!Array.isArray(dia))return 'diario';
@@ -248,7 +254,8 @@ function cleanState(j){
   const knownInst=known&&a.type==='institucional'&&institutionById(a.institutionId);
   c.account={type:known&&(a.type==='personal'||knownInst)?a.type:'personal',
     institutionId:knownInst?a.institutionId:'',email:a&&typeof a.email==='string'?a.email.slice(0,120):'',
-    linkedAt:a&&RX.date.test(a.linkedAt||'')?a.linkedAt:null};
+    linkedAt:a&&RX.date.test(a.linkedAt||'')?a.linkedAt:null,
+    auth:knownInst?cleanAuth(a&&a.auth):null};
   c.institutionConsentAt=RX.date.test(j.institutionConsentAt||'')?j.institutionConsentAt:null;
   c.tools=cleanTools(j.tools);
   c.wellbeing={diary:((j.wellbeing&&j.wellbeing.diary)||[]).map(e=>({date:e.date,mood:e.mood??null,energy:e.energy??null,sleep:e.sleep??null,tags:e.tags||[],note:e.note||'',ts:Number(e.ts)||0}))};
@@ -286,7 +293,7 @@ async function importData(inp){
     const err=validState(j);
     if(err)throw new Error(err);
     if(!await askConfirm({title:'Restaurar respaldo',text:'Esto reemplazará todos los datos actuales de este navegador por los del respaldo.',okLabel:'Restaurar'})){inp.value='';return}
-    S=cleanState(j);save();loadDraft();replanAll();toast('Respaldo restaurado.');render();
+    S=cleanState(j);instSessionClear();save();loadDraft();replanAll();toast('Respaldo restaurado.');render();
   }catch(e){toast('Ese archivo no parece un respaldo válido de esta app ('+e.message+').')}
   inp.value='';
 }
