@@ -65,7 +65,7 @@ function arvis(estado,mensaje,opciones){
   const o=opciones||{},key=ARVIS_MENSAJES[estado]?estado:'normal';
   const txt=mensaje||o.mensaje||arvisPick(ARVIS_MENSAJES[key]);
   const action=o.action?`<div class="arvis-action">${o.action}</div>`:'';
-  return `<div class="arvis-card${o.pequeno?' arvis-sm':''}${o.clase?' '+esc(o.clase):''}"${o.id?` id="${esc(o.id)}"`:''}>
+  return `<div class="arvis-card${o.mediano?' arvis-md':o.pequeno?' arvis-sm':''}${o.clase?' '+esc(o.clase):''}"${o.id?` id="${esc(o.id)}"`:''}>
     <img src="icons/arvis/arvis-${key}.svg" alt="">
     <div class="arvis-bubble"><p>${esc(txt)}</p>${action}</div>
   </div>`;
@@ -75,20 +75,22 @@ function arvisInicioHtml(){
   if(!arvisCheckinHoy())return arvis('normal',arvisPick(ARVIS_MENSAJES.sinCheckin),{action:'<button class="lnk" type="button" onclick="go(\'bienestar\')">Hacer check-in</button>',id:'arvis-inicio'});
   return arvis(arvisEstadoDelDia(),null,{id:'arvis-inicio'});
 }
-function arvisCelebrar(){
-  if(arvisOn())arvisMomento={ts:Date.now()};
+function arvisCelebrar(mensaje,scope){
+  if(arvisOn())arvisMomento={ts:Date.now(),mensaje:mensaje||'',scope:scope||''};
 }
-function arvisMomentoHtml(){
+function arvisMomentoHtml(scope){
   if(!arvisMomento||!arvisOn())return '';
-  const reciente=Date.now()-arvisMomento.ts<12000;
+  if(scope){if(arvisMomento.scope&&arvisMomento.scope!==scope)return ''}
+  else if(arvisMomento.scope)return '';
+  const m=arvisMomento,reciente=Date.now()-m.ts<12000;
   arvisMomento=null;
-  return reciente?arvis('celebrando',null,{id:'arvis-celebrando'}):'';
+  return reciente?arvis('celebrando',m.mensaje||null,{mediano:scope==='pomodoro',id:'arvis-celebrando'}):'';
 }
 function arvisEstudiandoHtml(){
   if(!arvisOn()||arvisMomento)return '';
   const p=S&&S.tools&&S.tools.pomodoro;
   if(!p||!p.running||p.phase!=='focus')return '';
-  return arvis('estudiando',null,{pequeno:true,id:'arvis-estudiando'});
+  return arvis('estudiando',null,{mediano:true,id:'arvis-estudiando'});
 }
 function arvisAlertaHtml(){
   if(!arvisOn())return '';

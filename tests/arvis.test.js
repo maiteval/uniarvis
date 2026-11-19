@@ -10,10 +10,10 @@ const path=require('path');
   p.on('console',m=>{if(m.type()==='error')errs.push('console: '+m.text())});
   await p.addInitScript(()=>{try{localStorage.setItem('entrenador-academico-tour-seen-v1','1')}catch(e){}});
   await p.goto('file://'+path.resolve(file));
+  const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
   if(await p.locator('#reg-name').count()){
     await p.fill('#reg-name','Prueba');await p.fill('#reg-career','Carrera');
     await p.locator('.hud-btn').click();
-    const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
   }
   await p.evaluate(()=>{
     S=fresh();S.profile={name:'Prueba',career:'Carrera'};S.account.type='personal';
@@ -72,12 +72,12 @@ const path=require('path');
   const pom=await p.evaluate(()=>{
     S.tools.pomodoro={...freshPomodoro(),running:true,endsAt:Date.now()+600000,leftMs:600000,sound:false};
     save();go('herramientas');
-    const estudio=document.querySelector('#arvis-estudiando'),small=estudio&&estudio.classList.contains('arvis-sm');
+    const estudio=document.querySelector('#arvis-estudiando'),small=estudio&&estudio.classList.contains('arvis-md');
     S.tools.pomodoro.endsAt=Date.now()-1;pomAdvance();
     const c=document.querySelector('#arvis-celebrando'),i=c&&c.querySelector('img');
     return {estudio:!!estudio,small,src:i&&i.getAttribute('src'),phase:S.tools.pomodoro.phase};
   });
-  ok('durante el foco Arvis estudia en pequeño',pom.estudio&&pom.small,JSON.stringify(pom));
+  ok('durante el foco Arvis estudia en tamaño mediano',pom.estudio&&pom.small,JSON.stringify(pom));
   ok('al terminar un pomodoro Arvis celebra',pom.src==='icons/arvis/arvis-celebrando.svg'&&pom.phase==='short',JSON.stringify(pom.src));
 
   const alerta=await p.evaluate(()=>{

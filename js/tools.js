@@ -1,6 +1,7 @@
 const POM_PHASES={focus:'Foco',short:'Descanso corto',long:'Descanso largo'};
 const LEITNER=[1,2,4,8,16];
 let fcPreview=[],fcEditId='',fcSession=null,fcShow=false;
+let pomAway=false,pomAwayPrompt=false,pomLimitPrompt=false,pomStartMsg=false,fcStreak=0,fcMomento=null;
 const pomCfg=()=>(S.tools&&S.tools.pomodoro)||freshPomodoro();
 const fcCfg=()=>(S.tools&&S.tools.flashcards)||freshFlashcards();
 const pomDuration=(p,phase=p.phase)=>(phase==='focus'?p.focusMin:phase==='short'?p.shortMin:p.longMin)*60000;
@@ -18,10 +19,11 @@ function pomLogFocus(p){
     courseId=p.target.slice(7);
     if(!course(courseId))return;
   }
-  if(!courseId)return;
+  if(!courseId)return false;
   const session={id:uid(),date:today(),courseId,minutes:p.focusMin};
   if(task)session.taskId=task.id;
   S.sessions.push(session);
+  return true;
 }
 function pomAlert(from,to){
   const p=pomCfg();
@@ -30,18 +32,40 @@ function pomAlert(from,to){
     if(typeof Notification!=='undefined'&&Notification.permission==='granted')new Notification('U.A.R.V.I.S.',{body:`Terminó ${POM_PHASES[from]}. Ahora: ${POM_PHASES[to]}.`});
   }catch(e){}
 }
+function pomTrackUntargeted(p){
+  const d=today();
+  if(p.todayDate!==d){p.todayDate=d;p.todayMinutes=0}
+  p.todayMinutes=(p.todayMinutes||0)+p.focusMin;
+}
 function pomFinishPhase(p,now){
   const from=p.phase;
   if(from==='focus'){
     p.pomodoros++;
-    pomLogFocus(p);
+    const logged=pomLogFocus(p);
+    p.completed=(p.completed||0)+1;
+    if(!logged)pomTrackUntargeted(p);
     if(p.pomodoros>=p.longEvery){p.phase='long';p.pomodoros=0}
     else p.phase='short';
-  }else p.phase='focus';
+  }else{p.phase='focus';pomStartMsg=true}
   p.leftMs=pomDuration(p);
   p.endsAt=now+p.leftMs;
   p.running=true;
   return from;
+}
+const pomDailyMinutes=()=>{const p=pomCfg();return p.todayDate===today()?(p.todayMinutes||0):0};
+const pomAtDailyLimit=()=>doneToday()+pomDailyMinutes()>=capFor(today());
+function pomArvisHtml(){
+  if(!arvisOn())return '';
+  const momento=arvisMomentoHtml('pomodoro');
+  if(momento)return momento;
+  if(pomAwayPrompt)return arvis('normal','Te esperé. ¿Seguimos?',{action:'<button class="lnk" type="button" onclick="pomEscape(true)">Seguir</button><button class="lnk" type="button" onclick="pomEscape(false)">Terminar por hoy</button>',id:'arvis-pomodoro-vuelta'});
+  if(pomLimitPrompt)return arvis('normal','Ya cumpliste por hoy',{action:'<button class="lnk" type="button" onclick="pomStart(true)">Iniciar igual</button>',id:'arvis-pomodoro-limite'});
+  const p=pomCfg();
+  if(p.phase!=='focus')return arvis('descansando','Pausa. Estírate o toma agua.',{mediano:true,id:'arvis-pomodoro-descanso'});
+  if(!p.running)return '';
+  const msg=pomStartMsg?'Vamos, yo también me concentro.':null;
+  pomStartMsg=false;
+  return arvis('estudiando',msg,{mediano:true,id:'arvis-estudiando'});
 }
 function pomAdvance(now=Date.now(),natural=true,quiet=false){
   const p=pomCfg();let changed=false,last=null,i=0;
@@ -54,28 +78,46 @@ function pomAdvance(now=Date.now(),natural=true,quiet=false){
   if(changed){
     if(last&&natural)pomAlert(last,p.phase);
     if(last==='focus'&&natural&&typeof metricsTrack==='function')metricsTrack('pomodoro_completado');
-    if(last==='focus'&&natural&&!quiet&&typeof arvisCelebrar==='function')arvisCelebrar();
+    if(last==='focus'&&natural&&!quiet&&typeof arvisCelebrar==='function')arvisCelebrar('¡Ciclo terminado! Buen trabajo.','pomodoro');
     save();
     if(!quiet&&(typeof tab==='undefined'||tab==='herramientas')&&typeof render==='function')render();
   }
   return p;
 }
 function pomResume(){return pomAdvance(Date.now(),true,true)}
-function pomStart(){
+function pomStart(force){
   const p=pomCfg();if(p.running)return;
+  if(p.phase==='focus'&&!force&&arvisOn()&&pomAtDailyLimit()){
+    pomLimitPrompt=true;pomAwayPrompt=false;render();return;
+  }
+  pomLimitPrompt=false;pomAwayPrompt=false;
+  if(p.phase==='focus')pomStartMsg=true;
   p.endsAt=Date.now()+Math.max(0,p.leftMs||pomDuration(p));p.running=true;save();render();pomodoroTick();
+}
+function pomEscape(keep){
+  pomAwayPrompt=false;pomAway=false;
+  if(keep){render();return}
+  const p=pomCfg();p.running=false;p.endsAt=null;p.leftMs=pomDuration(p);
+  if(arvisOn())arvisCelebrar('Lo que alcanzaste igual cuenta','pomodoro');
+  save();render();
 }
 function pomPause(){
   const p=pomCfg();if(!p.running)return;
   p.leftMs=pomRemaining(p);p.endsAt=null;p.running=false;save();render();
 }
 function pomReset(){
-  const p=pomCfg();p.running=false;p.endsAt=null;p.leftMs=pomDuration(p);save();render();
+  const p=pomCfg(),early=p.phase==='focus'&&p.running;
+  p.running=false;p.endsAt=null;p.leftMs=pomDuration(p);
+  pomLimitPrompt=false;pomAwayPrompt=false;pomStartMsg=false;
+  if(early&&arvisOn())arvisCelebrar('Lo que alcanzaste igual cuenta','pomodoro');
+  save();render();
 }
 function pomSkip(){
-  const p=pomCfg(),now=Date.now();
-  p.phase=p.phase==='focus'?'short':'focus';
+  const p=pomCfg(),now=Date.now(),leavingFocus=p.phase==='focus';
+  p.phase=leavingFocus?'short':'focus';
   p.leftMs=pomDuration(p);p.endsAt=p.running?now+p.leftMs:null;
+  pomLimitPrompt=false;pomAwayPrompt=false;pomStartMsg=!leavingFocus;
+  if(leavingFocus&&arvisOn())arvisCelebrar('Lo que alcanzaste igual cuenta','pomodoro');
   save();render();
 }
 function pomSetConfig(key,val){
@@ -110,12 +152,13 @@ function pomodoroTick(){
   if(t)t.textContent=pomClock(pomRemaining(p));
   if(phase)phase.textContent=`${POM_PHASES[p.phase]} · ${pomCount(p)} de ${p.longEvery}`;
   if(bar)bar.style.setProperty('--f',`${100-pomRemaining(p)/pomDuration(p)*100}%`);
+  if(pomStartMsg&&arvisOn()&&!arvisMomento&&(typeof tab==='undefined'||tab==='herramientas')&&typeof render==='function')render();
 }
 function pomodoroHtml(){
   const p=pomCfg(),breath=p.phase!=='focus';
-  return `${arvisMomentoHtml()}${arvisEstudiandoHtml()}<div class="card tools-card" id="pomodoro"><h2>Pomodoro</h2>
+  return `${pomArvisHtml()}<div class="card tools-card" id="pomodoro"><h2>Pomodoro</h2>
     <div class="stats"><div class="stat pom-clock"><b id="pom-time">${pomClock(pomRemaining(p))}</b><span class="mute" id="pom-phase">${POM_PHASES[p.phase]} · ${pomCount(p)} de ${p.longEvery}</span>
-      <div class="pom-bar" id="pom-progress" aria-hidden="true"></div></div></div>
+      <div class="pom-bar" id="pom-progress" style="--f:0%" aria-hidden="true"></div></div></div>
     <div class="pom-actions">
       <button class="btn" data-focus-id="pom-start" onclick="pomStart()" ${p.running?'disabled':''}>Iniciar</button>
       <button class="btn sec" data-focus-id="pom-pause" onclick="pomPause()" ${p.running?'':'disabled'}>Pausar</button>
@@ -236,11 +279,25 @@ function exportFlashcardDeck(id){
   a.download='mazo-'+(d.name||'flashcards').replace(/[^\w-]+/g,'-').slice(0,60)+'.txt';a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 }
+function fcArvisHtml(){
+  if(!arvisOn())return '';
+  const momento=arvisMomentoHtml('flashcards');
+  if(momento)return momento;
+  if(fcMomento){
+    if(Date.now()-fcMomento.ts<3500)return arvis(fcMomento.estado,fcMomento.mensaje,{id:'arvis-flashcard'});
+    fcMomento=null;
+  }
+  if(!fcSession)return '';
+  if(!fcSession.queue.length)return arvis('normal',`Acertaste ${fcSession.correct||0} de ${fcSession.total||fcSession.reviewed||0}.`,{id:'arvis-flashcard'});
+  const d=fcCfg().decks.find(x=>x.id===fcSession.deckId),c=d&&d.cards.find(x=>x.id===fcSession.queue[0]);
+  return c?arvis('normal',c.front,{id:'arvis-flashcard'}):'';
+}
 function startFlashcards(){
   const d=fcActiveDeck();if(!d)return toast('Crea o abre un mazo primero.');
   const due=flashcardsDue(d,today()).slice(0,fcCfg().limit);
   if(!due.length)return toast('Por hoy no hay tarjetas que tocar en este mazo.');
-  fcSession={deckId:d.id,queue:due.map(c=>c.id),reviewed:0,tomorrow:0};fcShow=false;fcEditId='';render();
+  fcSession={deckId:d.id,queue:due.map(c=>c.id),reviewed:0,tomorrow:0,correct:0,total:due.length};
+  fcShow=false;fcEditId='';fcStreak=0;fcMomento=null;render();
 }
 function showFlashcardAnswer(){fcShow=true;render()}
 function flashcardAnswerNow(knew){
@@ -250,12 +307,21 @@ function flashcardAnswerNow(knew){
   c.box=next.box;c.due=next.due;
   fcSession.reviewed++;if(next.due===addDays(today(),1))fcSession.tomorrow++;
   fcSession.queue.shift();fcShow=false;
+  if(knew){
+    fcStreak++;fcSession.correct=(fcSession.correct||0)+1;
+    S.tools.flashcards.correct=(S.tools.flashcards.correct||0)+1;fcMomento=null;
+    if(fcStreak===3)arvisCelebrar('Tres seguidas. ¡Vas muy bien!','flashcards');
+    else if(fcStreak===5)arvisCelebrar('Cinco seguidas. ¡Excelente!','flashcards');
+  }else{
+    fcStreak=0;
+    fcMomento={estado:'normal',mensaje:'Esa cuesta. La volvemos a ver al final.',ts:Date.now()};
+  }
   if(!fcSession.queue.length&&fcSession.reviewed>0&&typeof metricsTrack==='function')metricsTrack('flashcards_repasadas');
   save();render();
 }
 function finishFlashcards(){
   if(fcSession&&fcSession.reviewed>0&&fcSession.queue.length&&typeof metricsTrack==='function')metricsTrack('flashcards_repasadas');
-  fcSession=null;fcShow=false;render();
+  fcSession=null;fcShow=false;fcStreak=0;fcMomento=null;render();
 }
 function fcStudyHtml(){
   const F=fcCfg();
@@ -298,7 +364,7 @@ function flashcardsHtml(){
         <button class="btn del" onclick="delFlashcard('${c.id}')">Quitar</button>`}</div>`).join('');
   const preview=fcPreview.map((c,i)=>`<div class="task fc-list-row"><span class="fc-grow">
       <b>${i+1}. ${esc(c.front.replace(/\n/g,' / '))}</b><div class="tools-pre mute">${esc(c.back)}</div></span></div>`).join('');
-  return `<div class="card tools-card" id="flashcards"><h2>Flashcards</h2>
+  return `${fcArvisHtml()}<div class="card tools-card" id="flashcards"><h2>Flashcards</h2>
     <p class="tools-help">Mazos por ramo (o sin ramo), con repaso espaciado en 5 cajas: 1, 2, 4, 8 y 16 días.</p>
     <div class="fc-new-row"><input id="fd-name" maxlength="80" placeholder="Nombre del mazo"><select id="fd-course">${courseOpts('')}</select>
       <button class="btn sec" data-focus-id="fc-add-deck" onclick="createFlashcardDeck()">Crear mazo</button></div>
@@ -329,3 +395,13 @@ function viewTools(){
     <div class="grid2 tools-grid"><div class="tools-column">${pomodoroHtml()}</div><div class="tools-column">${flashcardsHtml()}</div></div>`;
 }
 setInterval(pomodoroTick,1000);
+document.addEventListener('visibilitychange',()=>{
+  const p=pomCfg();
+  if(document.hidden){if(p.running&&p.phase==='focus')pomAway=true;return}
+  if(!pomAway)return;
+  pomAway=false;
+  if(!arvisOn())return;
+  pomAdvance();
+  const q=pomCfg();
+  if(q.running&&q.phase==='focus'){pomAwayPrompt=true;render()}
+});

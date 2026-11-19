@@ -9,8 +9,8 @@ const UNIVERSITIES_CHILE=['Universidad de Concepción','Universidad de Chile','P
   'Universidad Católica de Temuco','Universidad de Playa Ancha','Pontificia Universidad Católica de Valparaíso','Universidad Andrés Bello',
   'Universidad San Sebastián','Universidad del Desarrollo','Universidad Mayor','Universidad Central de Chile'];
 const universityOk=v=>UNIVERSITIES_CHILE.indexOf(v)>=0||v===UNIVERSITY_OTHER||v===UNIVERSITY_PREFERS_NOT;
-function freshPomodoro(){return {focusMin:25,shortMin:5,longMin:15,longEvery:4,sound:true,phase:'focus',running:false,endsAt:null,leftMs:1500000,pomodoros:0,target:''}}
-function freshFlashcards(){return {decks:[],activeDeckId:'',limit:20}}
+function freshPomodoro(){return {focusMin:25,shortMin:5,longMin:15,longEvery:4,sound:true,phase:'focus',running:false,endsAt:null,leftMs:1500000,pomodoros:0,target:'',completed:0,todayDate:'',todayMinutes:0}}
+function freshFlashcards(){return {decks:[],activeDeckId:'',limit:20,correct:0}}
 function freshTools(){return {pomodoro:freshPomodoro(),flashcards:freshFlashcards()}}
 const toolInt=(v,a,b,d)=>Number.isInteger(v)&&v>=a&&v<=b?v:d;
 const RX_TOOL_ID=/^[\w-]{1,40}$/,RX_TOOL_DATE=/^\d{4}-\d{2}-\d{2}$/;
@@ -27,8 +27,12 @@ function validTools(t){
   if(!Number.isFinite(p.leftMs)||p.leftMs<0||p.leftMs>180*60000)return false;
   if(!Number.isInteger(p.pomodoros)||p.pomodoros<0||p.pomodoros>=p.longEvery)return false;
   if(typeof p.target!=='string'||!RX_TOOL_TARGET.test(p.target))return false;
+  if(p.completed!==undefined&&(!Number.isInteger(p.completed)||p.completed<0||p.completed>1000000))return false;
+  if(p.todayDate!==undefined&&p.todayDate!==''&&!RX_TOOL_DATE.test(p.todayDate))return false;
+  if(p.todayMinutes!==undefined&&(!Number.isFinite(p.todayMinutes)||p.todayMinutes<0||p.todayMinutes>1440))return false;
   if(!f||typeof f!=='object'||Array.isArray(f))return false;
   if(!Number.isInteger(f.limit)||f.limit<1||f.limit>200)return false;
+  if(f.correct!==undefined&&(!Number.isInteger(f.correct)||f.correct<0||f.correct>1000000))return false;
   if(!Array.isArray(f.decks)||f.decks.length>200)return false;
   const seen={};let total=0;
   for(const d of f.decks){
@@ -56,8 +60,12 @@ function cleanTools(t){
   P.leftMs=Number.isFinite(p.leftMs)?clamp(p.leftMs,0,180*60000):P.focusMin*60000;
   P.pomodoros=toolInt(p.pomodoros,0,P.longEvery-1,0);
   P.target=typeof p.target==='string'&&RX_TOOL_TARGET.test(p.target)?p.target:'';
+  P.completed=toolInt(p.completed,0,1000000,0);
+  P.todayDate=RX_TOOL_DATE.test(p.todayDate||'')?p.todayDate:'';
+  P.todayMinutes=P.todayDate===today()&&Number.isFinite(p.todayMinutes)?clamp(p.todayMinutes,0,1440):0;
   const F=out.flashcards,seen={};let total=0;
   F.limit=toolInt(f.limit,1,200,20);
+  F.correct=toolInt(f.correct,0,1000000,0);
   F.decks=(Array.isArray(f.decks)?f.decks:[]).slice(0,200).map(d=>{
     const id=d&&RX_TOOL_ID.test(d.id)&&!seen[d.id]?d.id:uid();seen[id]=1;
     const deck={id:id,name:String((d&&d.name)||'Mazo').slice(0,80),courseId:(d&&RX_TOOL_ID.test(d.courseId||''))?d.courseId:'',cards:[]};
@@ -72,18 +80,31 @@ function cleanTools(t){
   return out;
 }
 const migrateTools=t=>cleanTools(t);
+const AUTH_B64=/^[A-Za-z0-9+/]+={0,2}$/,AUTH_KEYS=['salt','hash','it','createdAt'];
+function validAuth(a){
+  if(!a||typeof a!=='object'||Array.isArray(a))return false;
+  if(Object.keys(a).some(k=>AUTH_KEYS.indexOf(k)<0))return false;
+  return typeof a.salt==='string'&&AUTH_B64.test(a.salt)&&a.salt.length>=20&&a.salt.length<=64&&
+    typeof a.hash==='string'&&AUTH_B64.test(a.hash)&&a.hash.length>=40&&a.hash.length<=128&&
+    Number.isInteger(a.it)&&a.it>=100000&&a.it<=2000000&&
+    (typeof a.createdAt==='string'||typeof a.createdAt==='number')&&!Number.isNaN(new Date(a.createdAt).getTime());
+}
+function cleanAuth(a){
+  if(!a||typeof a!=='object'||Array.isArray(a))return null;
+  const out={salt:a.salt,hash:a.hash,it:a.it,createdAt:a.createdAt};
+  return validAuth(out)?out:null;
+}
 const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,theme:'cian',themeTouched:false,mode:'light',style:'calma',arvis:true},lastPlan:null,
   wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},support:{name:'',contact:''},profile:{name:'',career:'',university:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
   account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null},institutionConsentAt:null});
 function migrate(s){
-  const hadData=!!((Array.isArray(s.courses)&&s.courses.length)||(Array.isArray(s.events)&&s.events.length)||
-    (Array.isArray(s.tasks)&&s.tasks.length)||(Array.isArray(s.wellbeing)&&Array.isArray(s.wellbeing.diary)&&s.wellbeing.diary.length));
   const f=fresh();for(const k in f)if(s[k]===undefined)s[k]=f[k];
   const a=s.account&&typeof s.account==='object'&&!Array.isArray(s.account)?s.account:null;
   const validType=a&&(a.type==='personal'||a.type==='institucional');
   const validInst=validType&&a.type==='institucional'&&typeof institutionById==='function'&&!!institutionById(a.institutionId);
-  if(validType&&(a.type==='personal'||validInst))s.account={type:a.type,institutionId:validInst?a.institutionId:'',email:typeof a.email==='string'?a.email.slice(0,120):'',linkedAt:typeof a.linkedAt==='string'?a.linkedAt:null};
-  else s.account=accountBlank(),s.account.type=hadData?'personal':null;
+  if(validType&&(a.type==='personal'||validInst))s.account={type:a.type,institutionId:validInst?a.institutionId:'',email:typeof a.email==='string'?a.email.slice(0,120):'',linkedAt:typeof a.linkedAt==='string'?a.linkedAt:null,auth:cleanAuth(a&&a.auth)};
+  else s.account=accountBlank();
+  if(s.account.type!=='institucional')s.account.auth=null;
   if(typeof s.institutionConsentAt!=='string')s.institutionConsentAt=null;
   if(!s.wellbeing||!Array.isArray(s.wellbeing.diary))s.wellbeing={diary:[]};
   if(!s.settings||typeof s.settings!=='object')s.settings={};

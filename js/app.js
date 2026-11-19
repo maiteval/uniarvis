@@ -53,11 +53,28 @@ function mobileNavHtml(){
   const items=secs.map((s,i)=>`<button class="mob-nav-btn ${s.key===section?'on':''}" ${s.key===section?'aria-current="page"':''} onclick="go('${s.tabs[0][0]}')"><span class="mob-nav-icon">${HOME_ICONS[i]||''}</span><span>${s.label}</span></button>`).join('');
   return `<nav class="mobile-nav" aria-label="Secciones">${items}</nav>`;
 }
+function entryReady(){
+  if(LOCKED||!S.account||!S.account.type)return false;
+  if(typeof InstitutionalFlow!=='undefined'&&InstitutionalFlow.get())return false;
+  if(typeof instImport!=='undefined'&&instImport)return false;
+  if(typeof needsInstLogin==='function'&&needsInstLogin())return false;
+  if(typeof needsInstitutionSetup==='function'&&needsInstitutionSetup())return false;
+  return true;
+}
 function renderCore(){
-  const key=LOCKED?'lock':(typeof InstitutionalFlow!=='undefined'&&InstitutionalFlow.get()?'flow':
-    (typeof instImport!=='undefined'&&instImport?'inst-import':
-    (!S.profile||!S.profile.name?'landing':(!S.account||!S.account.type?'account-choice':section+'/'+tab))));
-  const helpKey=(LOCKED||key==='flow'||key==='account-choice'||key==='inst-import'||!S.profile||!S.profile.name||typeof AYUDA==='undefined'||!AYUDA[tab])?'':tab;
+  const needLogin=!LOCKED&&typeof needsInstLogin==='function'&&needsInstLogin();
+  if(!LOCKED&&!needLogin&&typeof ensureInstitutionSetup==='function')ensureInstitutionSetup();
+  const flowActive=typeof InstitutionalFlow!=='undefined'&&InstitutionalFlow.get();
+  const noMode=!S.account||!S.account.type;
+  let key;
+  if(LOCKED)key='lock';
+  else if(flowActive)key='flow';
+  else if(choiceOrigin==='inst-login')key='account-choice';
+  else if(noMode)key=(entryChoice==='personal'?'landing':'account-choice');
+  else if(needLogin)key='inst-login';
+  else if(typeof instImport!=='undefined'&&instImport)key='inst-import';
+  else key=section+'/'+tab;
+  const helpKey=(LOCKED||key==='flow'||key==='account-choice'||key==='inst-import'||key==='inst-login'||key==='landing'||!S.profile||!S.profile.name||typeof AYUDA==='undefined'||!AYUDA[tab])?'':tab;
   const same=key===lastRenderKey;
   const active=document.activeElement;
   const focus=active&&active!==document.body?{id:active.id||'',data:(active.dataset&&active.dataset.focusId)||''}:null;
@@ -93,11 +110,18 @@ function renderCore(){
     let mob=$('#mobile-nav');if(mob)mob.remove();
     app.innerHTML=lockView();finish($('#lp'));return;
   }
+  if(key==='inst-login'){
+    document.body.classList.add('landing-active');$('#nav').innerHTML='';
+    let mob=$('#mobile-nav');if(mob)mob.remove();
+    app.innerHTML=viewInstLogin();finish($('#inst-login-pass'));return;
+  }
   if(key==='flow'||key==='account-choice'||key==='inst-import'){
     document.body.classList.add('landing-active');$('#nav').innerHTML='';
     let mob=$('#mobile-nav');if(mob)mob.remove();
     app.innerHTML=key==='inst-import'?(instImport&&instImport.data?institutionPreviewHtml():institutionImportHtml()):(key==='flow'?viewInstitutionalFlow():viewAccountChoice());
-    finish(key==='flow'?$('#inst-email'):null);return;
+    const focusSel=key==='flow'&&typeof instFlowFocus==='function'?instFlowFocus():null;
+    const fallback=key==='account-choice'?$('[data-focus-id="account-personal"]'):null;
+    finish(key==='flow'?(focusSel?$(focusSel):null):fallback);return;
   }
   if(key==='landing'){
     document.body.classList.add('landing-active');$('#nav').innerHTML='';
@@ -129,8 +153,9 @@ function renderCore(){
   }
   app.innerHTML=chips+(views[tab]||viewInicio)();
   finish();
+  if(typeof maybeShowTour==='function')maybeShowTour();
 }
-function render(){renderCore();if(typeof chatSync==='function')chatSync()}
+function render(){renderCore();if(typeof instAuthSyncTimer==='function')instAuthSyncTimer();if(typeof chatSync==='function')chatSync()}
 let lastPlanDay=today();
 function checkNewDay(previous){
   const prev=previous||lastPlanDay,d=today();
@@ -155,7 +180,6 @@ function start(){
   if(typeof socialBoot==='function')socialBoot();
   if(tab==='amigos'&&typeof socialOpenTab==='function')socialOpenTab();
   if(typeof metricsTrack==='function')metricsTrack('app_abierta');
-  if(typeof maybeShowTour==='function')maybeShowTour();
 }
 window.addEventListener('hashchange',goFromRoute);
 window.addEventListener('popstate',goFromRoute);

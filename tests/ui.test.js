@@ -12,13 +12,13 @@ const fs=require('fs');
   p.on('console',m=>{if(m.type()==='error')errs.push('console: '+m.text())});
   p.on('dialog',d=>d.accept());
   const onboard=async()=>{
+    const choice=p.locator('[data-focus-id="account-personal"]');
+    if(await choice.count())await choice.click();
     if(await p.locator('#reg-name').count()){
       await p.fill('#reg-name','Estudiante');
       await p.fill('#reg-career','Carrera');
       await p.locator('.hud-btn').click();
     }
-    const choice=p.locator('[data-focus-id="account-personal"]');
-    if(await choice.count())await choice.click();
   };
   const acceptConsent=async()=>{
     const b=p.locator('text=Acepto y quiero usar el check-in');
@@ -44,9 +44,9 @@ const fs=require('fs');
   await p.addInitScript(()=>{try{localStorage.setItem('entrenador-academico-tour-seen-v1','1')}catch(e){}});
   await p.goto('file://'+file);
 
-  // 1. Primera pantalla: registro de perfil y app completa sin pedir consentimiento
+  // 1. Primera pantalla: selector de modo y app completa sin pedir consentimiento
   let t=await p.textContent('#app');
-  ok('primera vez muestra el inicio de perfil',t.includes('Bienvenido/a')||t.includes('Inicializa tu perfil'));
+  ok('primera vez muestra el selector de modo',t.includes('¿Cómo quieres usar Uarvis?')&&await p.locator('[data-focus-id="account-personal"]').count()===1&&await p.locator('#reg-name').count()===0);
   const st0=await p.evaluate(()=>({style:S.settings.style,attr:document.documentElement.getAttribute('data-style')}));
   ok('estilo Calma predeterminado para perfiles nuevos',st0.style==='calma'&&st0.attr==='calma',JSON.stringify(st0));
   await onboard();

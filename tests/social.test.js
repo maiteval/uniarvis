@@ -116,11 +116,11 @@ const fs=require('fs');
     });
   };
   const onboard=async p=>{
+    const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
     if(await p.locator('#reg-name').count()){
       await p.fill('#reg-name','Estudiante');await p.fill('#reg-career','Carrera');
       await p.locator('.hud-btn').click();
     }
-    const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
   };
   const open=async(p,sec,sub)=>{
     await p.locator('.brand').click();
