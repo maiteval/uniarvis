@@ -90,14 +90,12 @@ const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:
   wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},support:{name:'',contact:''},profile:{name:'',career:'',university:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
   account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null},institutionConsentAt:null});
 function migrate(s){
-  const hadData=!!((Array.isArray(s.courses)&&s.courses.length)||(Array.isArray(s.events)&&s.events.length)||
-    (Array.isArray(s.tasks)&&s.tasks.length)||(Array.isArray(s.wellbeing)&&Array.isArray(s.wellbeing.diary)&&s.wellbeing.diary.length));
   const f=fresh();for(const k in f)if(s[k]===undefined)s[k]=f[k];
   const a=s.account&&typeof s.account==='object'&&!Array.isArray(s.account)?s.account:null;
   const validType=a&&(a.type==='personal'||a.type==='institucional');
   const validInst=validType&&a.type==='institucional'&&typeof institutionById==='function'&&!!institutionById(a.institutionId);
   if(validType&&(a.type==='personal'||validInst))s.account={type:a.type,institutionId:validInst?a.institutionId:'',email:typeof a.email==='string'?a.email.slice(0,120):'',linkedAt:typeof a.linkedAt==='string'?a.linkedAt:null,auth:cleanAuth(a&&a.auth)};
-  else s.account=accountBlank(),s.account.type=hadData?'personal':null;
+  else s.account=accountBlank();
   if(s.account.type!=='institucional')s.account.auth=null;
   if(typeof s.institutionConsentAt!=='string')s.institutionConsentAt=null;
   if(!s.wellbeing||!Array.isArray(s.wellbeing.diary))s.wellbeing={diary:[]};

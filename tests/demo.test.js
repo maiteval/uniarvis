@@ -34,10 +34,10 @@ const fs=require('fs');
   p.on('request',r=>{try{const u=new URL(r.url());if(/^https?:$/.test(u.protocol)&&u.origin!==local)external.push(r.url())}catch(e){}});
 
   await p.goto(base);
+  const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
   if(await p.locator('#reg-name').count()){
     await p.fill('#reg-name','Estudiante');await p.fill('#reg-career','Carrera');
     await p.locator('.hud-btn').click();
-    const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
   }
   await p.evaluate(()=>{
     S=fresh();S.profile={name:'Estudiante',career:'Carrera'};S.account.type='personal';

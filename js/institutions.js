@@ -3,7 +3,8 @@
 const accountBlank=()=>({type:null,institutionId:'',email:'',linkedAt:null,auth:null});
 const INST_SESSION_KEY='uarvis-inst-session-v1';
 const INST_CODE_MS=10*60*1000,INST_RESEND_MS=30000,INST_CODE_ATTEMPTS=5,INST_LOGIN_ATTEMPTS=5,INST_LOGIN_LOCK_MS=30000;
-const INST_FLOW_STEPS=['Universidad','Correo','Código','Contraseña','Consentimiento'];
+const INST_FLOW_STEPS=['Universidad','Correo','Código','Contraseña','Tus datos','Consentimiento'];
+let entryChoice=null,choiceOrigin='entry';
 const instSessionActive=()=>{try{return sessionStorage.getItem(INST_SESSION_KEY)==='1'}catch(e){return false}};
 function instSessionSet(){try{sessionStorage.setItem(INST_SESSION_KEY,'1')}catch(e){}}
 function instSessionClear(){try{sessionStorage.removeItem(INST_SESSION_KEY)}catch(e){}}
@@ -82,7 +83,7 @@ function institutionContactHref(){
   const i=currentInstitution();if(!i)return '#';
   const name=(S.profile&&S.profile.name)||'',email=(S.account&&S.account.email)||'';
   const body=`Nombre: ${name}\nCorreo: ${email}\n\nQuiero que me contacten desde el servicio de apoyo de ${i.name}.`;
-  return 'mailto:'+encodeURIComponent(i.support.email)+'?subject='+encodeURIComponent('Solicitud de contacto · Uarvis UdeC (prototipo no oficial)')+'&body='+encodeURIComponent(body);
+  return 'mailto:'+encodeURIComponent(i.support.email)+'?subject='+encodeURIComponent('Solicitud de contacto · Uarvis UdeC (prototipo)')+'&body='+encodeURIComponent(body);
 }
 function institutionNoTaskDates(){
   const i=currentInstitution();if(!i)return [];
@@ -115,10 +116,23 @@ function institutionDayMark(date){
   if(c.examWeeks.some(w=>date>=w.start&&date<=w.end))return {cls:'exam',mark:'!'};
   return null;
 }
-function choosePersonal(){
+function finishPersonalMode(){
   S.account=accountBlank();S.account.type='personal';
+  entryChoice=null;choiceOrigin='entry';
   if(typeof metricsTrack==='function')metricsTrack('modo_elegido','personal');
   if(typeof save==='function')save();
+  if(typeof render==='function')render();
+}
+function choosePersonal(){
+  if(choiceOrigin==='inst-login')return instUsePersonal();
+  if(S&&S.profile&&S.profile.name)return finishPersonalMode();
+  entryChoice='personal';choiceOrigin='entry';
+  if(typeof render==='function')render();
+}
+function choosePersonalBack(){entryChoice=null;choiceOrigin='entry';if(typeof render==='function')render()}
+function showAccountChoice(origin){
+  entryChoice=null;choiceOrigin=origin||'entry';
+  if(typeof InstitutionalFlow!=='undefined'&&InstitutionalFlow.get())InstitutionalFlow.cancel();
   if(typeof render==='function')render();
 }
 function linkInstitution(id,email,auth){
@@ -161,7 +175,8 @@ const InstitutionalFlow=(function(){
   }
   function start(from,email){
     flow={step:'choose',email:String(email||'').trim().slice(0,120),error:'',from:from||'selection',
-      code:null,codeInput:'',attempts:0,expiresAt:0,resendAt:0,verified:false,needsResend:false,auth:null};
+      code:null,codeInput:'',attempts:0,expiresAt:0,resendAt:0,verified:false,needsResend:false,auth:null,
+      profile:{name:(S&&S.profile&&S.profile.name)||'',career:(S&&S.profile&&S.profile.career)||''}};
     if((flow.from==='migration'||flow.from==='forgot')&&flow.email){flow.step='code';issueCode()}
     return flow;
   }
@@ -171,7 +186,8 @@ const InstitutionalFlow=(function(){
     if(flow.step==='login')flow.step='choose';
     else if(flow.step==='code'){invalidateCode();flow.step='login'}
     else if(flow.step==='password')flow.step='code';
-    else if(flow.step==='consent')flow.step='password';
+    else if(flow.step==='profile')flow.step='password';
+    else if(flow.step==='consent')flow.step='profile';
     else flow=null;
     if(flow)flow.error='';
     return flow;
@@ -179,6 +195,13 @@ const InstitutionalFlow=(function(){
   function next(){if(flow&&flow.step==='choose'){flow.step='login';flow.error=''}}
   function setEmail(v){if(flow){flow.email=String(v||'').trim().slice(0,120);flow.error='';invalidateCode()}}
   function setCode(v){if(flow){flow.codeInput=String(v||'').replace(/\D/g,'').slice(0,6);flow.error=''}}
+  function submitProfile(name,career){
+    if(!flow||flow.step!=='profile')return false;
+    const n=String(name||'').trim(),c=String(career||'').trim();
+    if(!n||!c){flow.error='Ingresa tu nombre y carrera.';return false}
+    flow.profile={name:n.slice(0,60),career:c.slice(0,80)};
+    flow.step='consent';flow.error='';return true;
+  }
   function submitEmail(){
     if(!flow)return false;
     const i=INSTITUTIONS[0];
@@ -225,18 +248,34 @@ const InstitutionalFlow=(function(){
       if(typeof toast==='function')toast('Vinculado con la Universidad de Concepción (prototipo).');
       return true;
     }
-    flow.step='consent';flow.error='';return true;
+    flow.step='profile';flow.error='';return true;
   }
   function accept(){
     if(!flow||flow.step!=='consent')return false;
+    if(flow.profile){
+      S.profile.name=flow.profile.name;S.profile.career=flow.profile.career;
+    }
     linkInstitution(INSTITUTIONS[0].id,flow.email,flow.auth);flow=null;return true;
   }
-  return {get,start,cancel,back,next,setEmail,setCode,submitEmail,resendCode,submitCode,submitPassword,accept,invalidateCode};
+  return {get,start,cancel,back,next,setEmail,setCode,submitEmail,resendCode,submitCode,submitPassword,submitProfile,accept,invalidateCode};
 })();
-function startInstitutionalFlow(from,email){InstitutionalFlow.start(from,email);if(typeof render==='function')render()}
-function institutionalBack(){InstitutionalFlow.back();if(typeof render==='function')render()}
-function institutionalCancel(){InstitutionalFlow.cancel();if(typeof render==='function')render()}
+function startInstitutionalFlow(from,email){
+  if(from==='selection'&&choiceOrigin==='inst-login'){choiceOrigin='entry';if(typeof render==='function')render();return}
+  if(from==='selection')entryChoice='institucional';
+  InstitutionalFlow.start(from,email);if(typeof render==='function')render();
+}
+function institutionalBack(){
+  InstitutionalFlow.back();
+  if(!InstitutionalFlow.get())entryChoice=null;
+  if(typeof render==='function')render();
+}
+function institutionalCancel(){InstitutionalFlow.cancel();entryChoice=null;choiceOrigin='entry';if(typeof render==='function')render()}
 function institutionalNext(){InstitutionalFlow.next();if(typeof render==='function')render()}
+function institutionalProfileNext(){
+  const a=$('#inst-profile-name'),b=$('#inst-profile-career');
+  InstitutionalFlow.submitProfile(a?a.value:'',b?b.value:'');
+  if(typeof render==='function')render();
+}
 function institutionalEmail(v){InstitutionalFlow.setEmail(v)}
 function institutionalCode(v){InstitutionalFlow.setCode(v)}
 function institutionalSubmitEmail(){InstitutionalFlow.submitEmail();if(typeof render==='function')render()}
@@ -289,6 +328,7 @@ function instFlowFocus(){
   if(f.step==='login')return '#inst-email';
   if(f.step==='code')return f.verified?'[data-focus-id="inst-code-continue"]':'#inst-code-input';
   if(f.step==='password')return '#inst-pass1';
+  if(f.step==='profile')return '#inst-profile-name';
   if(f.step==='consent')return '[data-focus-id="inst-consent-ok"]';
   return '[data-focus-id="inst-option-udec"]';
 }
@@ -317,7 +357,8 @@ function instForgotPassword(){
 }
 async function instUsePersonal(){
   if(typeof askConfirm==='function'&&!await askConfirm({title:'Usar sin mi cuenta universitaria',text:'Volverás al modo Personal. Tus datos no se borran y la identidad institucional se quita.',okLabel:'Usar sin mi cuenta'}))return;
-  if(typeof disconnectInstitution==='function')await disconnectInstitution({skipConfirm:true});
+  choiceOrigin='entry';
+  if(typeof disconnectInstitution==='function')await disconnectInstitution();
 }
 function instStartChangePassword(){instPwMode='change';render()}
 function instCancelChangePassword(){instPwMode='';render()}

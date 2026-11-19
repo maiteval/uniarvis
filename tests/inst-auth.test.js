@@ -34,10 +34,10 @@ const fs=require('fs');
   const wrong=code=>code==='000000'?'111111':'000000';
   const onboard=async(pg)=>{
     await pg.goto(base);
+    await pg.click('[data-focus-id="account-personal"]');
     if(await pg.locator('#reg-name').count()){
       await pg.fill('#reg-name','Ana');await pg.fill('#reg-career','Medicina');await pg.locator('.hud-btn').click();
     }
-    await pg.click('[data-focus-id="account-personal"]');
   };
   const startFlow=async(pg,email='ana@udec.cl')=>{
     await pg.evaluate(()=>{S.institutionConsentAt=today();save();go('cuenta')});
@@ -51,7 +51,12 @@ const fs=require('fs');
   };
   const createPass=async(pg,pass)=>{
     await pg.fill('#inst-pass1',pass);await pg.fill('#inst-pass2',pass);await pg.click('[data-focus-id="inst-pass-submit"]');
-    await pg.waitForFunction(()=>!InstitutionalFlow.get()||!!document.querySelector('[data-focus-id="inst-consent-ok"]')||!!document.querySelector('[data-focus-id="inst-import-skip"]'));
+    await pg.waitForFunction(()=>!InstitutionalFlow.get()||!!document.querySelector('#inst-profile-name')||!!document.querySelector('[data-focus-id="inst-consent-ok"]')||!!document.querySelector('[data-focus-id="inst-import-skip"]'));
+    if(await pg.locator('#inst-profile-name').count()){
+      const name=await pg.inputValue('#inst-profile-name'),career=await pg.inputValue('#inst-profile-career');
+      await pg.fill('#inst-profile-name',name||'Ana');await pg.fill('#inst-profile-career',career||'Medicina');await pg.click('[data-focus-id="inst-profile-next"]');
+      await pg.waitForSelector('[data-focus-id="inst-consent-ok"]');
+    }
     if(await pg.locator('[data-focus-id="inst-consent-ok"]').count())await pg.click('[data-focus-id="inst-consent-ok"]');
   };
   const signIn=async(pg,pass='Clave1234')=>{
@@ -188,9 +193,12 @@ const fs=require('fs');
   await signIn(p,'Otra1234');
 
   await logout(p);
-  await p.click('[data-focus-id="inst-use-personal"]');
+  await p.click('[data-focus-id="inst-change-mode"]');
+  ok('Cambiar de modo desde el inicio de sesión muestra el selector',await p.locator('[data-focus-id="account-personal"]').count()===1&&await p.locator('#inst-login-pass').count()===0);
+  await p.click('[data-focus-id="account-personal"]');
   await confirmOk(p);
-  ok('Usar sin mi cuenta universitaria pide confirmación y desvincula',
+  if(await p.locator('#confirm-dialog').isVisible())await confirmOk(p);
+  ok('Cambiar de modo a Personal pide confirmación y desvincula',
     await p.evaluate(()=>S.account.type==='personal'&&S.account.auth===null&&!instSessionActive()&&!needsInstLogin()));
   await p.reload();
   ok('el modo Personal no vuelve a pedir credenciales',await p.locator('#inst-login-pass').count()===0&&

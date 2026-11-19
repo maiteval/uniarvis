@@ -44,6 +44,7 @@ server.listen(0, '127.0.0.1', async () => {
     await run('demo.test.js', [base, path.join(out, 'demo')]),                       // modo demo sin red
     await run('institucional.test.js', [base, path.join(out, 'institucional')]),     // modo institucional (prototipo)
     await run('inst-auth.test.js', [base, path.join(out, 'inst-auth')]),             // verificación y contraseña institucional
+    await run('entrada.test.js', [base, path.join(out, 'entrada')]),                 // elección de modo y migración de entrada
     await run('chatbot.test.js', [base, path.join(out, 'chatbot')])                  // chat con Arvis (prototipo)
   ];
   server.close();

@@ -64,13 +64,17 @@ function setMode(id){
   S.settings.mode=id;save();render();
 }
 function setShare(id,on){const c=course(id);if(!c)return;c.share=!!on;save();render()}
+function registrationUniversity(){
+  const el=$('#reg-university'),v=String((el&&el.value)||'').trim().slice(0,80);
+  return !v||universityOk(v)?v:'';
+}
 function registerProfile(){
   const n=($('#reg-name')||{}).value||'',c=($('#reg-career')||{}).value||'';
   const name=String(n).trim(),career=String(c).trim();
   if(!name||!career)return toast('Ingresa tu nombre y carrera.');
-  S.profile={name:name.slice(0,60),career:career.slice(0,80),university:''};
-  save();toast(`Bienvenido/a, ${S.profile.name}.`);render();
-  if(typeof maybeShowTour==='function')maybeShowTour();
+  S.profile={name:name.slice(0,60),career:career.slice(0,80),university:registrationUniversity()};
+  toast(`Bienvenido/a, ${S.profile.name}.`);
+  finishPersonalMode();
 }
 function profileUniversityField(fallback){
   if(typeof isInstitutional==='function'&&isInstitutional()){

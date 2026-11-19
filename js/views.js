@@ -2,13 +2,18 @@
 /* ===================== Vistas ===================== */
 function viewLanding(){
   const calma=(S.settings&&S.settings.style)==='calma';
+  const uni='<option value="">Sin definir</option>'+UNIVERSITIES_CHILE.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')+
+    `<option value="${esc(UNIVERSITY_OTHER)}">${esc(UNIVERSITY_OTHER)}</option><option value="${esc(UNIVERSITY_PREFERS_NOT)}">${esc(UNIVERSITY_PREFERS_NOT)}</option>`;
+  const university=`<label>Universidad (opcional)<select id="reg-university">${uni}</select></label>`;
+  const back='<button class="btn sec" data-focus-id="reg-back" onclick="choosePersonalBack()">Volver</button>';
   if(calma)return `<div class="landing landing-calma"><div class="landing-bg"></div><div class="landing-panel">
     <h1 class="landing-title">Bienvenido/a</h1>
     <p class="landing-sub">Crea tu perfil para organizar tu semestre a tu ritmo.</p>
     <div class="hud-form">
       <label>Nombre<input id="reg-name" type="text" maxlength="60" placeholder="Tu nombre"></label>
       <label>Carrera / Programa<input id="reg-career" type="text" maxlength="80" placeholder="Tu carrera"></label>
-      <button class="btn hud-btn" onclick="registerProfile()">Empezar</button>
+      ${university}
+      <div class="row"><button class="btn hud-btn" onclick="registerProfile()">Empezar</button>${back}</div>
     </div>
     <p class="mute hud-note">Los datos se guardan solo en este navegador (localStorage).</p>
   </div></div>`;
@@ -19,7 +24,8 @@ function viewLanding(){
     <div class="hud-form">
       <label>Identificación / Nombre<input id="reg-name" type="text" maxlength="60" placeholder="Tu nombre"></label>
       <label>Carrera / Programa<input id="reg-career" type="text" maxlength="80" placeholder="Tu carrera"></label>
-      <button class="btn hud-btn" onclick="registerProfile()">INICIAR SISTEMA</button>
+      ${university}
+      <div class="row"><button class="btn hud-btn" onclick="registerProfile()">INICIAR SISTEMA</button>${back}</div>
     </div>
     <p class="mute hud-note">Los datos se guardan solo en este navegador (localStorage).</p>
   </div></div>`;
@@ -42,9 +48,9 @@ function viewAccountChoice(){
 }
 function viewInstitutionalFlow(){
   const f=InstitutionalFlow.get();if(!f)return viewAccountChoice();
-  const inst=INSTITUTIONS[0],proto='<span class="tag inst-example">Prototipo · no oficial</span>';
+  const inst=INSTITUTIONS[0],proto='<span class="tag inst-example">Prototipo</span>';
   const back=`<button class="btn sec" data-focus-id="account-back" onclick="institutionalBack()">Volver</button>`;
-  const idx={choose:0,login:1,code:2,password:3,consent:4}[f.step]||0;
+  const idx={choose:0,login:1,code:2,password:3,profile:4,consent:5}[f.step]||0;
   const steps=`<div class="inst-steps" aria-label="Pasos del ingreso institucional">${INST_FLOW_STEPS.map((s,i)=>
     `<span class="${i<idx?'done':(i===idx?'on':'')}" ${i===idx?'aria-current="step"':''}>${i+1}. ${esc(s)}</span>`).join('')}</div>`;
   let body='';
@@ -91,6 +97,15 @@ function viewInstitutionalFlow(){
       <button class="btn" data-focus-id="inst-pass-submit" onclick="institutionalSubmitPassword(event)">Continuar</button></div>
       ${f.error?`<div class="banner go" role="alert">${esc(f.error)}</div>`:''}
       <div class="row">${back}</div>`;
+  }else if(f.step==='profile'){
+    const p=f.profile||S.profile||{};
+    body=`<h2>Tus datos ${proto}</h2><p class="mute">Tu universidad ya viene de tu cuenta y no se puede cambiar aquí.</p>
+      <div class="hud-form"><label>Nombre<input id="inst-profile-name" type="text" maxlength="60" placeholder="Tu nombre" value="${esc(p.name||'')}"></label>
+      <label>Carrera / Programa<input id="inst-profile-career" type="text" maxlength="80" placeholder="Tu carrera" value="${esc(p.career||'')}"></label>
+      <label>Universidad<input id="inst-profile-university" type="text" value="${esc(inst.name)}" disabled aria-readonly="true"></label>
+      <button class="btn" data-focus-id="inst-profile-next" onclick="institutionalProfileNext()">Continuar</button></div>
+      ${f.error?`<div class="banner go" role="alert">${esc(f.error)}</div>`:''}
+      <div class="row">${back}</div>`;
   }else if(f.step==='consent'){
     body=`<h2>Consentimiento</h2><p class="mute">Único aviso antes de vincular tu cuenta ${esc(inst.short)}. ${proto}</p>
       <div class="grid2"><div class="card"><h3>Qué ve la universidad</h3>
@@ -111,7 +126,7 @@ function viewInstLogin(){
   const inst=currentInstitution()||INSTITUTIONS[0];
   const wait=Math.ceil(instLoginLockRemaining()/1000),locked=wait>0;
   return `<div class="landing account-landing"><div class="landing-bg"></div><div class="landing-panel account-panel inst-flow" id="inst-login-panel">
-    <h2>Iniciar sesión · ${esc(inst.name)} <span class="tag inst-example">Prototipo · no oficial</span></h2>
+    <h2>Iniciar sesión · ${esc(inst.name)} <span class="tag inst-example">Prototipo</span></h2>
     <p class="mute">Tu cuenta institucional. La contraseña se pide solo en este dispositivo.</p>
     <div class="hud-form"><label>Correo institucional<input id="inst-login-email" type="email" value="${esc(S.account.email||'')}" readonly aria-readonly="true"></label>
       <form onsubmit="instLogin(event);return false"><label>Contraseña<input id="inst-login-pass" type="password" autocomplete="current-password" placeholder="Tu contraseña institucional" ${locked?'disabled':''}></label>
@@ -120,7 +135,8 @@ function viewInstLogin(){
       ${locked?`<p class="mute" data-auth-countdown>Demasiados intentos. Espera ${wait} s antes de reintentar.</p>`:''}
       ${instLoginError?`<div class="banner go" role="alert">${esc(instLoginError)}</div>`:''}
     </div>
-    <div class="row" style="margin-top:14px"><button class="btn sec" data-focus-id="inst-use-personal" onclick="instUsePersonal()">Usar sin mi cuenta universitaria</button></div>
+    <div class="row" style="margin-top:14px"><button class="btn sec" data-focus-id="inst-use-personal" onclick="instUsePersonal()">Usar sin mi cuenta universitaria</button>
+      <button class="lnk" data-focus-id="inst-change-mode" onclick="showAccountChoice('inst-login')">Cambiar de modo</button></div>
   </div></div>`;
 }
 function institutionImportHtml(){
@@ -199,7 +215,7 @@ function viewInicio(){
     <span class="home-copy"><b>${s.label}</b><span>${descs[s.key]||''}</span></span>
     <span class="home-arrow" aria-hidden="true">→</span></button>`}).join('');
   return `${screenHelp('inicio')}
-  ${isInstitutional()?`<div class="inst-inicio"><span class="inst-identity"><b>${esc(currentInstitution().name)}</b></span><span class="tag inst-example">Prototipo · no oficial</span></div>`:''}
+  ${isInstitutional()?`<div class="inst-inicio"><span class="inst-identity"><b>${esc(currentInstitution().name)}</b></span><span class="tag inst-example">Prototipo</span></div>`:''}
   <div class="home-head"><div><h2>Hola, ${name}</h2><p class="mute" style="margin-bottom:0">Elige por dónde empezar hoy.</p></div></div>
   ${arvisInicioHtml()}
   ${institutionDoneNotice()}
@@ -237,7 +253,7 @@ function viewCuenta(){
     <div class="account-status"><span class="tag">Modo: <b>${modo}</b></span>
       ${i?`<span class="inst-identity"><b>${esc(i.name)}</b></span>`:'<span class="mute">Sin universidad vinculada</span>'}</div>
     ${i?`<p class="mute">Correo: ${esc(a.email||'—')} · Vinculada el ${a.linkedAt?dshort(a.linkedAt):'—'}</p>
-      <p>${esc(i.name)} <span class="tag inst-example">Prototipo · no oficial</span></p>`:''}
+      <p>${esc(i.name)} <span class="tag inst-example">Prototipo</span></p>`:''}
     <div class="row">
       ${i?'<button class="btn del" onclick="disconnectInstitution()">Desconectar de mi universidad</button>'
         :'<button class="btn" data-focus-id="connect-institution" onclick="startInstitutionalFlow(\'cuenta\')">Conectar con mi universidad</button>'}

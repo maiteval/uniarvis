@@ -15,12 +15,12 @@ const fs=require('fs');
   const raw=()=>p.evaluate(()=>localStorage.getItem('entrenador-academico-v1'));
   const unlock=async pw=>{await p.fill('#lp',pw);await p.click('text=Desbloquear');await p.waitForTimeout(900)};
   const onboard=async()=>{
+    const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
     if(await p.locator('#reg-name').count()){
       await p.fill('#reg-name','Estudiante');
       await p.fill('#reg-career','Carrera');
       await p.locator('.hud-btn').click();
     }
-    const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
   };
   const open=async(sec,sub)=>{
     await p.locator('.brand').click();

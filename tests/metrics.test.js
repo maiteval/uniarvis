@@ -35,10 +35,10 @@ const fs=require('fs');
     p.on('dialog',d=>d.accept());
   };
   const onboard=async p=>{
+    const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
     if(await p.locator('#reg-name').count()){
       await p.fill('#reg-name','Ana');await p.fill('#reg-career','Medicina');await p.locator('.hud-btn').click();
     }
-    const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
   };
   const setProfile=async p=>{
     await p.evaluate(()=>go('perfil'));

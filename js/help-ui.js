@@ -64,6 +64,7 @@ function finishTour(){
 
 function maybeShowTour(){
   if(typeof S==='undefined'||!S.profile||!S.profile.name)return;
+  if(typeof entryReady==='function'&&!entryReady())return;
   if(typeof LOCKED!=='undefined'&&LOCKED)return;
   const root=document.getElementById('tour-root');
   if(root&&root.innerHTML.trim())return;

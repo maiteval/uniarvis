@@ -10,10 +10,10 @@ const path=require('path');
   p.on('console',m=>{if(m.type()==='error')errs.push('console: '+m.text())});
   await p.addInitScript(()=>{try{localStorage.setItem('entrenador-academico-tour-seen-v1','1')}catch(e){}});
   await p.goto('file://'+path.resolve(file));
+  const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
   if(await p.locator('#reg-name').count()){
     await p.fill('#reg-name','Prueba');await p.fill('#reg-career','Carrera');
     await p.locator('.hud-btn').click();
-    const choice=p.locator('[data-focus-id="account-personal"]');if(await choice.count())await choice.click();
   }
   await p.evaluate(()=>{
     S=fresh();S.profile={name:'Prueba',career:'Carrera'};S.account.type='personal';
