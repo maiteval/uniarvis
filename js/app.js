@@ -53,7 +53,7 @@ function mobileNavHtml(){
   const items=secs.map((s,i)=>`<button class="mob-nav-btn ${s.key===section?'on':''}" ${s.key===section?'aria-current="page"':''} onclick="go('${s.tabs[0][0]}')"><span class="mob-nav-icon">${HOME_ICONS[i]||''}</span><span>${s.label}</span></button>`).join('');
   return `<nav class="mobile-nav" aria-label="Secciones">${items}</nav>`;
 }
-function render(){
+function renderCore(){
   const key=LOCKED?'lock':(typeof InstitutionalFlow!=='undefined'&&InstitutionalFlow.get()?'flow':
     (typeof instImport!=='undefined'&&instImport?'inst-import':
     (!S.profile||!S.profile.name?'landing':(!S.account||!S.account.type?'account-choice':section+'/'+tab))));
@@ -128,6 +128,7 @@ function render(){
   app.innerHTML=chips+(views[tab]||viewInicio)();
   finish();
 }
+function render(){renderCore();if(typeof chatSync==='function')chatSync()}
 let lastPlanDay=today();
 function checkNewDay(previous){
   const prev=previous||lastPlanDay,d=today();

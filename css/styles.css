@@ -426,3 +426,53 @@ filter:blur(10px);opacity:.9;animation:hudPulse 8s ease-in-out infinite alternat
   .account-panel{padding:20px 16px}
   .account-choice{min-height:0}
 }
+
+/* Chat con Arvis (solo en modo institucional) */
+#chat-root{position:relative;z-index:15}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.chat-fab{position:fixed;right:18px;bottom:18px;z-index:15;display:flex;align-items:center;gap:10px;padding:8px 16px 8px 8px;border:1px solid rgba(var(--accent-rgb),.45);border-radius:999px;background:var(--card);color:var(--ink);box-shadow:var(--shadow-md);cursor:pointer;font-weight:600;transition:transform .15s ease,border-color .2s ease,box-shadow .2s ease}
+.chat-fab:hover{border-color:var(--accent);transform:translateY(-2px)}
+.chat-fab.on{border-color:var(--accent);box-shadow:var(--ring)}
+.chat-av{width:44px;height:44px;flex:0 0 44px;border-radius:50%;background:var(--accent-soft);border:1px solid var(--line)}
+.chat-av-txt{display:grid;place-items:center;color:var(--accent-strong);font-weight:700}
+.chat-panel{position:fixed;right:18px;bottom:76px;z-index:16;width:min(380px,calc(100vw - 36px));max-height:min(70vh,640px);display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-md);overflow:hidden;animation:fadeSlide .2s ease}
+.chat-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--panel-bg)}
+.chat-head .chat-av{width:38px;height:38px;flex-basis:38px}
+.chat-heading{flex:1;min-width:0}
+.chat-heading b{font-size:15px}
+.chat-head .icon-btn{flex:0 0 auto}
+.chat-note{margin:0;padding:10px 14px;font-size:12px;line-height:1.45;color:var(--mute);background:var(--accent-soft);border-bottom:1px solid var(--line)}
+.chat-log{flex:1;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.chat-msg{display:flex;align-items:flex-start;gap:8px;max-width:100%}
+.chat-msg.yo{justify-content:flex-end}
+.chat-msg .chat-av{width:34px;height:34px;flex-basis:34px}
+.chat-bub{max-width:82%;background:var(--bg-subtle);border:1px solid var(--line);border-radius:12px 12px 12px 4px;padding:9px 11px;font-size:14px;line-height:1.5}
+.chat-msg.yo .chat-bub{background:var(--accent);color:var(--on-accent);border-color:var(--accent);border-radius:12px 12px 4px 12px}
+.chat-bub p{margin:0;overflow-wrap:anywhere;white-space:pre-wrap}
+.chat-bub ul{margin:8px 0 0;padding-left:18px}
+.chat-bub li{margin:3px 0}
+.chat-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px}
+.chat-actions .btn{padding:6px 12px;font-size:13px}
+.chat-sug{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.chat-chip{border:1px solid var(--line);background:var(--card);color:var(--accent-strong);border-radius:999px;padding:5px 9px;font-size:12px;cursor:pointer}
+.chat-chip:hover{border-color:var(--accent);box-shadow:var(--ring)}
+.chat-typing{display:flex;align-items:center;gap:4px;color:var(--mute)}
+.chat-typing span{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:chat-dot 1s infinite ease-in-out}
+.chat-typing span:nth-child(2){animation-delay:.15s}
+.chat-typing span:nth-child(3){animation-delay:.3s}
+.chat-typing em{margin-left:4px;font-size:12px;font-style:normal}
+@keyframes chat-dot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+.chat-form{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--line);background:var(--panel-bg)}
+.chat-form input{flex:1;min-width:0;background:var(--field-bg)}
+.chat-form .btn{padding:8px 14px}
+[data-style="hud"] .chat-panel,[data-style="hud"] .chat-fab{border-radius:8px}
+@media (prefers-reduced-motion:reduce){.chat-typing span{animation:none}}
+@media (max-width:640px){
+  .chat-fab{right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));padding:6px;border-radius:50%}
+  .chat-fab .chat-fab-txt{display:none}
+  .chat-fab .chat-av{width:46px;height:46px;flex-basis:46px}
+  .chat-panel{right:8px;left:8px;width:auto;bottom:calc(132px + env(safe-area-inset-bottom,0px));max-height:calc(100vh - 160px - env(safe-area-inset-bottom,0px))}
+  .chat-heading b{font-size:14px}
+  .chat-note{font-size:11px}
+  .chat-bub{max-width:86%}
+}
