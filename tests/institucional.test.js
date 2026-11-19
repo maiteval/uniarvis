@@ -92,7 +92,7 @@ const fs=require('fs');
   ok('cuenta vinculada a la UdeC',acc.type==='institucional'&&acc.institutionId==='udec'&&/udec\.cl$/.test(acc.email)&&/^\d{4}-\d{2}-\d{2}$/.test(acc.linkedAt),JSON.stringify(acc));
 
   // Apariencia, contactos y privacidad en modo institucional
-  ok('logo institucional en encabezado y en Cuenta',await p.locator('.brand .inst-logo').count()===1&&await p.locator('.account-status .inst-logo').count()===1);
+  ok('logo institucional fuera del encabezado y en Cuenta',await p.locator('.brand .inst-logo').count()===0&&await p.locator('.account-status .inst-logo').count()===1);
   ok('acento institucional sobre el tema actual',await p.evaluate(()=>document.documentElement.getAttribute('data-institution')==='udec'));
   ok('prototipo no oficial visible en Cuenta',(await text()).includes('Prototipo · no oficial'));
   await p.evaluate(()=>go('cuenta'));

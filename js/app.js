@@ -104,9 +104,8 @@ function render(){
   }
   document.body.classList.remove('landing-active');
   const who=S.profile&&S.profile.name?`<span class="hud-user"> · ${esc(S.profile.name)}</span>`:'';
-  const inst=typeof currentInstitution==='function'?currentInstitution():null;
   const brand=document.querySelector('.brand');
-  if(brand)brand.innerHTML=(inst?institutionLogo(inst.id,true):'')+'U.A.R.V.I.S.'+who;
+  if(brand)brand.innerHTML='U.A.R.V.I.S.'+who;
   if(section==='inicio'){
     $('#nav').innerHTML='';
     let mob=$('#mobile-nav');if(mob)mob.remove();
