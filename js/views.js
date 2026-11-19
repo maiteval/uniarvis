@@ -174,7 +174,11 @@ function institutionPreviewHtml(){
 function homeNotice(){
   const t0=today();
   const crit=criticalClusters().filter(g=>diffDays(t0,g.start)<=28)[0];
-  if(crit)return `<div class="banner go"><b>Semana exigente del ${dshort(crit.start)} al ${dshort(crit.end)}</b><br>${crit.events.length} fechas importantes juntas. <button class="lnk" onclick="go('semana')">Ver planificación</button></div>`;
+  if(crit){
+    const real=crit.events.filter(e=>!e.institution),n=real.length;
+    const detalle=!n?'Semana de certámenes de la UdeC.':`${n===1?'1 fecha importante':n+' fechas importantes'} juntas.`;
+    return `<div class="banner go"><b>Semana exigente del ${dshort(crit.start)} al ${dshort(crit.end)}</b><br>${detalle} <button class="lnk" onclick="go('semana')">Ver planificación</button></div>`;
+  }
   const w=earlyWarnings().filter(x=>S.dismissed[x.key]!==t0)[0];
   if(w)return `<div class="banner soft"><b>${w.title}</b> ${w.text} <button class="lnk" onclick="go('apoyo')">Ver apoyo</button></div>`;
   return '';
@@ -199,7 +203,7 @@ function icsPendingHtml(){
 function institutionDoneNotice(){
   if(!instImportNotice||!S.courses.some(c=>importedCourse(c)&&!hasSyllabus(c.id)))return '';
   return `<div class="banner inst-done" id="inst-import-done"><b>Listo. Lo único que falta es el syllabus de cada ramo.</b><br>
-    Sube los syllabus para afinar las fechas y el plan. <button class="lnk" onclick="go('syllabus')">Ir a Académico → Syllabus y fechas</button>
+    Sube los syllabus para afinar las fechas y el plan. <button class="lnk" onclick="go('syllabus')">Ir a Académico → Fechas</button>
     <button class="lnk" onclick="dismissInstitutionDone()">Entendido</button>
     <span class="tag inst-example">Datos de ejemplo</span></div>`;
 }
@@ -415,7 +419,7 @@ function viewHoy(){
   return `${screenHelp('hoy')}
   ${arvisMomentoHtml()}${arvisEstudiandoHtml()}${arvisAlertaHtml()}
   ${!S.courses.length?arvisVacioHtml('ramos'):''}
-  ${!S.courses.length?'<div class="card empty">Aún no tienes ramos. Agrégalos en "Mis ramos y horario" o <button class="btn" onclick="go(\'ejemplos\')">carga datos de ejemplo</button></div>':''}
+  ${!S.courses.length?'<div class="card empty">Aún no tienes ramos. Agrégalos en "Ramos" o <button class="btn" onclick="go(\'ejemplos\')">carga datos de ejemplo</button></div>':''}
   ${warnHtml()}${criticalHtml()}
   ${certamenOffersHtml()}${certamenDraftHtml()}${certamenActiveHtml()}
   ${S.soft&&softOn(t0)?`<div class="banner soft">Modo suave activo hasta el ${dshort(S.soft.until)}: tu carga está al 75%. <button class="lnk" onclick="endSoft()">Desactivar</button></div>`:''}
@@ -434,7 +438,7 @@ function viewHoy(){
   </div>
   <div class="grid2">
     <div class="card"><h3>Plan de hoy</h3>
-      ${rows||`${arvisVacioHtml('tareas')}<div class="empty">No hay micro-tareas para hoy. Agrega ramos y fechas en <b>Académico &gt; Syllabus y fechas</b> para generar tu plan, o registra estudio libre.</div>`}
+      ${rows||`${arvisVacioHtml('tareas')}<div class="empty">No hay micro-tareas para hoy. Agrega ramos y fechas en <b>Académico &gt; Fechas</b> para generar tu plan, o registra estudio libre.</div>`}
       ${locked?'<p class="mute">No se adelanta ni se asigna más materia hoy.</p>':
         (low?'<p class="mute">Hoy no hace falta adelantar nada.</p>':(!pend.length&&nxt?`<button class="btn sec" onclick="pullNext()">Adelantar la siguiente micro-tarea (${nxt.minutes} min)</button>`:''))}
     </div>
@@ -532,7 +536,7 @@ const difficultyOptions=selected=>[1,2,3,4,5].map(n=>`<option value="${n}" ${n==
 function viewRamos(){
   return `${screenHelp('ramos')}
   <div class="grid2">
-    <div class="card"><h2>Mis ramos</h2>
+    <div class="card"><h2>Ramos</h2>
       ${S.courses.map(c=>`<div class="task course-row"><span aria-hidden="true" class="dot" style="background:${c.color}"></span>
         <div class="course-main"><b class="course-name">${esc(c.name)}</b>
         ${importedCourse(c)&&!hasSyllabus(c.id)?'<div class="course-tags"><span class="tag inst-pending">Syllabus pendiente</span></div>':''}</div>
@@ -582,7 +586,7 @@ function viewSyllabus(){
         <td><input style="width:100%" value="${esc(p.title)}" onchange="setPending(${i},'title',this.value)">${p.note?`<div class="mute">⚠ ${esc(p.note)}</div>`:''}</td></tr>`).join('')}</table>
       <button class="btn" style="margin-top:8px" onclick="addPending()">Confirmar y agregar al calendario</button>`:''}
   </div>
-  <div class="card"><h2>Fechas importantes</h2>
+  <div class="card"><h2>Fechas</h2>
     <div class="row form-stack" style="margin-bottom:8px"><select id="ec"><option value="">Ramo…</option>${S.courses.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
       <input id="et" placeholder="Título"><input id="ed" type="date">
       <select id="ey">${Object.entries(TYPE_LABEL).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
@@ -595,9 +599,9 @@ function viewSyllabus(){
    ${demoCardHtml()}`;
 }
 function viewNotas(){
-  return `${screenHelp('notas')}<div class="card"><h2>Notas y ponderaciones</h2>
+  return `${screenHelp('notas')}<div class="card"><h2>Notas</h2>
     <p class="mute" style="margin-top:0">Registra evaluaciones por ramo con su nota y ponderación (%). Puedes escribir 5,5 o 5.5: siempre mostramos coma decimal. Por ramo puedes ajustar la nota de aprobación (4,0 por defecto) y el redondeo del promedio a un decimal.</p>
-    ${S.courses.length?S.courses.map(gradesCard).join(''):'<div class="empty">Aún no tienes ramos. Ve a <b>Académico &gt; Mis ramos y horario</b> y toca <b>Agregar</b> para crear uno.</div>'}
+    ${S.courses.length?S.courses.map(gradesCard).join(''):'<div class="empty">Aún no tienes ramos. Ve a <b>Académico &gt; Ramos</b> y toca <b>Agregar</b> para crear uno.</div>'}
   </div>`;
 }
 function viewDatosEjemplo(){
@@ -636,7 +640,7 @@ function viewRespiracion(){
   const T=TECH[bsel];
   const other=Object.entries(TECH).filter(([k])=>k!=='larga');
   return `${screenHelp('respiracion')}
-  <div class="card"><h2>Respiración y meditaciones</h2>
+  <div class="card"><h2>Respiración</h2>
     <div class="mute">Herramientas breves para bajar la activación. No son un tratamiento: solo te ayudan a hacer una pausa consciente.</div></div>
   <div class="grid2">
     <div class="card"><h3>Respiración guiada</h3>
@@ -738,7 +742,7 @@ function viewPrivacidad(){
   </div>`;
 }
 function viewSalud(){
-  if(!S.courses.length)return screenHelp('salud')+'<div class="card empty">Aún no tienes ramos. Ve a <b>Académico &gt; Mis ramos y horario</b> y toca <b>Agregar</b> para ver tu carga por semana.</div>';
+  if(!S.courses.length)return screenHelp('salud')+'<div class="card empty">Aún no tienes ramos. Ve a <b>Académico &gt; Ramos</b> y toca <b>Agregar</b> para ver tu carga por semana.</div>';
   const t0=today(),N=14,sumD=S.courses.reduce((a,c)=>a+c.difficulty,0);
   const dates=[...Array(N)].map((_,i)=>addDays(t0,i-N+1));
   const rows=S.courses.map(c=>{

@@ -10,7 +10,7 @@ const TOUR_STEPS=[
   {
     icon:'📚',
     title:'Académico',
-    text:'Gestiona tus ramos y horario, carga tu syllabus, registra fechas y notas, y revisa tu mapa de calor.'
+    text:'Gestiona tus ramos, carga tu syllabus, registra fechas y notas, y revisa tu mapa de calor.'
   },
   {
     icon:'🗓️',
@@ -20,7 +20,7 @@ const TOUR_STEPS=[
   {
     icon:'🌿',
     title:'Bienestar',
-    text:'Haz tu check-in diario, usa respiración y meditaciones, toma pausas rápidas y encuentra opciones de apoyo cuando lo necesites.'
+    text:'Haz tu check-in diario, usa la respiración guiada, toma pausas rápidas y encuentra opciones de apoyo cuando lo necesites.'
   },
   {
     icon:'🤝',
@@ -63,7 +63,7 @@ const AYUDA={
     ]
   },
   ramos:{
-    title:'Mis ramos y horario',
+    title:'Ramos',
     desc:'Administra tus ramos, su dificultad y tu horario de clases para calcular una capacidad realista.',
     steps:[
       'Agrega un ramo con su nombre y dificultad.',
@@ -72,7 +72,7 @@ const AYUDA={
     ]
   },
   syllabus:{
-    title:'Syllabus y fechas',
+    title:'Fechas',
     desc:'Extrae y registra fechas importantes desde un syllabus, y administra evaluaciones, entregas o controles.',
     steps:[
       'Selecciona el ramo y sube un archivo o pega el texto del syllabus.',
@@ -81,7 +81,7 @@ const AYUDA={
     ]
   },
   notas:{
-    title:'Notas y ponderaciones',
+    title:'Notas',
     desc:'Registra tus evaluaciones por ramo con nota y ponderación para ver tu promedio ponderado.',
     steps:[
       'Agrega una evaluación indicando nombre, nota y porcentaje.',
@@ -117,7 +117,7 @@ const AYUDA={
     ]
   },
   respiracion:{
-    title:'Respiración y meditaciones',
+    title:'Respiración',
     desc:'Herramientas breves de respiración guiada y meditaciones con temporizador para hacer una pausa consciente.',
     steps:[
       'Comienza con la exhalación larga (4-6), que es la técnica visible por defecto.',

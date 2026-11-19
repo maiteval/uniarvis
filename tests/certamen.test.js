@@ -155,6 +155,32 @@ const path=require('path');
   ok('Modo certamen sin scroll horizontal en móvil',sw<=392,String(sw));
   ok('Controles visibles en móvil',await p.locator('[data-focus-id^="cert-exit-"]').first().isVisible());
   ok('sin errores de JavaScript',errs.length===0,errs.join(' || '));
+
+  const p2=await b.newPage({viewport:{width:1100,height:900}});
+  await p2.clock.install({time:new Date('2026-11-19T12:00:00')});
+  await p2.addInitScript(()=>{try{localStorage.setItem('entrenador-academico-tour-seen-v1','1')}catch(e){}});
+  await p2.goto('file://'+path.resolve(file));
+  const fusion=await p2.evaluate(()=>{
+    S=fresh();S.profile={name:'Ana',career:'Medicina'};
+    S.account={type:'institucional',institutionId:'udec',email:'ana@udec.cl'};
+    S.courses=[{id:'c1',name:'Cálculo',difficulty:3,color:'#3b6df0',grades:[],share:false,passGrade:4,roundFinal:true}];
+    S.events=[{id:'ev1',courseId:'c1',title:'Evaluación',date:'2026-11-24',type:'evaluacion'},
+      {id:'ev2',courseId:'c1',title:'Entrega',date:'2026-11-26',type:'entrega'},
+      {id:'ev3',courseId:'c1',title:'Control',date:'2026-11-28',type:'control'},
+      {id:'ev4',courseId:'c1',title:'Certamen',date:'2026-11-30',type:'evaluacion'}];
+    S.lastPlan=today();save();
+    const crit=criticalClusters().filter(g=>g.start<'2026-12-01');
+    const html=criticalHtml();
+    return {t0:today(),crit:crit.map(g=>({start:g.start,end:g.end,fromInstitution:!!g.fromInstitution,ids:g.events.map(e=>e.id)})),
+      coincide:html.includes('Coincide con la semana de certámenes de la UdeC.'),
+      listaInstitucional:html.includes('Semanas de certámenes · parciales'),resumen:homeNotice()};
+  });
+  const grupo=fusion.crit[0];
+  ok('fusiona 24/11–30/11 con la semana de certámenes 22/11–28/11',fusion.crit.length===1&&grupo&&grupo.start==='2026-11-22'&&grupo.end==='2026-11-30'&&grupo.fromInstitution,JSON.stringify(fusion.crit));
+  ok('un solo aviso: fechas propias + línea de coincidencia',fusion.coincide&&!fusion.listaInstitucional&&grupo&&grupo.ids.filter(id=>id.indexOf('inst-exam-')!==0).length===4,JSON.stringify(grupo&&grupo.ids));
+  ok('el resumen del Inicio no cuenta dos veces',fusion.resumen.includes('22/11')&&fusion.resumen.includes('30/11')&&fusion.resumen.includes('4 fechas importantes'),fusion.resumen);
+  await p2.close();
+
   console.log(res.join('\n'));
   process.exitCode=res.some(x=>x.startsWith('FALLA'))?1:0;
   await b.close();

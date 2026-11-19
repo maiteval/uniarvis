@@ -86,22 +86,49 @@ const TECH={
   caja:{name:'Respiración en caja (4-4-4-4)',desc:'Cuatro tiempos iguales. Ayuda a enfocarte antes de empezar a estudiar o de rendir.',ph:[['Inhala',4,1.6],['Sostén',4,1.6],['Exhala',4,1],['Sostén vacío',4,1]]},
   s478:{name:'4-7-8',desc:'Pausa más profunda, útil para relajarte antes de dormir. Si te mareas, vuelve a respirar normal.',ph:[['Inhala',4,1.6],['Sostén',7,1.6],['Exhala suave',8,1]]}
 };
-function setBCount(){const c=$('#bcount'),y=$('#bcycles');if(c&&bt)c.textContent=bt.left+' s';if(y&&bt)y.textContent='Ciclos: '+bt.cycles}
+function setBCount(){
+  document.querySelectorAll('#bcount,[data-bcount]').forEach(el=>{if(bt)el.textContent=bt.left+' s'});
+  document.querySelectorAll('#bcycles,[data-bcycles]').forEach(el=>{if(bt)el.textContent='Ciclos: '+bt.cycles});
+}
 function setPhase(){
-  const [lab,sec,sc]=TECH[bsel].ph[bt.i],c=$('#bcircle'),l=$('#blabel');
-  if(c){void c.offsetWidth;c.style.transition=`transform ${sec}s ease-in-out`;c.style.transform=`scale(${sc})`}
-  if(l)l.textContent=lab;setBCount();
+  if(!bt)return;
+  const [lab,sec,sc]=TECH[bsel].ph[bt.i];
+  const reduce=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.querySelectorAll('#bcircle,[data-bcircle]').forEach(c=>{
+    void c.offsetWidth;c.style.transition=reduce?'none':`transform ${sec}s ease-in-out`;c.style.transform=`scale(${sc})`;
+  });
+  document.querySelectorAll('#blabel,[data-blabel]').forEach(el=>{el.textContent=lab});
+  setBCount();
+}
+function breathFocusOpen(){
+  if(typeof focusOpen!=='function'||focusKind()==='breath')return;
+  focusOpen({kind:'breath',title:'Respiración · '+TECH[bsel].name,content:breathFocusHtml,onClose:()=>stopBreath()});
+  setPhase();
+}
+function breathFocusHtml(){
+  if(!bt)return '';
+  return `<div class="focus-breath">
+    <div class="bwrap focus-breath-wrap"><div class="focus-breath-circle" data-bcircle></div></div>
+    <div class="focus-breath-label" data-blabel>${esc(TECH[bsel].ph[bt.i][0])}</div>
+    <div class="bnum"><div data-bcount>${bt.left} s</div><div class="mute" data-bcycles>Ciclos: ${bt.cycles}</div></div>
+    <button class="btn focus-breath-stop" data-focus-id="breath-focus-stop" onclick="stopBreath()">Detener</button>
+  </div>`;
 }
 function startBreath(){
   if(bt)return;stopMed(true);
   bt={i:0,left:TECH[bsel].ph[0][1],cycles:0,h:null};
-  render();setPhase();
+  render();setPhase();breathFocusOpen();
   bt.h=setInterval(()=>{
     const ph=TECH[bsel].ph;bt.left--;
     if(bt.left<=0){bt.i++;if(bt.i>=ph.length){bt.i=0;bt.cycles++}bt.left=ph[bt.i][1];setPhase()}else setBCount();
   },1000);
 }
-function stopBreath(silent){if(!bt)return;clearInterval(bt.h);bt=null;if(!silent)render()}
+function stopBreath(silent){
+  if(!bt)return;
+  clearInterval(bt.h);bt=null;
+  if(focusKind()==='breath'&&typeof focusClose==='function')focusClose();
+  if(!silent)render();
+}
 function setTech(v){stopBreath(true);bsel=v;render()}
 const MEDS=[
   {id:'pausa',name:'Pausa de 1 minuto',min:1,desc:'Para cortar el piloto automático entre bloques de estudio.',steps:['Siéntate con la espalda apoyada y suelta los hombros.','Cierra los ojos o baja la mirada.','Respira normal y cuenta cada exhalación hasta 10, luego vuelve a 1.','Si te distraes, vuelve a contar sin juzgarte.']},

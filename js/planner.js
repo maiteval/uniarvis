@@ -62,8 +62,22 @@ function replanAll(){                                   // reprogramación sin c
 function institutionCriticalClusters(){
   const i=typeof currentInstitution==='function'?currentInstitution():null;if(!i)return [];
   const c=institutionCalendar(i),t0=today();
-  return c.examWeeks.filter(w=>w.end>=t0).map((w,n)=>({start:w.start,end:w.end,
+  return c.examWeeks.filter(w=>w.end>=t0).map((w,n)=>({start:w.start,end:w.end,fromInstitution:true,
     events:[{id:'inst-exam-'+n,title:w.label,type:'evaluacion',courseId:'',institution:true}]}));
+}
+function mergeCriticalClusters(groups){
+  const sorted=groups.slice().sort((a,b)=>a.start.localeCompare(b.start)||a.end.localeCompare(b.end)),out=[];
+  sorted.forEach(g=>{
+    const inst=g.fromInstitution===true||g.events.some(e=>e.institution),last=out[out.length-1];
+    if(last&&diffDays(last.end,g.start)<=2){
+      if(g.start<last.start)last.start=g.start;
+      if(g.end>last.end)last.end=g.end;
+      const seen=new Set(last.events.map(e=>e.id));
+      g.events.forEach(e=>{if(!seen.has(e.id)){seen.add(e.id);last.events.push(e)}});
+      if(inst)last.fromInstitution=true;
+    }else out.push({start:g.start,end:g.end,events:g.events.slice(),fromInstitution:inst});
+  });
+  return out;
 }
 function criticalClusters(){
   const t0=today(),ev=S.events.filter(e=>e.type!=='otro'&&e.date>=t0).sort((a,b)=>a.date.localeCompare(b.date));
@@ -74,7 +88,7 @@ function criticalClusters(){
     const g=out[out.length-1];
     if(g&&diffDays(g.end,e.date)<=4){g.events.push(e);g.end=e.date}else out.push({start:e.date,end:e.date,events:[e]});
   });
-  return out.concat(institutionCriticalClusters());
+  return mergeCriticalClusters(out.concat(institutionCriticalClusters()));
 }
 function applyEarly(ids){
   const set=ids.split(',');S.events.forEach(e=>{if(set.includes(e.id))e.early=true});
@@ -90,15 +104,21 @@ function criticalHtml(){
   const t0=today();
   return criticalClusters().filter(g=>diffDays(t0,g.start)<=28).map(g=>{
     const real=g.events.filter(e=>!e.institution);
+    const inst=g.fromInstitution===true||g.events.some(e=>e.institution);
     const allEarly=real.length>0&&real.every(e=>e.early),ids=real.map(e=>e.id).join(',');
-    const names=g.events.map(e=>e.institution?esc(e.title):`${esc(cname(e.courseId))} (${TYPE_LABEL[e.type].toLowerCase()})`).join(', ');
+    const names=real.map(e=>`${esc(cname(e.courseId))} (${TYPE_LABEL[e.type].toLowerCase()})`).join(', ');
     const f=firstTaskDate(g.events);
     const low=S.consent&&S.consent.health&&recentLow();
-    return `<div class="banner go"><b>Semana exigente a la vista: ${dshort(g.start)} – ${dshort(g.end)}</b><br>
-      Se juntan ${g.events.length} fechas importantes en pocos días: ${names}.<br>
-      ${!real.length?`El calendario institucional marca este período como exigente${f?`; tu preparación parte el ${dshort(f)}`:''}.`
-        :(allEarly?`Ya reservé margen extra${f?`: tu preparación parte el ${dshort(f)}`:''}. Nada más que hacer por ahora.`
-        :'Conviene empezar antes: puedo adelantar el inicio de la preparación y repartirla en más días, con micro-tareas más livianas.')}
+    const fechas=real.length===1?'1 fecha importante':`${real.length} fechas importantes`;
+    const detalle=!real.length
+      ?`<b>Semana de certámenes de la UdeC: ${dshort(g.start)} – ${dshort(g.end)}.</b><br>
+        El calendario institucional marca este período como exigente${f?`; tu preparación parte el ${dshort(f)}`:''}.`
+      :`<b>Semana exigente a la vista: ${dshort(g.start)} – ${dshort(g.end)}</b><br>
+        ${real.length===1?`Hay ${fechas} en este tramo`:`Se juntan ${fechas} en pocos días`}: ${names}.<br>
+        ${inst?'Coincide con la semana de certámenes de la UdeC.<br>':''}
+        ${allEarly?`Ya reservé margen extra${f?`: tu preparación parte el ${dshort(f)}`:''}. Nada más que hacer por ahora.`
+        :'Conviene empezar antes: puedo adelantar el inicio de la preparación y repartirla en más días, con micro-tareas más livianas.'}`;
+    return `<div class="banner go">${detalle}
       ${low?'<br>Además tus últimos días vienen pesados: cuida tus pausas y mira las opciones de apoyo.':''}
       <div class="row" style="margin-top:8px">${!real.length||allEarly?'':`<button class="btn" onclick="applyEarly('${ids}')">Reservar margen extra</button>`}
       ${low?`<button class="btn sec" onclick="go('apoyo')">Ver apoyo</button>`:''}</div></div>`;

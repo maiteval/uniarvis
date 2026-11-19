@@ -166,7 +166,7 @@ const fs=require('fs');
   await p.evaluate(()=>{weekStart=mondayOf(today());go('semana')});
   const semana=await text();
   ok('Semana muestra certámenes, recesos y feriados',semana.includes('Semanas de certámenes')&&semana.includes('Receso')&&semana.includes('Feriado'));
-  ok('semanas de certámenes cuentan como semanas críticas',semana.includes('Semana exigente')&&semana.includes('certámenes'));
+  ok('semanas de certámenes avisan como semana crítica',semana.includes('Semana de certámenes de la UdeC')&&semana.includes('certámenes'));
   const sinTarea=await p.evaluate(()=>institutionNoTaskDates());
   ok('hay recesos y feriados de ejemplo relativos a hoy',sinTarea.length>=3,JSON.stringify(sinTarea));
   await p.evaluate(()=>{

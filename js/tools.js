@@ -81,6 +81,7 @@ function pomAdvance(now=Date.now(),natural=true,quiet=false){
     if(last==='focus'&&natural&&!quiet&&typeof arvisCelebrar==='function')arvisCelebrar('¡Ciclo terminado! Buen trabajo.','pomodoro');
     save();
     if(!quiet&&(typeof tab==='undefined'||tab==='herramientas')&&typeof render==='function')render();
+    pomFocusRefresh();
   }
   return p;
 }
@@ -92,7 +93,7 @@ function pomStart(force){
   }
   pomLimitPrompt=false;pomAwayPrompt=false;
   if(p.phase==='focus')pomStartMsg=true;
-  p.endsAt=Date.now()+Math.max(0,p.leftMs||pomDuration(p));p.running=true;save();render();pomodoroTick();
+  p.endsAt=Date.now()+Math.max(0,p.leftMs||pomDuration(p));p.running=true;save();render();pomodoroTick();pomFocusOpen();
 }
 function pomEscape(keep){
   pomAwayPrompt=false;pomAway=false;
@@ -103,14 +104,14 @@ function pomEscape(keep){
 }
 function pomPause(){
   const p=pomCfg();if(!p.running)return;
-  p.leftMs=pomRemaining(p);p.endsAt=null;p.running=false;save();render();
+  p.leftMs=pomRemaining(p);p.endsAt=null;p.running=false;save();render();pomFocusRefresh();
 }
 function pomReset(){
   const p=pomCfg(),early=p.phase==='focus'&&p.running;
   p.running=false;p.endsAt=null;p.leftMs=pomDuration(p);
   pomLimitPrompt=false;pomAwayPrompt=false;pomStartMsg=false;
   if(early&&arvisOn())arvisCelebrar('Lo que alcanzaste igual cuenta','pomodoro');
-  save();render();
+  save();render();pomFocusRefresh();
 }
 function pomSkip(){
   const p=pomCfg(),now=Date.now(),leavingFocus=p.phase==='focus';
@@ -118,7 +119,7 @@ function pomSkip(){
   p.leftMs=pomDuration(p);p.endsAt=p.running?now+p.leftMs:null;
   pomLimitPrompt=false;pomAwayPrompt=false;pomStartMsg=!leavingFocus;
   if(leavingFocus&&arvisOn())arvisCelebrar('Lo que alcanzaste igual cuenta','pomodoro');
-  save();render();
+  save();render();pomFocusRefresh();
 }
 function pomSetConfig(key,val){
   const p=pomCfg(),limits={focusMin:[1,180],shortMin:[1,180],longMin:[1,180],longEvery:[2,12]},lim=limits[key];
@@ -148,11 +149,30 @@ function pomTargetOptions(){
 function pomodoroTick(){
   const p=pomCfg();
   if(p.running&&p.endsAt!=null&&p.endsAt<=Date.now()){pomAdvance();return}
-  const t=$('#pom-time'),phase=$('#pom-phase'),bar=$('#pom-progress');
-  if(t)t.textContent=pomClock(pomRemaining(p));
-  if(phase)phase.textContent=`${POM_PHASES[p.phase]} · ${pomCount(p)} de ${p.longEvery}`;
-  if(bar)bar.style.setProperty('--f',`${100-pomRemaining(p)/pomDuration(p)*100}%`);
+  const phase=`${POM_PHASES[p.phase]} · ${pomCount(p)} de ${p.longEvery}`,filled=`${100-pomRemaining(p)/pomDuration(p)*100}%`;
+  document.querySelectorAll('#pom-time,[data-pom-time]').forEach(el=>{el.textContent=pomClock(pomRemaining(p))});
+  document.querySelectorAll('#pom-phase,[data-pom-phase]').forEach(el=>{el.textContent=phase});
+  document.querySelectorAll('#pom-progress,[data-pom-progress]').forEach(el=>{el.style.setProperty('--f',filled)});
   if(pomStartMsg&&arvisOn()&&!arvisMomento&&(typeof tab==='undefined'||tab==='herramientas')&&typeof render==='function')render();
+}
+function pomFocusOpen(){
+  if(typeof focusOpen!=='function')return;
+  if(focusKind()==='pomodoro'){pomFocusRefresh();return}
+  focusOpen({kind:'pomodoro',title:'Pomodoro',content:pomFocusHtml});
+}
+function pomFocusRefresh(){if(focusKind()==='pomodoro'&&typeof focusRender==='function')focusRender()}
+function pomFocusHtml(){
+  const p=pomCfg();
+  return `<div class="focus-pom">
+    <b class="focus-pom-clock" data-pom-time>${pomClock(pomRemaining(p))}</b>
+    <div class="focus-pom-phase" data-pom-phase>${POM_PHASES[p.phase]} · ${pomCount(p)} de ${p.longEvery}</div>
+    <div class="pom-bar" data-pom-progress style="--f:0%" aria-hidden="true"></div>
+    <div class="focus-actions">
+      <button class="btn" data-focus-id="pom-focus-main" onclick="${p.running?'pomPause()':'pomStart()'}">${p.running?'Pausar':'Reanudar'}</button>
+      <button class="btn sec" data-focus-id="pom-focus-reset" onclick="pomReset()">Reiniciar</button>
+      <button class="btn sec" data-focus-id="pom-focus-skip" onclick="pomSkip()">Saltar fase</button>
+    </div>
+  </div>`;
 }
 function pomodoroHtml(){
   const p=pomCfg(),breath=p.phase!=='focus';
@@ -164,6 +184,7 @@ function pomodoroHtml(){
       <button class="btn sec" data-focus-id="pom-pause" onclick="pomPause()" ${p.running?'':'disabled'}>Pausar</button>
       <button class="btn sec" data-focus-id="pom-reset" onclick="pomReset()">Reiniciar</button>
       <button class="btn sec" data-focus-id="pom-skip" onclick="pomSkip()">Saltar fase</button></div>
+    ${p.running?`<div class="pom-full-row"><button class="btn sec" data-focus-id="pom-full" onclick="pomFocusOpen()">Pantalla completa</button></div>`:''}
     ${breath?`<div class="pom-breath"><span>Descanso: si quieres, haz la respiración por defecto de Bienestar (exhalación larga 4-6).</span><button class="btn sec" onclick="goBreath('larga')">Respirar</button></div>`:''}
     <details class="pom-settings"><summary><span class="pom-chevron" aria-hidden="true">▸</span>Configuración y registro</summary>
       <div class="pom-config-grid">
@@ -297,9 +318,9 @@ function startFlashcards(){
   const due=flashcardsDue(d,today()).slice(0,fcCfg().limit);
   if(!due.length)return toast('Por hoy no hay tarjetas que tocar en este mazo.');
   fcSession={deckId:d.id,queue:due.map(c=>c.id),reviewed:0,tomorrow:0,correct:0,total:due.length};
-  fcShow=false;fcEditId='';fcStreak=0;fcMomento=null;render();
+  fcShow=false;fcEditId='';fcStreak=0;fcMomento=null;render();fcFocusOpen();
 }
-function showFlashcardAnswer(){fcShow=true;render()}
+function showFlashcardAnswer(){fcShow=true;render();fcFocusRefresh()}
 function flashcardAnswerNow(knew){
   const d=fcCfg().decks.find(x=>x.id===fcSession.deckId),id=fcSession.queue[0],c=d&&d.cards.find(x=>x.id===id);
   if(!c){fcSession=null;render();return}
@@ -317,17 +338,42 @@ function flashcardAnswerNow(knew){
     fcMomento={estado:'normal',mensaje:'Esa cuesta. La volvemos a ver al final.',ts:Date.now()};
   }
   if(!fcSession.queue.length&&fcSession.reviewed>0&&typeof metricsTrack==='function')metricsTrack('flashcards_repasadas');
-  save();render();
+  save();render();fcFocusRefresh();
 }
 function finishFlashcards(){
   if(fcSession&&fcSession.reviewed>0&&fcSession.queue.length&&typeof metricsTrack==='function')metricsTrack('flashcards_repasadas');
+  if(focusKind()==='flashcards'&&typeof focusClose==='function')focusClose();
   fcSession=null;fcShow=false;fcStreak=0;fcMomento=null;render();
+}
+function fcFocusOpen(){
+  if(typeof focusOpen!=='function'||!fcSession||focusKind()==='flashcards')return;
+  const d=fcCfg().decks.find(x=>x.id===fcSession.deckId);
+  focusOpen({kind:'flashcards',title:'Flashcards'+(d?' · '+d.name:''),content:fcFocusHtml});
+}
+function fcFocusRefresh(){if(focusKind()==='flashcards'&&typeof focusRender==='function')focusRender()}
+function fcFocusHtml(){
+  if(fcSession&&!fcSession.queue.length)return `<div class="focus-fc">
+    <div class="focus-fc-progress">Resumen del repaso</div>
+    <div class="banner info">Repasaste <b>${fcSession.reviewed}</b> tarjeta(s). Vuelven mañana <b>${fcSession.tomorrow}</b>.</div>
+    <div class="focus-fc-actions"><button class="btn" data-focus-id="fc-focus-close" onclick="finishFlashcards()">Cerrar</button></div></div>`;
+  const F=fcCfg(),d=F.decks.find(x=>x.id===fcSession.deckId),c=d&&d.cards.find(x=>x.id===fcSession.queue[0]);
+  if(!c){fcSession=null;render();return ''}
+  return `<div class="focus-fc">
+    <div class="focus-fc-progress">Quedan ${fcSession.queue.length} de ${fcSession.total} tarjeta(s) · ${esc(d.name)}</div>
+    <div class="focus-fc-card"><div class="tools-pre">${esc(c.front)}</div>
+      ${fcShow?`<hr><div class="tools-pre mute">${esc(c.back)}</div>`:''}</div>
+    <div class="focus-fc-actions">${fcShow
+      ?`<button class="btn" data-focus-id="fc-focus-knew" onclick="flashcardAnswerNow(true)">La sabía</button>
+        <button class="btn sec" data-focus-id="fc-focus-unknown" onclick="flashcardAnswerNow(false)">No la sabía</button>`
+      :`<button class="btn" data-focus-id="fc-focus-show" onclick="showFlashcardAnswer()">Mostrar respuesta</button>`}</div>
+  </div>`;
 }
 function fcStudyHtml(){
   const F=fcCfg();
   if(fcSession&&!fcSession.queue.length)return `<div class="card"><h3>Resumen del repaso</h3>
     <div class="banner info">Repasaste <b>${fcSession.reviewed}</b> tarjeta(s). Vuelven mañana <b>${fcSession.tomorrow}</b>.</div>
-    <button class="btn sec" data-focus-id="fc-finish" onclick="finishFlashcards()">Cerrar resumen</button></div>`;
+    <div class="row"><button class="btn sec" data-focus-id="fc-finish" onclick="finishFlashcards()">Cerrar resumen</button>
+      <button class="btn sec" onclick="fcFocusOpen()">Ver en pantalla completa</button></div></div>`;
   if(!fcSession)return `<div class="fc-study-row"><button class="btn" data-focus-id="fc-study" onclick="startFlashcards()">Estudiar lo que toca hoy</button>
     <span class="mute">Tope: ${F.limit} tarjeta(s) por sesión.</span></div>`;
   const d=F.decks.find(x=>x.id===fcSession.deckId),c=d&&d.cards.find(x=>x.id===fcSession.queue[0]);
@@ -339,7 +385,8 @@ function fcStudyHtml(){
         <div class="row" style="margin-top:10px"><button class="btn" data-focus-id="fc-knew" onclick="flashcardAnswerNow(true)">La sabía</button>
         <button class="btn sec" data-focus-id="fc-unknown" onclick="flashcardAnswerNow(false)">No la sabía</button></div>`
       :'<button class="btn sec" data-focus-id="fc-show" onclick="showFlashcardAnswer()">Mostrar respuesta</button>'}
-    </div></div>`;
+    </div>
+    <div class="row"><button class="btn sec" onclick="fcFocusOpen()">Continuar en pantalla completa</button></div></div>`;
 }
 function flashcardsHtml(){
   const F=fcCfg(),decks=F.decks,active=fcActiveDeck(),courseOpts=sel=>`<option value="">Sin ramo</option>`+S.courses.map(c=>`<option value="${c.id}" ${sel===c.id?'selected':''}>${esc(c.name)}</option>`).join('');

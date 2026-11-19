@@ -86,7 +86,7 @@ const CHAT_HELP_KEYS=[
   [/tema|apariencia|modo oscuro|color/,'tema'],[/perfil/,'perfil'],[/apoyo|ayuda profesional|psicolog/,'apoyo'],[/inicio/,'inicio']
 ];
 function chatHelpKey(t){const hit=CHAT_HELP_KEYS.find(([rx])=>rx.test(t));return hit?hit[1]:null}
-const CHAT_TAB_LABEL={hoy:'Hoy',semana:'Semana',ramos:'Mis ramos',syllabus:'Syllabus',notas:'Notas',herramientas:'Herramientas',salud:'Carga por semana',
+const CHAT_TAB_LABEL={hoy:'Hoy',semana:'Semana',ramos:'Ramos',syllabus:'Fechas',notas:'Notas',herramientas:'Herramientas',salud:'Carga por semana',
   checkin:'Check-in',respiracion:'Respiración',pausas:'Pausas',apoyo:'Apoyo',amigos:'Amigos',perfil:'Perfil',tema:'Apariencia',privacidad:'Privacidad',inicio:'Inicio',cuenta:'Cuenta'};
 const chatGoAction=k=>({label:'Ir a '+(CHAT_TAB_LABEL[k]||k),go:k});
 const CHAT_CRISIS=/suicid|matarme|quitarme la vida|no quiero vivir|hacerme dano|autolesion|cortarme|desaparecer para siempre|no vale la pena vivir/;

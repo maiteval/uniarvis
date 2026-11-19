@@ -3,8 +3,8 @@
 const SECTIONS=[
   {key:'inicio',label:'Inicio',tabs:[]},
   {key:'planificacion',label:'Planificación',tabs:[['hoy','Hoy'],['semana','Semana']]},
-  {key:'academico',label:'Académico',tabs:[['ramos','Mis ramos y horario'],['syllabus','Syllabus y fechas'],['notas','Notas y ponderaciones'],['herramientas','Herramientas'],['salud','Carga por semana']]},
-  {key:'bienestar',label:'Bienestar',tabs:[['checkin','Check-in'],['respiracion','Respiración y meditaciones'],['pausas','Pausas rápidas'],['apoyo','Apoyo']]},
+  {key:'academico',label:'Académico',tabs:[['ramos','Ramos'],['syllabus','Fechas'],['notas','Notas'],['herramientas','Herramientas'],['salud','Carga por semana']]},
+  {key:'bienestar',label:'Bienestar',tabs:[['checkin','Check-in'],['respiracion','Respiración'],['pausas','Pausas rápidas'],['apoyo','Apoyo']]},
   {key:'social',label:'Social',tabs:[['amigos','Amigos']]},
   {key:'ajustes',label:'Ajustes',tabs:[['perfil','Perfil'],['cuenta','Cuenta'],['tema','Apariencia'],['privacidad','Privacidad'],['ejemplos','Datos de ejemplo']]}
 
@@ -96,10 +96,10 @@ function renderCore(){
         const el=document.querySelector('[data-scroll-id="'+String(id).replace(/"/g,'\\"')+'"]');
         if(el){try{el.scrollTop=top;el.scrollLeft=left}catch(e){}}
       });
-      try{window.scrollTo(0,winY)}catch(e){}
+      try{window.scrollTo({top:winY,left:0,behavior:'instant'})}catch(e){}
     }else{
       app.classList.remove('route-enter');void app.offsetWidth;app.classList.add('route-enter');
-      try{window.scrollTo(0,0)}catch(e){}
+      try{window.scrollTo({top:0,left:0,behavior:'instant'})}catch(e){}
       lastRenderKey=key;
     }
     if(typeof placeHelpButton==='function')placeHelpButton(helpKey);

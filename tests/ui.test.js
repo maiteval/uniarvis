@@ -81,11 +81,11 @@ const fs=require('fs');
   await p.locator('.mode-btn').filter({hasText:'Oscuro'}).click();
 
   // 1c. Navegación por secciones y URL
-  await open('Académico','Notas y ponderaciones');
+  await open('Académico','Notas');
   ok('la URL refleja la subsección',p.url().endsWith('#/academico/notas'),p.url());
   await p.locator('.brand').click();
   await p.goBack();
-  ok('Atrás vuelve a la subsección anterior',(await p.textContent('#app')).includes('Notas y ponderaciones'));
+  ok('Atrás vuelve a la subsección anterior',(await p.textContent('#app')).includes('Notas'));
   await open('Ajustes','Perfil');
   await p.fill('#pf-name','Maite');await p.fill('#pf-career','Ingeniería');await p.click('text=Guardar cambios');
   ok('el perfil se puede editar',await p.evaluate(()=>S.profile.name==='Maite'&&S.profile.career==='Ingeniería'));
@@ -113,7 +113,7 @@ const fs=require('fs');
   await open('Ajustes','Datos de ejemplo');
   await p.click('text=Cargar datos de ejemplo');
   await onboard();
-  await open('Académico','Mis ramos y horario');
+  await open('Académico','Ramos');
   ok('Ramos mantiene visible Cargar datos de ejemplo',await p.locator('[data-focus-id="load-demo"]').count()===1);
   const dif=await p.evaluate(()=>({
     label:document.querySelector('label[for="cd"]').textContent.trim(),
@@ -124,7 +124,7 @@ const fs=require('fs');
   ok('dificultad con etiqueta, pistas y valores numéricos',dif.label==='Dificultad percibida'&&dif.listLabel==='Dificultad percibida'&&
     dif.opts.join(',')==='1|1 · Muy fácil,2|2 · Fácil,3|3 · Media,4|4 · Difícil,5|5 · Muy difícil'&&
     dif.help.startsWith('La dificultad percibida es qué tan pesado sientes el ramo, de 1 a 5.'),JSON.stringify(dif));
-  await open('Académico','Syllabus y fechas');
+  await open('Académico','Fechas');
   ok('Syllabus mantiene visible Cargar datos de ejemplo',await p.locator('[data-focus-id="load-demo"]').count()===1);
   await open('Planificación','Hoy');
   const base=await p.evaluate(()=>({tasks:S.tasks.length,sizes:[...new Set(S.tasks.map(t=>t.minutes))].sort((a,b)=>a-b),
@@ -289,9 +289,9 @@ const fs=require('fs');
   await open('Ajustes','Datos de ejemplo');await p.click('text=Cargar datos de ejemplo');
   await onboard();
   const screens=[['inicio','Inicio'],['hoy','Planificación','Hoy'],['semana','Planificación','Semana'],
-    ['ramos','Académico','Mis ramos y horario'],['syllabus','Académico','Syllabus y fechas'],['notas','Académico','Notas y ponderaciones'],
+    ['ramos','Académico','Ramos'],['syllabus','Académico','Fechas'],['notas','Académico','Notas'],
     ['herramientas','Académico','Herramientas'],['salud','Académico','Carga por semana'],
-    ['checkin','Bienestar','Check-in'],['respiracion','Bienestar','Respiración y meditaciones'],['pausas','Bienestar','Pausas rápidas'],['apoyo','Bienestar','Apoyo'],
+    ['checkin','Bienestar','Check-in'],['respiracion','Bienestar','Respiración'],['pausas','Bienestar','Pausas rápidas'],['apoyo','Bienestar','Apoyo'],
     ['amigos','Social'],['perfil','Ajustes','Perfil'],['tema','Ajustes','Apariencia'],['privacidad','Ajustes','Privacidad'],['ejemplos','Ajustes','Datos de ejemplo']];
   for(const [k,sec,sub] of screens){
     await open(sec,sub);
@@ -324,7 +324,7 @@ const fs=require('fs');
   const revisarMovil=async ancho=>{
     await p.setViewportSize({width:ancho,height:800});
     await p.evaluate(()=>{if(S.courses[0]){S.courses[0].origin='udec-demo';S.certamen.topicsByCourse={};save();render()}});
-    await open('Académico','Mis ramos y horario');
+    await open('Académico','Ramos');
     const r=await p.evaluate(()=>{
       const row=document.querySelector('.course-row');if(!row)return null;
       const main=row.querySelector('.course-main').getBoundingClientRect(),diff=row.querySelector('.diff-field').getBoundingClientRect();
@@ -336,7 +336,7 @@ const fs=require('fs');
     });
     ok('Mis ramos sin desborde en '+ancho+'px',r&&r.sw<=ancho+2,String(r&&r.sw));
     ok('Mis ramos en 2 filas, etiqueta y dificultad legible en '+ancho+'px',r&&r.filas&&r.sel>=128&&/^[1-5] · /.test(r.texto)&&r.etiqueta==='Dificultad percibida'&&r.pending&&r.contraste==='rgb(138, 90, 0)'&&r.sinTag&&r.padding==='12px',JSON.stringify(r));
-    await open('Académico','Syllabus y fechas');
+    await open('Académico','Fechas');
     const s=await p.evaluate(()=>{
       const input=document.getElementById('syl-file'),label=document.querySelector('label[for="syl-file"]'),name=input.closest('.file-pick').querySelector('.file-name');
       const ec=document.getElementById('ec'),card=ec.closest('.card').getBoundingClientRect();
