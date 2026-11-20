@@ -1,14 +1,17 @@
 /* Service worker: permite instalar la app y usarla sin internet.
    Estrategia: red primero (siempre la última versión) y, si no hay conexión, lo guardado. */
-const CACHE = 'entrenador-academico-v10';
+const CACHE = 'entrenador-academico-v11';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
-  'js/util.js', 'js/focus.js', 'js/ics.js', 'js/crypto.js', 'js/state.js', 'js/institutions.js', 'js/institution-data.js', 'js/evidence.js', 'js/capacity.js', 'js/planner.js', 'js/wellbeing.js', 'js/arvis.js',
+  'js/util.js', 'js/focus.js', 'js/ics.js', 'js/crypto.js', 'js/state.js', 'js/institutions.js', 'js/institution-data.js', 'js/evidence.js', 'js/capacity.js', 'js/planner.js', 'js/wellbeing.js', 'js/arvis.js', 'js/logros.js',
   'js/syllabus.js', 'js/tools.js', 'js/config.js', 'js/social-mock.js', 'js/social.js', 'js/metrics.js', 'js/actions.js', 'js/ayuda.js', 'js/help-ui.js', 'js/chatbot.js', 'js/views.js', 'js/app.js',
   'vendor/pdf.min.js', 'vendor/pdf.worker.min.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
   'icons/arvis/arvis-energia.svg', 'icons/arvis/arvis-normal.svg', 'icons/arvis/arvis-celebrando.svg',
-  'icons/arvis/arvis-estudiando.svg', 'icons/arvis/arvis-preocupado.svg', 'icons/arvis/arvis-cansado.svg', 'icons/arvis/arvis-descansando.svg'
+  'icons/arvis/arvis-estudiando.svg', 'icons/arvis/arvis-preocupado.svg', 'icons/arvis/arvis-cansado.svg', 'icons/arvis/arvis-descansando.svg',
+  'icons/arvis/items/gorro-lana.svg', 'icons/arvis/items/birrete.svg', 'icons/arvis/items/gorro-dormir.svg', 'icons/arvis/items/corona-flores.svg',
+  'icons/arvis/items/lentes-sol.svg', 'icons/arvis/items/lentes-redondos.svg', 'icons/arvis/items/capa.svg', 'icons/arvis/items/mochila.svg',
+  'icons/arvis/items/audifonos.svg', 'icons/arvis/items/taza-cafe.svg', 'icons/arvis/items/lapiz-gigante.svg'
 ];
 
 self.addEventListener('install', e => {

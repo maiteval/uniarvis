@@ -827,8 +827,9 @@ function viewTema(){
     <p class="mute" style="margin-bottom:0">El modo claro suaviza los fondos y mantiene el contraste para leer; el oscuro cuida la vista con poca luz.</p>
   </div>
   <div class="card"><h3>Arvis</h3>
-    <label class="mute"><input type="checkbox" ${S.settings.arvis!==false?'checked':''} onchange="setArvis(this.checked)"> Mostrar a Arvis</label>
+    <label class="mute"><input type="checkbox" ${arvisOn()?'checked':''} onchange="setArvis(this.checked)"> Mostrar a Arvis</label>
     <p class="mute" style="margin:6px 0 0">Aparece en el inicio y en algunos momentos clave. Si lo apagas, la app sigue igual que antes.</p>
+    <button class="btn sec" type="button" style="margin-top:10px" onclick="go('arvis')">Personalizar a Arvis</button>
   </div>
   <div class="card"><h3>Vista previa</h3>
     <div class="preview">

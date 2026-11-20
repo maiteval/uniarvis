@@ -29,6 +29,7 @@ function saveCheckin(){
   save();replanAll();
   const after=S.tasks.filter(t=>t.date===t0&&!t.done).length,moved=Math.max(0,before-after),low=lowMode(t0);
   S.adapt={date:t0,n:moved,low};save();ciEdit=false;
+  if(typeof logrosRevisar==='function')logrosRevisar('checkin');
   toast(low?`Hoy vamos livianos: dejé solo lo esencial y moví ${moved} micro-tarea(s) a otros días.`:`Check-in guardado. Capacidad de hoy: ${capFor(t0)} min.`);
   render();
 }

@@ -12,6 +12,31 @@ const universityOk=v=>UNIVERSITIES_CHILE.indexOf(v)>=0||v===UNIVERSITY_OTHER||v=
 const CHRONOTYPES=[['manana','Mañana'],['tarde','Tarde'],['noche','Noche'],['no_se','No sé']];
 const chronotypeOk=v=>CHRONOTYPES.some(x=>x[0]===v);
 const chronotypeLabel=v=>CHRONOTYPES.find(x=>x[0]===v)?.[1]||'No sé';
+const ARVIS_SLOTS=['cabeza','cara','espalda','mano'];
+const ARVIS_ITEMS_BY_SLOT={
+  cabeza:['gorro-lana','birrete','gorro-dormir','corona-flores'],
+  cara:['lentes-sol','lentes-redondos'],
+  espalda:['capa','mochila'],
+  mano:['audifonos','taza-cafe','lapiz-gigante']
+};
+const ARVIS_ITEM_IDS=ARVIS_SLOTS.reduce((a,s)=>a.concat(ARVIS_ITEMS_BY_SLOT[s]),[]);
+const ARVIS_ITEM_SLOT=id=>ARVIS_SLOTS.find(s=>ARVIS_ITEMS_BY_SLOT[s].indexOf(id)>=0)||'';
+function cleanArvisConfig(v,profileReady){
+  const out={enabled:true,equipados:{cabeza:'',cara:'',espalda:'',mano:''},desbloqueados:[],vistos:[],usos:{onboarding:false,notas:false,certamen:false}};
+  if(typeof v==='boolean')out.enabled=v;
+  else if(v&&typeof v==='object'&&!Array.isArray(v)){
+    if(typeof v.enabled==='boolean')out.enabled=v.enabled;
+    if(v.equipados&&typeof v.equipados==='object'&&!Array.isArray(v.equipados))ARVIS_SLOTS.forEach(s=>{
+      const id=v.equipados[s];if(ARVIS_ITEM_SLOT(id)===s)out.equipados[s]=id;
+    });
+    ['desbloqueados','vistos'].forEach(k=>{
+      if(Array.isArray(v[k]))v[k].forEach(id=>{if(ARVIS_ITEM_IDS.indexOf(id)>=0&&out[k].indexOf(id)<0)out[k].push(id)});
+    });
+    if(v.usos&&typeof v.usos==='object')Object.keys(out.usos).forEach(k=>{if(v.usos[k]===true)out.usos[k]=true});
+  }
+  if(profileReady)out.usos.onboarding=true;
+  return out;
+}
 function freshPomodoro(){return {focusMin:25,shortMin:5,longMin:15,longEvery:4,sound:true,phase:'focus',running:false,endsAt:null,leftMs:1500000,pomodoros:0,target:'',completed:0,todayDate:'',todayMinutes:0,kindStreak:'',kindCount:0}}
 function freshFlashcards(){return {decks:[],activeDeckId:'',limit:20,correct:0}}
 function freshTools(){return {pomodoro:freshPomodoro(),flashcards:freshFlashcards()}}
@@ -101,7 +126,7 @@ function cleanAuth(a){
   const out={salt:a.salt,hash:a.hash,it:a.it,createdAt:a.createdAt};
   return validAuth(out)?out:null;
 }
-const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,theme:'cian',themeTouched:false,mode:'light',style:'calma',arvis:true,chronotype:'no_se'},lastPlan:null,
+const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,theme:'cian',themeTouched:false,mode:'light',style:'calma',arvis:cleanArvisConfig(null),chronotype:'no_se'},lastPlan:null,
   wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},support:{name:'',contact:''},profile:{name:'',career:'',university:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
   account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null},institutionConsentAt:null});
 function migrate(s){
@@ -123,7 +148,7 @@ function migrate(s){
   }
   if(!modeOk(s.settings.mode))s.settings.mode='light';
   if(!styleOk(s.settings.style))s.settings.style='hud';
-  if(typeof s.settings.arvis!=='boolean')s.settings.arvis=true;
+  s.settings.arvis=cleanArvisConfig(s.settings.arvis,!!(s.profile&&s.profile.name));
   if(!chronotypeOk(s.settings.chronotype))s.settings.chronotype='no_se';
   delete s.settings.max;                          // la capacidad máxima ahora se calcula cada día
   delete s.reviews;                               // reseñas de texto libre de versiones anteriores: ya no se guardan

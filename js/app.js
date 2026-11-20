@@ -6,7 +6,7 @@ const SECTIONS=[
   {key:'academico',label:'Académico',tabs:[['ramos','Ramos'],['syllabus','Fechas'],['notas','Notas'],['herramientas','Herramientas'],['salud','Carga por semana']]},
   {key:'bienestar',label:'Bienestar',tabs:[['checkin','Check-in'],['respiracion','Respiración'],['pausas','Pausas rápidas'],['apoyo','Apoyo']]},
   {key:'social',label:'Social',tabs:[['amigos','Amigos']]},
-  {key:'ajustes',label:'Ajustes',tabs:[['perfil','Perfil'],['cuenta','Cuenta'],['tema','Apariencia'],['privacidad','Privacidad'],['ejemplos','Datos de ejemplo']]}
+  {key:'ajustes',label:'Ajustes',tabs:[['perfil','Perfil'],['cuenta','Cuenta'],['tema','Apariencia'],['arvis','Arvis'],['privacidad','Privacidad'],['ejemplos','Datos de ejemplo']]}
 
 ];
 const ROUTE={
@@ -17,7 +17,7 @@ const ROUTE={
   checkin:{section:'bienestar',tab:'checkin'},bienestar:{section:'bienestar',tab:'checkin'},respiracion:{section:'bienestar',tab:'respiracion'},
   pausas:{section:'bienestar',tab:'pausas'},apoyo:{section:'bienestar',tab:'apoyo'},
   amigos:{section:'social',tab:'amigos'},
-  perfil:{section:'ajustes',tab:'perfil'},cuenta:{section:'ajustes',tab:'cuenta'},tema:{section:'ajustes',tab:'tema'},apariencia:{section:'ajustes',tab:'tema'},
+  perfil:{section:'ajustes',tab:'perfil'},cuenta:{section:'ajustes',tab:'cuenta'},tema:{section:'ajustes',tab:'tema'},apariencia:{section:'ajustes',tab:'tema'},arvis:{section:'ajustes',tab:'arvis'},
   privacidad:{section:'ajustes',tab:'privacidad'},ejemplos:{section:'ajustes',tab:'ejemplos'}
 };
 const FIRST={inicio:'inicio',planificacion:'hoy',academico:'ramos',bienestar:'checkin',social:'amigos',ajustes:'perfil'};
@@ -132,6 +132,8 @@ function renderCore(){
   const who=S.profile&&S.profile.name?`<span class="hud-user"> · ${esc(S.profile.name)}</span>`:'';
   const brand=document.querySelector('.brand');
   if(brand)brand.innerHTML='U.A.R.V.I.S.'+who;
+  const arvisSlot=$('#arvis-header');
+  if(arvisSlot)arvisSlot.innerHTML=typeof arvisHeaderHtml==='function'?arvisHeaderHtml():'';
   if(section==='inicio'){
     $('#nav').innerHTML='';
     let mob=$('#mobile-nav');if(mob)mob.remove();
@@ -145,7 +147,7 @@ function renderCore(){
   }
   const views={inicio:viewInicio,hoy:viewHoy,semana:viewSemana,ramos:viewRamos,syllabus:viewSyllabus,notas:viewNotas,herramientas:viewTools,salud:viewSalud,
     checkin:viewCheckin,bienestar:viewBienestar,respiracion:viewRespiracion,pausas:viewPausas,apoyo:viewApoyo,
-    amigos:viewAmigos,perfil:viewPerfil,cuenta:viewCuenta,tema:viewTema,privacidad:viewPrivacidad,ejemplos:viewDatosEjemplo};
+    amigos:viewAmigos,perfil:viewPerfil,cuenta:viewCuenta,tema:viewTema,arvis:viewArvis,privacidad:viewPrivacidad,ejemplos:viewDatosEjemplo};
   const sec=SECTIONS.find(s=>s.key===section);
   let chips='';
   if(sec&&sec.tabs.length&&section!=='inicio'){

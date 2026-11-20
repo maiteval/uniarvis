@@ -88,6 +88,7 @@ function pomAdvance(now=Date.now(),natural=true,quiet=false){
     if(last&&natural)pomAlert(last,p.phase);
     if(last==='focus'&&natural&&typeof metricsTrack==='function')metricsTrack('pomodoro_completado');
     if(last==='focus'&&natural&&!quiet&&typeof arvisCelebrar==='function')arvisCelebrar('¡Ciclo terminado! Buen trabajo.','pomodoro');
+    if(last==='focus'&&natural&&typeof logrosRevisar==='function')logrosRevisar('pomodoro');
     save();
     if(!quiet&&(typeof tab==='undefined'||tab==='herramientas')&&typeof render==='function')render();
     pomFocusRefresh();
@@ -344,6 +345,7 @@ function flashcardAnswerNow(knew){
   if(knew){
     fcStreak++;fcSession.correct=(fcSession.correct||0)+1;
     S.tools.flashcards.correct=(S.tools.flashcards.correct||0)+1;fcMomento=null;
+    if(typeof logrosRevisar==='function')logrosRevisar('flashcards');
     if(fcStreak===3)arvisCelebrar('Tres seguidas. ¡Vas muy bien!','flashcards');
     else if(fcStreak===5)arvisCelebrar('Cinco seguidas. ¡Excelente!','flashcards');
   }else{

@@ -616,3 +616,52 @@ body.focus-open #toast{bottom:calc(78px + env(safe-area-inset-bottom,0px));z-ind
   .focus-fc-card{font-size:22px;padding:16px;max-height:52vh}
   .focus-breath-label{font-size:21px}
 }
+
+/* Arvis: botón del header, figura apilada y personalización */
+.arvis-header-slot{margin-left:auto;flex:0 0 auto;display:flex;align-items:center}
+.arvis-header-btn{position:relative;height:48px;padding:2px 8px 2px 2px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:flex;gap:6px;align-items:center;white-space:nowrap;cursor:pointer;box-shadow:var(--shadow-sm)}
+.arvis-header-btn:hover{border-color:var(--accent)}
+.arvis-header-label{font-size:12px;font-weight:700;color:var(--mute);text-transform:var(--text-transform-ui)}
+.arvis-nuevo{position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;background:var(--bad);box-shadow:0 0 0 2px var(--card)}
+.arvis-figura{position:relative;display:inline-block;width:var(--arvis-size,96px);height:calc(var(--arvis-size,96px)*1.2);line-height:0;flex:0 0 auto;vertical-align:middle}
+.arvis-figura img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain}
+.arvis-figura .arvis-back{z-index:0}
+.arvis-figura .arvis-base{z-index:1}
+.arvis-figura .arvis-item:not(.arvis-back){z-index:2}
+.arvis-card .arvis-figura{width:96px;height:115.2px}
+.arvis-card.arvis-md .arvis-figura{width:120px;height:144px}
+.arvis-card.arvis-sm .arvis-figura{width:56px;height:67.2px}
+.arvis-card .arvis-figura img{width:100%;height:100%;flex:none}
+.arvis-header-btn:focus-visible,.logro-item:focus-visible,.btn:focus-visible,.icon-btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.arvis-preview{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.arvis-preview .arvis-figura{width:200px;height:240px}
+.logro-grupo{margin-top:18px}
+.logro-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.logro-item{display:flex;gap:10px;align-items:flex-start;text-align:left;background:var(--bg-subtle);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px;color:var(--ink);cursor:pointer}
+.logro-item.on{background:var(--card);border-color:rgba(var(--accent-rgb),.45)}
+.logro-item.eq{border-color:var(--accent);box-shadow:var(--ring)}
+.logro-item:disabled{cursor:default;opacity:1}
+.logro-item-img{flex:0 0 44px;height:54px;display:grid;place-items:center;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.logro-item-img img{width:38px;height:46px;object-fit:contain}
+.logro-item:disabled .logro-item-img img{filter:grayscale(1);opacity:.35}
+.logro-item-copy{display:grid;gap:2px;min-width:0;font-size:13px;line-height:1.4}
+.logro-estado{color:var(--mute)}
+.logro-bar{height:6px;border-radius:99px;background:var(--bg);border:1px solid var(--line);overflow:hidden;margin-top:4px}
+.logro-bar span{display:block;height:100%;background:var(--accent)}
+.logro-lista{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.logro-fila{display:flex;gap:10px;background:var(--bg-subtle);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px}
+.logro-fila.on{border-color:rgba(var(--accent-rgb),.45)}
+.logro-fila>span:last-child{display:grid;gap:2px;min-width:0}
+.logro-marcador{color:var(--accent-strong);font-weight:700}
+.logro-aviso{position:fixed;right:20px;bottom:20px;z-index:15;display:flex;gap:12px;align-items:center;max-width:min(440px,calc(100vw - 40px));background:var(--card);border:1px solid var(--accent);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow-md)}
+.logro-aviso-copy b{color:var(--ink)}
+.logro-aviso-copy p{margin:4px 0 8px}
+@media (max-width:640px){
+  .hwrap{padding:10px 16px}
+  .arvis-header-btn{width:34px;height:34px;padding:2px;border-radius:10px}
+  .arvis-header-btn .arvis-figura{width:28px;height:33.6px}
+  .arvis-header-label{display:none}
+  .arvis-preview .arvis-figura{width:140px;height:168px}
+  .logro-aviso{left:12px;right:12px;bottom:calc(86px + env(safe-area-inset-bottom,0px))}
+  .logro-aviso .arvis-figura{width:56px;height:67.2px}
+}

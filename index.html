@@ -22,13 +22,14 @@ try{
 </head>
 <body>
 <a class="skip" href="#app">Saltar al contenido</a>
-<header><div class="hwrap"><span class="brand" role="button" tabindex="0" aria-label="Ir al inicio" onclick="go('inicio')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();go('inicio')}">U.A.R.V.I.S.</span><nav id="nav" aria-label="Navegación de secciones"></nav></div></header>
+<header><div class="hwrap"><span class="brand" role="button" tabindex="0" aria-label="Ir al inicio" onclick="go('inicio')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();go('inicio')}">U.A.R.V.I.S.</span><nav id="nav" aria-label="Navegación de secciones"></nav><span id="arvis-header" class="arvis-header-slot"></span></div></header>
 <main id="app" tabindex="-1" aria-label="Contenido principal"></main>
 <footer>Esta app es una guía de organización y autocuidado; no reemplaza a un profesional de la salud. ¿Necesitas hablar con alguien? <button class="lnk" onclick="go('apoyo')">Ver opciones de apoyo</button></footer>
 <div id="tour-root"></div>
 <div id="help-root"></div>
 <div id="chat-root"></div>
 <div id="focus-root"></div>
+<div id="logro-root"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script src="js/util.js"></script>
@@ -43,6 +44,7 @@ try{
 <script src="js/planner.js"></script>
 <script src="js/wellbeing.js"></script>
 <script src="js/arvis.js"></script>
+<script src="js/logros.js"></script>
 <script src="js/tools.js"></script>
 <script src="js/syllabus.js"></script>
 <script src="js/config.js"></script>

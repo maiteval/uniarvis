@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-label="Taza de café para Arvis">
+  <g stroke="#152234" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M150 162 H178 V184 Q178 196 164 196 Q150 196 150 184 Z" fill="#ef476f"/>
+    <path d="M178 168 Q190 168 190 178 Q190 188 178 188" fill="none"/>
+    <ellipse cx="164" cy="162" rx="14" ry="5" fill="#6f4e37"/>
+    <path d="M158 150 Q154 144 158 138 M170 150 Q166 144 170 138" fill="none"/>
+  </g>
+</svg>

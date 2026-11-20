@@ -30,6 +30,7 @@ function toggleTask(id){
     t.done=true;t.date=today();
     S.sessions.push({id:uid(),date:today(),courseId:t.courseId,minutes:t.minutes,taskId:t.id});
     if(typeof arvisCelebrar==='function')arvisCelebrar();
+    if(typeof logrosRevisar==='function')logrosRevisar('sesion');
   }else{t.done=false;S.sessions=S.sessions.filter(x=>x.taskId!==t.id)}
   save();
   if(doneToday()>=capFor(today()))replanAll();
@@ -46,7 +47,8 @@ function logFree(){
   if(!c||!(m>0))return toast('Elige un ramo y los minutos.');
   if(doneToday()>=capFor(today()))return toast('Hoy ya completaste tu capacidad. Descansar también es parte del plan.');
   S.sessions.push({id:uid(),date:today(),courseId:c,minutes:m});
-  if(typeof arvisCelebrar==='function')arvisCelebrar();save();
+  if(typeof arvisCelebrar==='function')arvisCelebrar();
+  if(typeof logrosRevisar==='function')logrosRevisar('sesion');save();
   if(doneToday()>=capFor(today()))replanAll();
   render();
 }
@@ -79,7 +81,9 @@ function registerProfile(){
   S.profile={name:name.slice(0,60),career:career.slice(0,80),university:registrationUniversity()};
   S.settings.chronotype=fieldChronotype('#reg-chronotype');
   toast(`Bienvenido/a, ${S.profile.name}.`);
+  if(typeof logrosMarcoUso==='function')logrosMarcoUso('onboarding');
   finishPersonalMode();
+  if(typeof logrosRevisar==='function')logrosRevisar('onboarding');
 }
 function profileUniversityField(fallback){
   if(typeof isInstitutional==='function'&&isInstitutional()){
@@ -112,6 +116,8 @@ function addGrade(cid){
   if(!Array.isArray(c.grades))c.grades=[];
   c.grades.push({id:uid(),name:name.slice(0,80),score:Math.round(score*100)/100,weight:Math.round(weight*100)/100});
   if(typeof metricsTrack==='function')metricsTrack('notas_calculadas');
+  if(typeof logrosMarcoUso==='function')logrosMarcoUso('notas');
+  if(typeof logrosRevisar==='function')logrosRevisar('notas');
   save();render();
 }
 function delGrade(cid,gid){const c=course(cid);if(!c)return;undoable('Nota eliminada.',()=>{c.grades=(c.grades||[]).filter(g=>g.id!==gid)})}
@@ -121,6 +127,8 @@ function setGrade(cid,gid,field,val){
   else if(field==='score'){const n=parseNum(val);if(isFinite(n))g.score=Math.round(n*100)/100}
   else if(field==='weight'){const n=parseNum(val);if(isFinite(n)&&n>=0&&n<=100)g.weight=Math.round(n*100)/100}
   if(typeof metricsTrack==='function')metricsTrack('notas_calculadas');
+  if(typeof logrosMarcoUso==='function')logrosMarcoUso('notas');
+  if(typeof logrosRevisar==='function')logrosRevisar('notas');
   save();render();
 }
 function setGradeOption(cid,field,val){
@@ -128,6 +136,8 @@ function setGradeOption(cid,field,val){
   if(field==='passGrade'){const n=parseNum(val);if(!isFinite(n)||n<1||n>7)return toast('La nota de aprobación debe estar entre 1,0 y 7,0.');c.passGrade=Math.round(n*100)/100}
   else if(field==='roundFinal')c.roundFinal=!!val;
   if(typeof metricsTrack==='function')metricsTrack('notas_calculadas');
+  if(typeof logrosMarcoUso==='function')logrosMarcoUso('notas');
+  if(typeof logrosRevisar==='function')logrosRevisar('notas');
   save();render();
 }
 function delCourse(id){
@@ -145,7 +155,8 @@ function delClass(id){undoable('Clase eliminada.',()=>{S.classes=S.classes.filte
 function addEvent(){
   const c=$('#ec').value,t=$('#et').value.trim(),d=$('#ed').value,ty=$('#ey').value;
   if(!c||!t||!d)return toast('Completa ramo, título y fecha.');
-  S.events.push({id:uid(),courseId:c,title:t,date:d,type:ty});replanAll();render();
+  S.events.push({id:uid(),courseId:c,title:t,date:d,type:ty});replanAll();
+  if(typeof logrosRevisar==='function')logrosRevisar('evaluaciones');render();
 }
 function delEvent(id){undoable('Fecha eliminada.',()=>{S.events=S.events.filter(e=>e.id!==id);S.tasks=S.tasks.filter(t=>t.eventId!==id||t.done)},()=>replanAll())}
 
@@ -220,7 +231,19 @@ function validState(j){
   }
   if(j.settings!==undefined){
     if(!j.settings||typeof j.settings!=='object'||Array.isArray(j.settings))return 'ajustes';
-    if(j.settings.arvis!==undefined&&typeof j.settings.arvis!=='boolean')return 'ajustes';
+    if(j.settings.arvis!==undefined){
+      const a=j.settings.arvis;
+      if(typeof a==='boolean'){}
+      else if(!a||typeof a!=='object'||Array.isArray(a))return 'ajustes';
+      else{
+        if(a.enabled!==undefined&&typeof a.enabled!=='boolean')return 'ajustes';
+        if(a.equipados!==undefined&&(!a.equipados||typeof a.equipados!=='object'||Array.isArray(a.equipados)))return 'ajustes';
+        if(a.equipados&&Object.keys(a.equipados).some(k=>ARVIS_SLOTS.indexOf(k)<0||a.equipados[k]!==undefined&&!str(a.equipados[k],40)))return 'ajustes';
+        for(const k of ['desbloqueados','vistos'])if(a[k]!==undefined&&(!Array.isArray(a[k])||a[k].some(x=>!str(x,40))))return 'ajustes';
+        if(a.usos!==undefined&&(!a.usos||typeof a.usos!=='object'||Array.isArray(a.usos)))return 'ajustes';
+        if(a.usos&&Object.keys(a.usos).some(k=>a.usos[k]!==true&&a.usos[k]!==false))return 'ajustes';
+      }
+    }
     if(j.settings.themeTouched!==undefined&&typeof j.settings.themeTouched!=='boolean')return 'ajustes';
     if(j.settings.chronotype!==undefined&&!chronotypeOk(j.settings.chronotype))return 'ajustes';
   }
@@ -261,7 +284,7 @@ function cleanState(j){
     ...(x.origin==='udec-demo'?{origin:x.origin,code:x.code,section:x.section}:{}),
     grades:(x.grades||[]).map(g=>({id:g.id,name:String(g.name||'').slice(0,80),...(g.score!=null?{score:+g.score}:{}),weight:+g.weight}))}));
   const ss=j.settings&&typeof j.settings==='object'?j.settings:{};
-  c.settings={min:int15(ss.min)?ss.min:60,theme:themeOk(ss.theme)?ss.theme:'cian',themeTouched:ss.themeTouched===true,mode:modeOk(ss.mode)?ss.mode:'light',style:styleOk(ss.style)?ss.style:'calma',arvis:ss.arvis!==false,chronotype:chronotypeOk(ss.chronotype)?ss.chronotype:'no_se'};
+  c.settings={min:int15(ss.min)?ss.min:60,theme:themeOk(ss.theme)?ss.theme:'cian',themeTouched:ss.themeTouched===true,mode:modeOk(ss.mode)?ss.mode:'light',style:styleOk(ss.style)?ss.style:'calma',arvis:cleanArvisConfig(ss.arvis),chronotype:chronotypeOk(ss.chronotype)?ss.chronotype:'no_se'};
   const a=j.account&&typeof j.account==='object'&&!Array.isArray(j.account)?j.account:null;
   const known=a&&(a.type==='personal'||a.type==='institucional');
   const knownInst=known&&a.type==='institucional'&&institutionById(a.institutionId);
@@ -414,7 +437,7 @@ function setStyle(id){
   S.settings.style=id;save();render();
 }
 function setArvis(on){
-  S.settings.arvis=!!on;save();render();
+  S.settings.arvis=cleanArvisConfig(S.settings.arvis);S.settings.arvis.enabled=!!on;save();render();
 }
 function openCourseFlashcards(courseId){
   const F=(S.tools&&S.tools.flashcards)||freshFlashcards();

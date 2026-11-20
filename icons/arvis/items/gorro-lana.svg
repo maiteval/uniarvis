@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-label="Gorro de lana para Arvis">
+  <g stroke="#152234" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" transform="rotate(-12 68 62)">
+    <path d="M42 56 Q42 24 68 22 Q92 22 92 56 Z" fill="#ef476f"/>
+    <circle cx="68" cy="20" r="9" fill="#ef476f"/>
+    <rect x="38" y="52" width="56" height="14" rx="7" fill="#ffd166"/>
+  </g>
+</svg>

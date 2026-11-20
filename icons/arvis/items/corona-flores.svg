@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-label="Corona de flores para Arvis">
+  <g stroke="#152234" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" transform="rotate(-10 66 54)">
+    <path d="M36 60 Q58 38 88 52" fill="none" stroke="#2e9e6a" stroke-width="4"/>
+    <circle cx="40" cy="57" r="8" fill="#ff5d8f"/><circle cx="40" cy="57" r="3" fill="#ffd166" stroke="none"/>
+    <circle cx="60" cy="45" r="9" fill="#ff9f1c"/><circle cx="60" cy="45" r="3" fill="#fff3b0" stroke="none"/>
+    <circle cx="80" cy="48" r="8" fill="#7bdff2"/><circle cx="80" cy="48" r="3" fill="#ffd166" stroke="none"/>
+  </g>
+</svg>

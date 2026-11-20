@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-label="Gorro de dormir para Arvis">
+  <g stroke="#152234" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" transform="rotate(-8 68 58)">
+    <path d="M42 56 Q46 24 72 26 Q92 30 92 54 L72 62 Z" fill="#8367c7"/>
+    <path d="M44 55 Q24 58 18 82 Q36 74 50 64 Z" fill="#a78bfa"/>
+    <rect x="42" y="52" width="52" height="13" rx="6.5" fill="#ffd166"/>
+    <circle cx="18" cy="82" r="9" fill="#f8fafc"/>
+  </g>
+</svg>

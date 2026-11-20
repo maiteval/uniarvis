@@ -39,9 +39,52 @@ const ARVIS_MENSAJES={
     'Hoy no se exige nada. Primero, respirar.'
   ]
 };
+const ARVIS_ITEMS={
+  'gorro-lana':{nombre:'Gorro de lana',articulo:'el',espacio:'cabeza',src:'icons/arvis/items/gorro-lana.svg'},
+  birrete:{nombre:'Birrete',articulo:'el',espacio:'cabeza',src:'icons/arvis/items/birrete.svg'},
+  'gorro-dormir':{nombre:'Gorro de dormir',articulo:'el',espacio:'cabeza',src:'icons/arvis/items/gorro-dormir.svg'},
+  'corona-flores':{nombre:'Corona de flores',articulo:'la',espacio:'cabeza',src:'icons/arvis/items/corona-flores.svg'},
+  'lentes-sol':{nombre:'Lentes de sol',articulo:'los',espacio:'cara',src:'icons/arvis/items/lentes-sol.svg'},
+  'lentes-redondos':{nombre:'Lentes redondos',articulo:'los',espacio:'cara',src:'icons/arvis/items/lentes-redondos.svg'},
+  capa:{nombre:'Capa',articulo:'la',espacio:'espalda',src:'icons/arvis/items/capa.svg'},
+  mochila:{nombre:'Mochila',articulo:'la',espacio:'espalda',src:'icons/arvis/items/mochila.svg'},
+  audifonos:{nombre:'Audífonos',articulo:'los',espacio:'mano',src:'icons/arvis/items/audifonos.svg'},
+  'taza-cafe':{nombre:'Taza de café',articulo:'la',espacio:'mano',src:'icons/arvis/items/taza-cafe.svg'},
+  'lapiz-gigante':{nombre:'Lápiz gigante',articulo:'el',espacio:'mano',src:'icons/arvis/items/lapiz-gigante.svg'}
+};
 let arvisMomento=null;
-const arvisOn=()=>!(typeof S!=='undefined'&&S&&S.settings&&S.settings.arvis===false);
+const arvisConfig=()=>{
+  const a=S&&S.settings&&S.settings.arvis;
+  return a&&typeof a==='object'&&!Array.isArray(a)?a:cleanArvisConfig(a);
+};
+const arvisOn=()=>arvisConfig().enabled!==false;
 const arvisPick=arr=>arr[Math.floor(Math.random()*arr.length)];
+function arvisFigura(estado,tamano,baseClass){
+  const size=Number(tamano)>0?Number(tamano):96;
+  const key=ARVIS_MENSAJES[estado]?estado:'normal';
+  const eq=arvisConfig().equipados||{};
+  const layer=slot=>{
+    const id=eq[slot],item=id&&ARVIS_ITEMS[id];
+    return item&&item.espacio===slot&&id!=='capa'&&id!=='mochila'?`<img class="arvis-item" src="${item.src}" alt="">`:'';
+  };
+  const back=eq.espalda&&ARVIS_ITEMS[eq.espalda]?`<img class="arvis-item arvis-back" src="${ARVIS_ITEMS[eq.espalda].src}" alt="">`:'';
+  const cara=key==='estudiando'?'':layer('cara');
+  const mano=key==='estudiando'||key==='celebrando'?'':layer('mano');
+  const bc=baseClass?' '+baseClass:'';
+  return `<span class="arvis-figura" style="--arvis-size:${size}px">
+    <img class="arvis-base${bc}" src="icons/arvis/arvis-${key}.svg" alt="">
+    ${back}${layer('cabeza')}${cara}${mano}
+  </span>`;
+}
+const ARVIS_ESTADOS_LABEL={energia:'Con energía',normal:'Aquí',cansado:'Cansado',descansando:'Descansando'};
+function arvisHeaderHtml(){
+  if(!arvisOn())return '';
+  const cfg=arvisConfig(),nuevo=(cfg.desbloqueados||[]).some(id=>(cfg.vistos||[]).indexOf(id)<0);
+  const estado=arvisEstadoDelDia(),label=ARVIS_ESTADOS_LABEL[estado]||'Arvis';
+  return `<button class="arvis-header-btn" type="button" aria-label="Personalizar a Arvis" title="Estado de hoy: ${esc(label)}" onclick="go('arvis')" data-focus-id="arvis-header">
+    ${arvisFigura(estado,34)}<span class="arvis-header-label">${esc(label)}</span>${nuevo?'<span class="arvis-nuevo" aria-hidden="true"></span>':''}
+  </button>`;
+}
 function arvisCheckinHoy(){
   const d=today();
   if(typeof diaryOn==='function'){
@@ -66,7 +109,7 @@ function arvis(estado,mensaje,opciones){
   const txt=mensaje||o.mensaje||arvisPick(ARVIS_MENSAJES[key]);
   const action=o.action?`<div class="arvis-action">${o.action}</div>`:'';
   return `<div class="arvis-card${o.mediano?' arvis-md':o.pequeno?' arvis-sm':''}${o.clase?' '+esc(o.clase):''}"${o.id?` id="${esc(o.id)}"`:''}>
-    <img src="icons/arvis/arvis-${key}.svg" alt="">
+    ${arvisFigura(key,o.mediano?120:o.pequeno?56:96)}
     <div class="arvis-bubble"><p>${esc(txt)}</p>${action}</div>
   </div>`;
 }
@@ -114,5 +157,5 @@ function arvisVacioHtml(kind){
   return arvis('normal',msgs[kind],{pequeno:true,id:'arvis-vacio-'+kind});
 }
 function arvisAvatarHtml(){
-  return arvisOn()?'<img class="arvis-avatar" src="icons/arvis/arvis-normal.svg" alt="">':'';
+  return arvisOn()?arvisFigura('normal',56,'arvis-avatar'):'';
 }

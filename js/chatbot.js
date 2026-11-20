@@ -251,7 +251,7 @@ function chatToggle(force){
 function chatAvatar(estado){
   const on=typeof arvisOn==='function'?arvisOn():true;
   const key=typeof ARVIS_MENSAJES!=='undefined'&&ARVIS_MENSAJES[estado]?estado:'normal';
-  return on?`<img class="chat-av" src="icons/arvis/arvis-${key}.svg" alt="">`:'<span class="chat-av chat-av-txt" aria-hidden="true">A</span>';
+  return on?arvisFigura(key,44,'chat-av'):'<span class="chat-av chat-av-txt" aria-hidden="true">A</span>';
 }
 function chatMsgHtml(m){
   if(m.from==='yo')return `<div class="chat-msg yo"><p>${esc(m.text)}</p></div>`;
