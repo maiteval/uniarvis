@@ -122,7 +122,7 @@ function chatToggle(force){
   document.body.classList.toggle('chat-open',chatOpen);
   if(chatOpen&&!chatMsgs.length){
     const inst=currentInstitution();
-    chatSay({texto:`¡Hola, ${S.profile.name}! Soy Arvis, tu asistente de ${inst?inst.short:'tu universidad'}. Puedo ayudarte a organizarte y resolver dudas de la app.`,sugerir:true});
+    chatSay({texto:`¡Hola, ${displayName()}! Soy Arvis, tu asistente de ${inst?inst.short:'tu universidad'}. Puedo ayudarte a organizarte y resolver dudas de la app.`,sugerir:true});
   }
   chatRender();
   if(chatOpen){const i=document.getElementById('chat-input');if(i)try{i.focus()}catch(e){}}

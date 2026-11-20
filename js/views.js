@@ -54,7 +54,7 @@ function viewInstitutionalFlow(){
   const f=InstitutionalFlow.get();if(!f)return viewAccountChoice();
   const inst=INSTITUTIONS[0],proto='<span class="tag inst-example">Prototipo</span>';
   const back=`<button class="btn sec" data-focus-id="account-back" onclick="institutionalBack()">Volver</button>`;
-  const idx={choose:0,login:1,code:2,password:3,profile:4,consent:5}[f.step]||0;
+  const idx={choose:0,login:1,code:2,password:3,consent:4}[f.step]||0;
   const steps=`<div class="inst-steps" aria-label="Pasos del ingreso institucional">${INST_FLOW_STEPS.map((s,i)=>
     `<span class="${i<idx?'done':(i===idx?'on':'')}" ${i===idx?'aria-current="step"':''}>${i+1}. ${esc(s)}</span>`).join('')}</div>`;
   let body='';
@@ -101,18 +101,13 @@ function viewInstitutionalFlow(){
       <button class="btn" data-focus-id="inst-pass-submit" onclick="institutionalSubmitPassword(event)">Continuar</button></div>
       ${f.error?`<div class="banner go" role="alert">${esc(f.error)}</div>`:''}
       <div class="row">${back}</div>`;
-  }else if(f.step==='profile'){
-    const p=f.profile||S.profile||{};
-    body=`<h2>Tus datos ${proto}</h2><p class="mute">Tu universidad ya viene de tu cuenta y no se puede cambiar aquí.</p>
-      <div class="hud-form"><label>Nombre<input id="inst-profile-name" type="text" maxlength="60" placeholder="Tu nombre" value="${esc(p.name||'')}"></label>
-      <label>Carrera / Programa<input id="inst-profile-career" type="text" maxlength="80" placeholder="Tu carrera" value="${esc(p.career||'')}"></label>
-      <label>Universidad<input id="inst-profile-university" type="text" value="${esc(inst.name)}" disabled aria-readonly="true"></label>
-      <label>¿A qué hora del día te concentras mejor? (opcional)${chronotypeOptions('inst-profile-chronotype',(f.profile&&f.profile.chronotype)||(S.settings&&S.settings.chronotype)||'no_se')}</label>
-      <button class="btn" data-focus-id="inst-profile-next" onclick="institutionalProfileNext()">Continuar</button></div>
-      ${f.error?`<div class="banner go" role="alert">${esc(f.error)}</div>`:''}
-      <div class="row">${back}</div>`;
   }else if(f.step==='consent'){
-    body=`<h2>Consentimiento</h2><p class="mute">Único aviso antes de vincular tu cuenta ${esc(inst.short)}. ${proto}</p>
+    const p=f.profile||{};
+    body=`<h2>Consentimiento ${proto}</h2>
+      <div class="banner info" id="inst-identified"><b>Te identificamos como:</b> ${esc(p.name||'Estudiante UdeC')} · ${esc(p.career||'')} · ${esc(inst.name)}
+        <br><button type="button" class="lnk" id="inst-change-email" data-focus-id="inst-consent-change-email" onclick="institutionalChangeEmail()">¿No eres tú? Cambiar correo</button></div>
+      <p class="mute">Datos de ejemplo: en la versión real vienen de tu cuenta UdeC.</p>
+      <p class="mute">Único aviso antes de vincular tu cuenta ${esc(inst.short)}.</p>
       <div class="grid2"><div class="card"><h3>Qué ve la universidad</h3>
         <ul><li>Estadísticas generales de uso y de carga académica.</li><li>Solo de grupos de 10 o más personas.</li><li>Nunca datos que permitan identificarte en esos informes.</li></ul></div>
       <div class="card"><h3>Qué no ve nunca</h3>
@@ -292,7 +287,7 @@ function dismissWeeklySummary(){
   S.weeklySummary.dismissedWeek=mondayOf(today());save();render();
 }
 function viewInicio(){
-  const name=S.profile&&S.profile.name?esc(S.profile.name):'';
+  const name=esc(typeof displayName==='function'?displayName():'');
   const descs={planificacion:'Tu día y tu semana, sin sobrecargas.',academico:'Ramos, fechas, notas y carga.',bienestar:'Check-in, pausas y apoyo.',social:'Coordina sesiones con amigos.',ajustes:'Perfil, tema y privacidad.'};
   const icons=(typeof HOME_ICONS!=='undefined')?HOME_ICONS:[];
   const order=['bienestar','academico','planificacion','social','ajustes'];
@@ -315,10 +310,14 @@ function viewInicio(){
 function viewPerfil(){
   const p=S.profile||{},inst=typeof isInstitutional==='function'&&isInstitutional()?currentInstitution():null;
   const u=inst?inst.name:(p.university||'');
-  const universityField=inst
-    ?`<label>Universidad<input id="pf-university" type="text" value="${esc(u)}" disabled aria-describedby="pf-university-help"></label>
-      <p class="mute" id="pf-university-help" style="margin:0">En modo institucional la universidad la define tu cuenta (${esc(inst.name || u)}) y no se puede cambiar aquí.</p>`
-    :`<label>Universidad<select id="pf-university" data-focus-id="pf-university">
+  const readonlyField=(id,label,value,max)=>`<label>${label}<input id="${id}" type="text" maxlength="${max}" value="${esc(value||'')}" readonly aria-readonly="true"></label>`;
+  const identityFields=inst
+    ?`${readonlyField('pf-name','Nombre',p.name,60)}${readonlyField('pf-career','Carrera / Programa',p.career,80)}
+      ${readonlyField('pf-university','Universidad',u,80)}
+      <p class="mute" style="margin:0">Vienen de tu cuenta UdeC. <span class="tag inst-example">Prototipo</span> Datos de ejemplo: en la versión real vienen de tu cuenta UdeC.</p>`
+    :`<label>Nombre<input id="pf-name" type="text" maxlength="60" value="${esc(p.name||'')}"></label>
+      <label>Carrera / Programa<input id="pf-career" type="text" maxlength="80" value="${esc(p.career||'')}"></label>
+      <label>Universidad<select id="pf-university" data-focus-id="pf-university">
         <option value="" ${!u?'selected':''}>Sin definir</option>
         ${UNIVERSITIES_CHILE.map(x=>`<option value="${esc(x)}" ${u===x?'selected':''}>${esc(x)}</option>`).join('')}
         <option value="${esc(UNIVERSITY_OTHER)}" ${u===UNIVERSITY_OTHER?'selected':''}>${esc(UNIVERSITY_OTHER)}</option>
@@ -328,9 +327,9 @@ function viewPerfil(){
   return `${screenHelp('perfil')}<div class="card"><h2>Perfil</h2>
     <p class="mute" style="margin-top:0">Tu nombre, tu carrera y tu universidad se guardan solo en este navegador y sirven para personalizar el saludo y el plan.</p>
     <div class="hud-form" style="max-width:520px">
-      <label>Nombre<input id="pf-name" type="text" maxlength="60" value="${esc(p.name||'')}"></label>
-      <label>Carrera / Programa<input id="pf-career" type="text" maxlength="80" value="${esc(p.career||'')}"></label>
-      ${universityField}
+      ${identityFields}
+      <label>¿Cómo quieres que Arvis te llame? (opcional)<input id="pf-nickname" type="text" maxlength="40" value="${esc(p.nickname||'')}" placeholder="Tu apodo"></label>
+      <p class="mute" style="margin:0">Si lo dejas vacío, te llamaremos por tu primer nombre.</p>
       <label>¿A qué hora del día te concentras mejor?${chronotypeOptions('pf-chronotype',(S.settings&&S.settings.chronotype)||'no_se')}</label>
       <p class="mute" style="margin:0">Opcional. Solo etiquetamos tus tareas según tu franja; no asumimos horas exactas.</p>
       <button class="btn" data-focus-id="save-profile" onclick="saveProfile()">Guardar cambios</button>

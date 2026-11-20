@@ -1,4 +1,36 @@
 /* U.A.R.V.I.S. · Importación simulada de datos institucionales (sin red) */
+/* TODO: con convenio, nombre, carrera y matrícula vienen del SSO o la API oficial de la universidad al iniciar sesión. */
+const personFirstName=name=>String(name||'').trim().split(/\s+/)[0]||'';
+const displayName=()=>{
+  const p=S&&S.profile;
+  if(!p)return '';
+  const nick=String(p.nickname||'').trim();
+  return nick||personFirstName(p.name)||'';
+};
+const INST_DEMO_CAREERS=['Ingeniería Civil','Ingeniería Civil Mecánica','Ingeniería Civil Industrial','Ingeniería Civil Eléctrica'];
+function institutionDemoName(email){
+  const local=String(email||'').split('@')[0].replace(/\d+/g,'');
+  const parts=local.split(/[._-]+/).filter(Boolean);
+  const words=parts.flatMap(part=>/^[A-ZÁÉÍÓÚÜÑa-záéíóúüñ]+$/.test(part)?[part]:part.replace(/([a-z])([A-Z])/g,'$1 $2').split(/\s+/)).filter(Boolean);
+  const title=word=>word.charAt(0).toUpperCase()+word.slice(1).toLowerCase();
+  if(!parts.length||!words.length)return 'Estudiante UdeC';
+  if(parts.length===1&&parts[0].length<=2)return `${title(parts[0])}.`;
+  if(parts.length===1&&parts[0].length>=5&&/^[a-zñ][bcdfghjklmnñpqrstvwxyz]/i.test(parts[0]))return `${title(parts[0][0])}. ${title(parts[0].slice(1))}`;
+  const name=words.map(title).join(' ').trim();
+  return name.length>=3?name:'Estudiante UdeC';
+}
+function institutionDemoHash(text){
+  let h=0;
+  for(const ch of String(text||''))h=(h*31+ch.charCodeAt(0))>>>0;
+  return h;
+}
+function fetchInstitutionProfileSync(institutionId, email){
+  const mail=String(email||'').trim();
+  if((typeof institutionById==='function'&&!institutionById(institutionId))||!/^[^@\s]+@udec\.cl$/i.test(mail))return null;
+  const hash=institutionDemoHash(mail.toLowerCase());
+  return {name:institutionDemoName(mail),career:INST_DEMO_CAREERS[hash%INST_DEMO_CAREERS.length],studentId:'2023'+String(hash%100000).padStart(5,'0'),origin:'udec-demo'};
+}
+async function fetchInstitutionProfile(institutionId, email){return fetchInstitutionProfileSync(institutionId,email)}
 /* Forma documentada de fetchInstitutionData(institutionId, email):
    Devuelve { courses, classes, events }, todos con origin:'udec-demo'.
    courses: [{ id, name, code, section, color, difficulty, grades:[{ id, name, score, weight }], passGrade, roundFinal, origin }]

@@ -33,14 +33,9 @@ const fs=require('fs');
     const code=(await p.textContent('.inst-code')).trim();
     await p.fill('#inst-code-input',code);await p.click('[data-focus-id="inst-code-submit"]');
   };
-  const fillProfile=async(name='Ana',career='Medicina')=>{
-    await p.fill('#inst-profile-name',name);await p.fill('#inst-profile-career',career);await p.selectOption('#inst-profile-chronotype','tarde');await p.click('[data-focus-id="inst-profile-next"]');
-    await p.waitForFunction(()=>!!document.querySelector('[data-focus-id="inst-consent-ok"]')||!InstitutionalFlow.get());
-  };
   const createPass=async(pass='Clave1234')=>{
     await p.fill('#inst-pass1',pass);await p.fill('#inst-pass2',pass);await p.click('[data-focus-id="inst-pass-submit"]');
-    await p.waitForFunction(()=>!InstitutionalFlow.get()||!!document.querySelector('#inst-profile-name')||!!document.querySelector('[data-focus-id="inst-consent-ok"]')||!!document.querySelector('[data-focus-id="inst-import-skip"]'));
-    if(await p.locator('#inst-profile-name').count())await fillProfile();
+    await p.waitForFunction(()=>!InstitutionalFlow.get()||!!document.querySelector('[data-focus-id="inst-consent-ok"]')||!!document.querySelector('[data-focus-id="inst-import-skip"]'));
   };
   const signIn=async()=>{
     await p.fill('#inst-login-pass','Clave1234');await p.click('[data-focus-id="inst-login-submit"]');
@@ -93,7 +88,7 @@ const fs=require('fs');
   const choiceText=await text();
   ok('flujo: elige tu universidad con la UdeC como única opción',choiceText.includes('Elige tu universidad')&&await p.locator('[data-focus-id="inst-option-udec"]').count()===1);
   ok('la pantalla de universidad ya no dice que hay una sola opción',!choiceText.includes('Por ahora hay una sola opción en este prototipo.'));
-  ok('indicador del flujo tiene 6 pasos',await p.locator('.inst-steps span').count()===6&&choiceText.includes('1. Universidad')&&choiceText.includes('5. Tus datos')&&choiceText.includes('6. Consentimiento'));
+  ok('indicador del flujo tiene 5 pasos y ya no pide Tus datos',await p.locator('.inst-steps span').count()===5&&choiceText.includes('1. Universidad')&&choiceText.includes('5. Consentimiento')&&!choiceText.includes('Tus datos'));
   await p.click('[data-focus-id="inst-option-udec"]');
   const login=await text();
   ok('flujo: correo institucional y etiqueta sin logo',login.includes('Enviar código de verificación')&&login.includes('Prototipo')&&login.includes('Universidad de Concepción')&&await p.locator('svg[aria-label^="Logo"], .inst-logo').count()===0);
@@ -110,11 +105,21 @@ const fs=require('fs');
   const consent=await text();
   ok('consentimiento explica qué ve y qué no ve la universidad',consent.includes('Estadísticas generales')&&consent.includes('10 o más')&&consent.includes('Check-in')&&consent.includes('Diario')&&consent.includes('Calificaciones'));
   ok('consentimiento ofrece Entendido y Volver',await p.locator('[data-focus-id="inst-consent-ok"]').count()===1&&await p.locator('[data-focus-id="account-back"]').count()===1);
+  ok('el flujo no muestra campos de nombre ni carrera',await p.locator('#inst-profile-name').count()===0&&await p.locator('#inst-profile-career').count()===0&&await p.locator('#inst-profile-chronotype').count()===0);
+  const ident=await p.evaluate(async()=>({demo:await fetchInstitutionProfile('udec','maria.gonzalez@udec.cl'),short:await fetchInstitutionProfile('udec','mgonzalez@udec.cl'),flow:{...InstitutionalFlow.get().profile}}));
+  ok('el directorio simulado deriva nombre, carrera y matrícula',ident.demo.name==='Maria Gonzalez'&&['Ingeniería Civil','Ingeniería Civil Mecánica','Ingeniería Civil Industrial','Ingeniería Civil Eléctrica'].includes(ident.demo.career)&&/^2023\d{5}$/.test(ident.demo.studentId)&&ident.demo.origin==='udec-demo',JSON.stringify(ident.demo));
+  ok('mgonzalez se convierte en M. Gonzalez',ident.short.name==='M. Gonzalez',ident.short.name);
+  ok('la carrera es determinística para el mismo correo',await p.evaluate(async()=>{const a=await fetchInstitutionProfile('udec','maria.gonzalez@udec.cl'),b=await fetchInstitutionProfile('udec','maria.gonzalez@udec.cl');return a.career===b.career&&a.studentId===b.studentId}));
+  ok('el consentimiento muestra la identidad simulada con Prototipo',consent.includes('Te identificamos como:')&&consent.includes('Ana')&&consent.includes('Datos de ejemplo: en la versión real vienen de tu cuenta UdeC')&&consent.includes('Prototipo')&&await p.locator('#inst-change-email').count()===1,consent.slice(0,300));
+  await p.click('[data-focus-id="inst-consent-change-email"]');
+  ok('Cambiar correo vuelve al paso Correo',await p.evaluate(()=>InstitutionalFlow.get().step==='login')&&await p.locator('#inst-email').count()===1);
+  await p.fill('#inst-email','ana@udec.cl');await p.click('[data-focus-id="inst-login"]');
+  await verifyCode();await createPass();
+  ok('el cronotipo ya no se pregunta al entrar',await p.evaluate(()=>S.settings.chronotype==='no_se'));
   await p.click('[data-focus-id="account-back"]');
-  ok('desde el consentimiento se retrocede a Tus datos',await p.evaluate(()=>InstitutionalFlow.get().step==='profile')&&await p.locator('#inst-profile-name').count()===1);
-  await fillProfile();
+  ok('desde el consentimiento se retrocede a Contraseña',await p.evaluate(()=>InstitutionalFlow.get().step==='password')&&await p.locator('#inst-pass1').count()===1);
+  await createPass();
   await p.click('[data-focus-id="inst-consent-ok"]');
-  ok('cronotipo institucional se guarda',await p.evaluate(()=>S.settings.chronotype==='tarde'));
   ok('tras el consentimiento ofrece la importación simulada',(await text()).includes('Importando tus datos desde la UdeC'));
   await p.click('[data-focus-id="inst-import-skip"]');
   ok('tras la importación vuelve a Ajustes → Cuenta',(await text()).includes('Cuenta')&&await p.evaluate(()=>section==='ajustes'&&tab==='cuenta'));
@@ -162,6 +167,15 @@ const fs=require('fs');
   ok('líneas de crisis nacionales siempre visibles',apoyo.includes('*4141')&&apoyo.includes('600 360 7777'));
   const href=decodeURIComponent(await p.getAttribute('#inst-contact-mailto','href'));
   ok('Quiero que me contacten prepara un mailto solo con nombre y correo',href.startsWith('mailto:')&&href.includes('Ana')&&href.includes('ana@udec.cl')&&!href.includes('SECRETO_DIARIO')&&!/\b(mood|energía|ánimo|sueño|diario|calificaciones|check-in)\b/i.test(href),href.slice(0,180));
+
+  // Perfil institucional: identidad de solo lectura y apodo opcional
+  await p.evaluate(()=>go('perfil'));
+  const perfilInst=await text();
+  ok('Perfil institucional muestra nombre y carrera de solo lectura',await p.locator('#pf-name').getAttribute('readonly')!==null&&await p.locator('#pf-career').getAttribute('readonly')!==null&&await p.locator('#pf-university').getAttribute('readonly')!==null&&perfilInst.includes('Vienen de tu cuenta UdeC')&&perfilInst.includes('¿Cómo quieres que Arvis te llame?'));
+  await p.fill('#pf-nickname','Anita');await p.click('[data-focus-id="save-profile"]');
+  ok('el apodo se guarda y se usa en el saludo',await p.evaluate(()=>S.profile.nickname==='Anita')&&await p.evaluate(()=>{go('inicio');return document.querySelector('.home-head h2').textContent}).then(t=>t.includes('Anita')));
+  await p.evaluate(()=>go('perfil'));
+  await p.fill('#pf-nickname','');await p.click('[data-focus-id="save-profile"]');
 
   // Semana: calendario, semanas críticas y sin micro-tareas en recesos/feriados
   await p.evaluate(()=>{weekStart=mondayOf(today());go('semana')});

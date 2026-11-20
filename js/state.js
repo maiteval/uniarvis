@@ -102,14 +102,14 @@ function cleanAuth(a){
   return validAuth(out)?out:null;
 }
 const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,theme:'cian',themeTouched:false,mode:'light',style:'calma',arvis:true,chronotype:'no_se'},lastPlan:null,
-  wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},weeklySummary:{dismissedWeek:null},support:{name:'',contact:''},profile:{name:'',career:'',university:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
-  account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null},institutionConsentAt:null});
+  wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},weeklySummary:{dismissedWeek:null},support:{name:'',contact:''},profile:{name:'',career:'',university:'',nickname:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
+  account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null,auth:null,studentId:''},institutionConsentAt:null});
 function migrate(s){
   const f=fresh();for(const k in f)if(s[k]===undefined)s[k]=f[k];
   const a=s.account&&typeof s.account==='object'&&!Array.isArray(s.account)?s.account:null;
   const validType=a&&(a.type==='personal'||a.type==='institucional');
   const validInst=validType&&a.type==='institucional'&&typeof institutionById==='function'&&!!institutionById(a.institutionId);
-  if(validType&&(a.type==='personal'||validInst))s.account={type:a.type,institutionId:validInst?a.institutionId:'',email:typeof a.email==='string'?a.email.slice(0,120):'',linkedAt:typeof a.linkedAt==='string'?a.linkedAt:null,auth:cleanAuth(a&&a.auth)};
+  if(validType&&(a.type==='personal'||validInst))s.account={type:a.type,institutionId:validInst?a.institutionId:'',email:typeof a.email==='string'?a.email.slice(0,120):'',linkedAt:typeof a.linkedAt==='string'?a.linkedAt:null,auth:cleanAuth(a&&a.auth),studentId:typeof a.studentId==='string'?a.studentId.slice(0,40):''};
   else s.account=accountBlank();
   if(s.account.type!=='institucional')s.account.auth=null;
   if(typeof s.institutionConsentAt!=='string')s.institutionConsentAt=null;
@@ -134,10 +134,12 @@ function migrate(s){
   if(!s.certamen||typeof s.certamen!=='object'||Array.isArray(s.certamen))s.certamen={plans:[],topicsByCourse:{}};
   if(!Array.isArray(s.certamen.plans))s.certamen.plans=[];
   if(!s.certamen.topicsByCourse||typeof s.certamen.topicsByCourse!=='object'||Array.isArray(s.certamen.topicsByCourse))s.certamen.topicsByCourse={};
-  if(!s.profile||typeof s.profile!=='object')s.profile={name:'',career:'',university:''};
+  if(!s.profile||typeof s.profile!=='object')s.profile={name:'',career:'',university:'',nickname:''};
   if(s.profile.name==null)s.profile.name=''; if(s.profile.career==null)s.profile.career='';
   if(typeof s.profile.university!=='string')s.profile.university='';
   s.profile.university=s.profile.university.trim().slice(0,80);
+  if(typeof s.profile.nickname!=='string')s.profile.nickname='';
+  s.profile.nickname=s.profile.nickname.trim().slice(0,40);
   if(s.account.type==='institucional'&&typeof institutionById==='function'){
     const inst=institutionById(s.account.institutionId);
     if(inst)s.profile.university=inst.name;                  // en modo institucional la universidad no se elige aquí

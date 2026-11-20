@@ -129,7 +129,8 @@ function renderCore(){
     app.innerHTML=viewLanding();finish($('#reg-name'));return;
   }
   document.body.classList.remove('landing-active');
-  const who=S.profile&&S.profile.name?`<span class="hud-user"> · ${esc(S.profile.name)}</span>`:'';
+  const shownName=typeof displayName==='function'?displayName():'';
+  const who=shownName?`<span class="hud-user"> · ${esc(shownName)}</span>`:'';
   const brand=document.querySelector('.brand');
   if(brand)brand.innerHTML='U.A.R.V.I.S.'+who;
   if(section==='inicio'){

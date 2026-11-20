@@ -76,9 +76,9 @@ function registerProfile(){
   const n=($('#reg-name')||{}).value||'',c=($('#reg-career')||{}).value||'';
   const name=String(n).trim(),career=String(c).trim();
   if(!name||!career)return toast('Ingresa tu nombre y carrera.');
-  S.profile={name:name.slice(0,60),career:career.slice(0,80),university:registrationUniversity()};
+  S.profile={name:name.slice(0,60),career:career.slice(0,80),university:registrationUniversity(),nickname:''};
   S.settings.chronotype=fieldChronotype('#reg-chronotype');
-  toast(`Bienvenido/a, ${S.profile.name}.`);
+  toast(`Bienvenido/a, ${displayName()}.`);
   finishPersonalMode();
 }
 function profileUniversityField(fallback){
@@ -93,7 +93,8 @@ function saveProfile(){
   const n=($('#pf-name')||{}).value||'',c=($('#pf-career')||{}).value||'';
   const name=String(n).trim(),career=String(c).trim();
   if(!name||!career)return toast('Ingresa tu nombre y carrera.');
-  S.profile={name:name.slice(0,60),career:career.slice(0,80),university:profileUniversityField(S.profile&&S.profile.university)};
+  const nickname=String(($('#pf-nickname')||{}).value||'').trim().slice(0,40);
+  S.profile={name:name.slice(0,60),career:career.slice(0,80),university:profileUniversityField(S.profile&&S.profile.university),nickname};
   S.settings.chronotype=fieldChronotype('#pf-chronotype');
   save();toast('Perfil actualizado.');render();
 }
@@ -218,6 +219,7 @@ function validState(j){
     if(j.profile.name!==undefined&&!str(j.profile.name,60))return 'perfil';
     if(j.profile.career!==undefined&&!str(j.profile.career,80))return 'perfil';
     if(j.profile.university!==undefined&&!str(j.profile.university,80))return 'perfil';
+    if(j.profile.nickname!==undefined&&!str(j.profile.nickname,40))return 'perfil';
   }
   if(j.settings!==undefined){
     if(!j.settings||typeof j.settings!=='object'||Array.isArray(j.settings))return 'ajustes';
@@ -229,6 +231,7 @@ function validState(j){
     if(!j.account||typeof j.account!=='object'||Array.isArray(j.account))return 'cuenta';
     if(j.account.type!==undefined&&j.account.type!=='personal'&&j.account.type!=='institucional')return 'cuenta';
     if(j.account.auth!==undefined&&j.account.auth!==null&&!validAuth(j.account.auth))return 'cuenta';
+    if(j.account.studentId!==undefined&&!str(j.account.studentId,40))return 'cuenta';
     if(j.account.password!==undefined||j.account.code!==undefined)return 'cuenta';
   }
   const dia=j.wellbeing&&j.wellbeing.diary;
@@ -274,7 +277,8 @@ function cleanState(j){
   c.account={type:known&&(a.type==='personal'||knownInst)?a.type:'personal',
     institutionId:knownInst?a.institutionId:'',email:a&&typeof a.email==='string'?a.email.slice(0,120):'',
     linkedAt:a&&RX.date.test(a.linkedAt||'')?a.linkedAt:null,
-    auth:knownInst?cleanAuth(a&&a.auth):null};
+    auth:knownInst?cleanAuth(a&&a.auth):null,
+    studentId:knownInst&&a&&typeof a.studentId==='string'?a.studentId.slice(0,40):''};
   c.institutionConsentAt=RX.date.test(j.institutionConsentAt||'')?j.institutionConsentAt:null;
   c.weeklySummary={dismissedWeek:j.weeklySummary&&RX.date.test(j.weeklySummary.dismissedWeek||'')?j.weeklySummary.dismissedWeek:null};
   c.tools=cleanTools(j.tools);
@@ -283,7 +287,7 @@ function cleanState(j){
   c.consent=j.consent&&typeof j.consent.health==='boolean'?{health:j.consent.health,at:today()}:null;
   c.lastBackup=typeof j.lastBackup==='string'&&RX.date.test(j.lastBackup)?j.lastBackup:null;
   if(j.profile&&typeof j.profile==='object'){
-    c.profile={name:String(j.profile.name||'').slice(0,60),career:String(j.profile.career||'').slice(0,80),university:String(j.profile.university||'').slice(0,80)};
+    c.profile={name:String(j.profile.name||'').slice(0,60),career:String(j.profile.career||'').slice(0,80),university:String(j.profile.university||'').slice(0,80),nickname:String(j.profile.nickname||'').slice(0,40)};
     if(c.account.type==='institucional'&&knownInst&&institutionById(c.account.institutionId))
       c.profile.university=institutionById(c.account.institutionId).name;
   }

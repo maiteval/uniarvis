@@ -77,7 +77,7 @@ const fs=require('fs');
   await pi.goto(base);
   await pi.click('[data-focus-id="account-institucional"]');
   ok('selector abre Universidad como primer paso institucional',(await text(pi)).includes('Elige tu universidad')&&await pi.locator('[data-focus-id="inst-option-udec"]').count()===1);
-  ok('indicador incluye Tus datos',await pi.locator('.inst-steps span').count()===6&&(await text(pi)).includes('5. Tus datos'));
+  ok('indicador tiene 5 pasos y ya no incluye Tus datos',await pi.locator('.inst-steps span').count()===5&&(await text(pi)).includes('5. Consentimiento')&&!(await text(pi)).includes('Tus datos'));
   await clean(pi,'flujo: Universidad');
   await pi.click('[data-focus-id="account-back"]');
   ok('Volver desde Universidad regresa al selector',await pi.locator('[data-focus-id="account-institucional"]').count()===1&&await pi.evaluate(()=>!InstitutionalFlow.get()));
@@ -91,13 +91,11 @@ const fs=require('fs');
   await pi.waitForSelector('#inst-pass1');
   await clean(pi,'flujo: Contraseña');
   await pi.fill('#inst-pass1','Clave1234');await pi.fill('#inst-pass2','Clave1234');await pi.click('[data-focus-id="inst-pass-submit"]');
-  await pi.waitForSelector('#inst-profile-name');
-  ok('después de la contraseña aparece Tus datos con universidad fija',(await text(pi)).includes('Tus datos')&&await pi.evaluate(()=>document.querySelector('#inst-profile-university').disabled&&document.querySelector('#inst-profile-university').value==='Universidad de Concepción')&&await pi.evaluate(()=>InstitutionalFlow.get().step==='profile'&&InstitutionalFlow.get().from==='selection'&&S.account.type===null));
-  ok('Volver desde Tus datos regresa a Contraseña',await pi.evaluate(()=>{institutionalBack();return InstitutionalFlow.get().step==='password'})&&await pi.locator('#inst-pass1').count()===1);
+  await pi.waitForSelector('[data-focus-id="inst-consent-ok"]');
+  ok('después de la contraseña aparece el Consentimiento con identidad simulada',(await text(pi)).includes('Te identificamos como:')&&(await text(pi)).includes('Universidad de Concepción')&&await pi.evaluate(()=>InstitutionalFlow.get().step==='consent'&&InstitutionalFlow.get().from==='selection'&&S.account.type===null));
+  ok('el flujo ya no pide nombre ni carrera',await pi.locator('#inst-profile-name').count()===0&&await pi.locator('#inst-profile-career').count()===0);
+  ok('Volver desde el Consentimiento regresa a Contraseña',await pi.evaluate(()=>{institutionalBack();return InstitutionalFlow.get().step==='password'})&&await pi.locator('#inst-pass1').count()===1);
   await pi.fill('#inst-pass1','Clave1234');await pi.fill('#inst-pass2','Clave1234');await pi.click('[data-focus-id="inst-pass-submit"]');
-  await pi.waitForSelector('#inst-profile-name');
-  await clean(pi,'flujo: Tus datos');
-  await pi.fill('#inst-profile-name','Ana');await pi.fill('#inst-profile-career','Medicina');await pi.click('[data-focus-id="inst-profile-next"]');
   await pi.waitForSelector('[data-focus-id="inst-consent-ok"]');
   await clean(pi,'flujo: Consentimiento');
   await pi.click('[data-focus-id="inst-consent-ok"]');
@@ -107,7 +105,10 @@ const fs=require('fs');
   await pi.waitForSelector('[data-focus-id="inst-import-confirm"]',{timeout:5000});
   ok('vista previa de la importación con botón Agregar',(await text(pi)).includes('Revisa lo que traigo desde la UdeC')&&await pi.locator('[data-focus-id="inst-import-confirm"]').count()===1);
   await pi.click('[data-focus-id="inst-import-confirm"]');
-  ok('nombre y carrera quedan guardados en S.profile',await pi.evaluate(()=>S.profile.name==='Ana'&&S.profile.career==='Medicina'&&S.profile.university==='Universidad de Concepción'&&S.account.type==='institucional'));
+  ok('nombre, carrera, universidad y matrícula vienen del directorio simulado',await pi.evaluate(()=>{
+    const demo=fetchInstitutionProfileSync('udec',S.account.email);
+    return S.profile.name===demo.name&&S.profile.career===demo.career&&S.profile.university==='Universidad de Concepción'&&S.account.studentId===demo.studentId&&S.account.type==='institucional';
+  }));
   for(const route of ['inicio','cuenta','perfil','apoyo','semana','ramos','notas','hoy','privacidad']){
     await pi.evaluate(r=>go(r),route);await clean(pi,'modo institucional: '+route);
   }
@@ -146,8 +147,13 @@ const fs=require('fs');
   await submitCode(poi);
   await poi.waitForSelector('#inst-pass1');
   await poi.fill('#inst-pass1','Migra123');await poi.fill('#inst-pass2','Migra123');await poi.click('[data-focus-id="inst-pass-submit"]');
-  await poi.waitForSelector('#inst-profile-name');
-  ok('cuenta antigua al elegir Institucional ve Tus datos prellenados',await poi.inputValue('#inst-profile-name')==='Migrante'&&await poi.inputValue('#inst-profile-career')==='Historia'&&await poi.evaluate(()=>S.courses.length===1&&S.wellbeing.diary[0].note==='DATOS_ANTIGUOS'));
+  await poi.waitForSelector('[data-focus-id="inst-consent-ok"]');
+  ok('cuenta antigua al elegir Institucional ve los datos del directorio sin pedirlos',(await text(poi)).includes('Te identificamos como:')&&await poi.evaluate(()=>{
+    const f=InstitutionalFlow.get(),demo=fetchInstitutionProfileSync('udec',f.email);
+    return f.profile.name===demo.name&&f.profile.career===demo.career&&S.profile.name==='Migrante'&&S.courses.length===1&&S.wellbeing.diary[0].note==='DATOS_ANTIGUOS';
+  }));
+  await poi.click('[data-focus-id="inst-consent-ok"]');
+  ok('cuenta antigua conserva el nombre manual como apodo',await poi.evaluate(()=>S.profile.nickname==='Migrante'&&S.profile.name!=='Migrante'));
   await ctxOldInst.close();
 
   const ctxLock=await newCtx(),pl=await ctxLock.newPage();watch(pl);

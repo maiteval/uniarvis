@@ -80,7 +80,7 @@ const ArvisIA=(()=>{
     if(!ready())return null;
     const t0=today(),inst=currentInstitution(),on=typeof consentOn==='function'&&consentOn();
     return {
-      estudiante:S.profile.name,
+      estudiante:displayName(),
       institucion:inst?inst.short:'',
       cursos:(S.courses||[]).map(c=>{
         const g=typeof gradeSummary==='function'?gradeSummary(c.grades,c):{need:null,pass:c.passGrade||4};
@@ -309,7 +309,7 @@ const ArvisIA=(()=>{
       acciones:[goAction('apoyo')],estado:'preocupado'};
     if(/\b(llevame|abre|abrir|vamos a|ir a)\b/.test(t)){const k=helpKey(t);if(k)return {texto:'Vamos a '+(IA_TAB_LABEL[k]||k)+'.',acciones:[goAction(k)],navegar:k}}
     if(/^(hola|holi|buenas|buenos dias|buenas tardes|buenas noches|hey|que tal)\b/.test(t)&&t.length<25)
-      return {texto:pick([`¡Hola, ${S.profile.name}! Soy Arvis. Puedo contarte qué tienes hoy, tus próximas evaluaciones y cómo vas en notas, agregar fechas o bajarte la carga. ¿Qué necesitas?`,`¡Hola, ${S.profile.name}! Estoy aquí para ayudarte a ordenar la semana, revisar notas o preparar lo que viene. ¿Por dónde empezamos?`]),sugerir:true};
+      return {texto:pick([`¡Hola, ${displayName()}! Soy Arvis. Puedo contarte qué tienes hoy, tus próximas evaluaciones y cómo vas en notas, agregar fechas o bajarte la carga. ¿Qué necesitas?`,`¡Hola, ${displayName()}! Estoy aquí para ayudarte a ordenar la semana, revisar notas o preparar lo que viene. ¿Por dónde empezamos?`]),sugerir:true};
     if(pendiente){
       const r=resolverPendiente(t,mem);
       if(r)return r;

@@ -176,9 +176,9 @@ const fs=require('fs');
   const mig=await p5.evaluate(()=>({u:S.profile.university,old:cleanState({courses:[],classes:[],events:[],tasks:[],sessions:[],profile:{name:'X'}}).profile.university}));
   ok('perfiles y respaldos antiguos migran con university vacía',mig.u===''&&mig.old==='',JSON.stringify(mig));
   await p5.evaluate(async()=>{linkInstitution('udec','ana@udec.cl',await makeInstAuth('Clave1234'));instSessionSet();save();go('perfil')});
-  const inst=await p5.evaluate(()=>({u:S.profile.university,disabled:document.querySelector('#pf-university').disabled,
+  const inst=await p5.evaluate(()=>({u:S.profile.university,readonly:document.querySelector('#pf-university').readOnly,
     value:document.querySelector('#pf-university').value}));
-  ok('modo institucional completa la universidad desde la cuenta',inst.u==='Universidad de Concepción'&&inst.disabled&&inst.value===inst.u,JSON.stringify(inst));
+  ok('modo institucional completa la universidad desde la cuenta',inst.u==='Universidad de Concepción'&&inst.readonly&&inst.value===inst.u,JSON.stringify(inst));
   await p5.evaluate(()=>{document.querySelector('#pf-university').value='Otra';saveProfile()});
   ok('la universidad institucional no se puede editar en Perfil',await p5.evaluate(()=>S.profile.university==='Universidad de Concepción'));
   await ctx5.close();

@@ -51,12 +51,7 @@ const fs=require('fs');
   };
   const createPass=async(pg,pass)=>{
     await pg.fill('#inst-pass1',pass);await pg.fill('#inst-pass2',pass);await pg.click('[data-focus-id="inst-pass-submit"]');
-    await pg.waitForFunction(()=>!InstitutionalFlow.get()||!!document.querySelector('#inst-profile-name')||!!document.querySelector('[data-focus-id="inst-consent-ok"]')||!!document.querySelector('[data-focus-id="inst-import-skip"]'));
-    if(await pg.locator('#inst-profile-name').count()){
-      const name=await pg.inputValue('#inst-profile-name'),career=await pg.inputValue('#inst-profile-career');
-      await pg.fill('#inst-profile-name',name||'Ana');await pg.fill('#inst-profile-career',career||'Medicina');await pg.click('[data-focus-id="inst-profile-next"]');
-      await pg.waitForSelector('[data-focus-id="inst-consent-ok"]');
-    }
+    await pg.waitForFunction(()=>!InstitutionalFlow.get()||!!document.querySelector('[data-focus-id="inst-consent-ok"]')||!!document.querySelector('[data-focus-id="inst-import-skip"]'));
     if(await pg.locator('[data-focus-id="inst-consent-ok"]').count())await pg.click('[data-focus-id="inst-consent-ok"]');
   };
   const signIn=async(pg,pass='Clave1234')=>{
@@ -215,6 +210,10 @@ const fs=require('fs');
     await p.locator('#inst-code-input').count()===1&&(await text(p)).includes('mig@udec.cl')&&
     await p.evaluate(()=>InstitutionalFlow.get().step==='code'&&InstitutionalFlow.get().from==='migration'));
   ok('la migración no borra los datos',await p.evaluate(()=>S.courses.length===1&&S.wellbeing.diary[0].note==='DATOS_MIGRADOS'));
+  ok('la cuenta antigua conserva el nombre manual como apodo y usa el del directorio',await p.evaluate(()=>{
+    const demo=fetchInstitutionProfileSync('udec',S.account.email);
+    return S.profile.name===demo.name&&S.profile.nickname==='Migrante'&&S.profile.career===demo.career&&S.profile.university==='Universidad de Concepción'&&S.account.studentId===demo.studentId;
+  }));
   const migCode=await codeOf(p);
   await verify(p,migCode);await p.waitForSelector('#inst-pass1');
   await createPass(p,'Migra123');await p.waitForFunction(()=>InstitutionalFlow.get()===null);
