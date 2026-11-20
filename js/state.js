@@ -102,7 +102,7 @@ function cleanAuth(a){
   return validAuth(out)?out:null;
 }
 const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,theme:'cian',themeTouched:false,mode:'light',style:'calma',arvis:true,chronotype:'no_se'},lastPlan:null,
-  wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},support:{name:'',contact:''},profile:{name:'',career:'',university:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
+  wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},weeklySummary:{dismissedWeek:null},support:{name:'',contact:''},profile:{name:'',career:'',university:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
   account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null},institutionConsentAt:null});
 function migrate(s){
   const f=fresh();for(const k in f)if(s[k]===undefined)s[k]=f[k];
@@ -113,6 +113,8 @@ function migrate(s){
   else s.account=accountBlank();
   if(s.account.type!=='institucional')s.account.auth=null;
   if(typeof s.institutionConsentAt!=='string')s.institutionConsentAt=null;
+  if(!s.weeklySummary||typeof s.weeklySummary!=='object'||Array.isArray(s.weeklySummary))s.weeklySummary={dismissedWeek:null};
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s.weeklySummary.dismissedWeek||''))s.weeklySummary.dismissedWeek=null;
   if(!s.wellbeing||!Array.isArray(s.wellbeing.diary))s.wellbeing={diary:[]};
   if(!s.settings||typeof s.settings!=='object')s.settings={};
   if(!s.settings.min)s.settings.min=60;

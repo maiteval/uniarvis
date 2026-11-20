@@ -30,7 +30,8 @@ const fs=require('fs');
 
   const last=()=>p.locator('.chat-msg.arvis').last().innerText();
   const send=async m=>{await p.fill('#chat-input',m);await p.press('#chat-input','Enter')};
-  const say=async m=>{await send(m);await p.waitForTimeout(450);return last()};
+  const settled=async()=>{await p.waitForFunction(()=>!chatBusy&&!document.querySelector('.chat-typing'),null,{timeout:5000});await p.waitForTimeout(40)};
+  const say=async m=>{await send(m);await settled();return last()};
 
   ok('modo Personal no muestra ni monta el chat',await p.locator('#chat-fab').count()===0&&
     await p.evaluate(()=>document.getElementById('chat-root').innerHTML===''&&!document.body.classList.contains('has-chat')));
@@ -56,8 +57,9 @@ const fs=require('fs');
   }));
 
   await send('hola');
-  ok('muestra el indicador de escribiendo antes de responder',await p.locator('.chat-typing').count()===1);
-  await p.waitForTimeout(450);
+  ok('muestra el indicador de pensando antes de responder',await p.locator('.chat-typing').count()===1&&
+    (await p.locator('.chat-typing').innerText()).includes('Arvis está pensando'));
+  await settled();
   ok('responde al saludo',(await last()).includes('¡Hola, Ana!'));
 
   const hoy=await say('¿Qué tengo hoy?');
@@ -78,13 +80,85 @@ const fs=require('fs');
   ok('el avatar de la confirmación cambia a celebrando',
     (await p.locator('.chat-msg.arvis').last().locator('img.chat-av').getAttribute('src'))==='icons/arvis/arvis-celebrando.svg');
 
-  ok('pide ramo y fecha cuando faltan',(await say('agrega una prueba')).includes('Me falta el ramo y la fecha'));
+  const falta=await say('agrega una prueba');
+  ok('pide ramo y fecha cuando faltan',falta.includes('Me falta el ramo y la fecha'),falta.slice(0,120));
   ok('responde dudas con los textos de AYUDA',(await say('¿cómo uso el check-in?')).includes('Check-in: Registra tu energía'));
   const crisis=await say('no quiero vivir');
   ok('ante crisis muestra *4141 y el apoyo institucional',crisis.includes('*4141')&&crisis.includes('600 360 7777')&&crisis.includes('131')&&crisis.includes('DISE'));
   ok('el avatar de crisis es preocupado',
     (await p.locator('.chat-msg.arvis').last().locator('img.chat-av').getAttribute('src'))==='icons/arvis/arvis-preocupado.svg');
   ok('ofrece el botón de Ir a Apoyo',(await p.locator('.chat-msg.arvis').last().innerText()).includes('Ir a Apoyo'));
+
+  const confirmar=async(label)=>{await p.locator('.chat-actions .btn',{hasText:label}).last().click();await p.waitForTimeout(120)};
+  const cancelar=async()=>{await p.locator('.chat-actions .btn.sec',{hasText:'No, gracias'}).last().click();await p.waitForTimeout(80)};
+  const deshacer=async()=>{await p.evaluate(()=>{const b=document.querySelector('.toast-undo');if(b)b.click()});await p.waitForTimeout(100)};
+  const fechaMover=await p.evaluate(()=>addDays(today(),9)),cortaMover=await p.evaluate(d=>dshort(d),fechaMover);
+  const mover=await say(`mueve certamen 2 de calculo al ${cortaMover}`);
+  ok('propone mover sin tocar los datos',/Muevo|Te propongo mover/.test(mover)&&await p.evaluate(d=>!S.events.some(e=>e.title==='Certamen 2'&&e.date===d),fechaMover),mover.slice(0,160));
+  await confirmar('Sí, mover');
+  ok('al confirmar mueve la fecha',await p.evaluate(d=>S.events.some(e=>e.title==='Certamen 2'&&e.date===d),fechaMover),await p.evaluate(d=>S.events.find(e=>e.title==='Certamen 2').date+' vs '+d,fechaMover));
+  await deshacer();
+  ok('mover se puede deshacer',await p.evaluate(d=>!S.events.some(e=>e.title==='Certamen 2'&&e.date===d),fechaMover));
+
+  const borrar=await say('borra certamen 2 de calculo');
+  ok('propone eliminar sin tocar los datos',borrar.includes('Quito')&&await p.evaluate(()=>S.events.some(e=>e.title==='Certamen 2')));
+  await confirmar('Sí, eliminar');
+  ok('al confirmar elimina la fecha',await p.evaluate(()=>!S.events.some(e=>e.title==='Certamen 2')));
+  await deshacer();
+  ok('eliminar se puede deshacer',await p.evaluate(()=>S.events.some(e=>e.title==='Certamen 2')));
+
+  const tarea=await p.evaluate(()=>{const t=(S.tasks||[]).find(x=>x.date===today()&&!x.done);return t?{id:t.id,title:t.title}:null});
+  if(tarea){
+    const marcar=await say(`ya hice la micro-tarea ${tarea.title}`);
+    ok('propone marcar micro-tarea',marcar.includes('Marco como hecha'));
+    await confirmar('Sí, marcar');
+    ok('al confirmar marca la micro-tarea',await p.evaluate(id=>S.tasks.find(x=>x.id===id).done,tarea.id));
+    await deshacer();
+    ok('marcar se puede deshacer',await p.evaluate(id=>!S.tasks.find(x=>x.id===id).done,tarea.id));
+  }else ok('propone marcar micro-tarea',false,'sin micro-tareas de prueba');
+
+  const nota=await say('me saque 5 en prueba 1 de termo');
+  ok('pide la ponderación cuando falta',nota.includes('ponderación'));
+  await p.locator('.chat-msg.arvis').last().locator('.chat-chip',{hasText:'30%'}).click();await settled();
+  ok('guarda la ponderación dicha en el chip',(await last()).includes('30%'));
+  await confirmar('Sí, registrar');
+  ok('al confirmar registra la nota',await p.evaluate(()=>S.courses.find(c=>c.name==='Termodinámica').grades.some(g=>g.score===5&&g.weight===30)));
+  await deshacer();
+  ok('registrar nota se puede deshacer',await p.evaluate(()=>!S.courses.find(c=>c.name==='Termodinámica').grades.some(g=>g.score===5&&g.weight===30)));
+
+  const sesiones=await p.evaluate(()=>S.sessions.length);
+  const estudiar=await say('estudiar termo 45 min mañana');
+  ok('propone agendar estudio',/Aparto|Bloque de/.test(estudiar),estudiar.slice(0,160));
+  await confirmar('Sí, agendar');
+  ok('al confirmar agrega el bloque de estudio',await p.evaluate(n=>S.sessions.length===n+1,sesiones));
+  await deshacer();
+
+  const suave=await say('estoy muy cansado');
+  ok('ofrece bajar la carga con consentimiento',suave.includes('modo suave'));
+  await confirmar('Activar modo suave');
+  ok('activa el modo suave',await p.evaluate(()=>!!S.soft));
+  await p.evaluate(()=>document.getElementById('toast').classList.remove('on'));
+  const replan=await say('reorganiza mis pendientes');
+  ok('reorganiza cuando se lo pides',replan.includes('Reorganizar pendientes')||replan.includes('Ya tienes el modo suave'),replan.slice(0,160));
+  await confirmar('Reorganizar pendientes');
+  ok('al confirmar reordena',(await last()).includes('Reorganicé'));
+
+  await say('inicia un pomodoro');
+  await confirmar('Iniciar pomodoro');
+  ok('el pomodoro se inicia desde el chat',await p.evaluate(()=>tab==='herramientas'&&!!S.tools.pomodoro.running));
+  await p.evaluate(()=>{if(typeof focusClose==='function')focusClose()});
+
+  const ahora=await say('¿qué hago ahora?');
+  ok('sugiere una sola tarea y no lee bienestar',/una sola cosa|una sola micro-tarea/.test(ahora)&&ahora.includes('No usé datos de bienestar'));
+
+  const chipFalta=await say('agrega una prueba');
+  ok('ofrece chips para completar datos que faltan',chipFalta.includes('Me falta el ramo y la fecha')&&await p.locator('.chat-msg.arvis').last().locator('.chat-chip').count()>0);
+  await p.locator('.chat-msg.arvis').last().locator('.chat-chip',{hasText:'Cálculo Numérico'}).click();await settled();
+  const fechaFalta=await last();
+  ok('recuerda el ramo elegido y pide solo la fecha',fechaFalta.includes('falta la fecha'),fechaFalta.slice(0,160));
+  await p.locator('.chat-msg.arvis').last().locator('.chat-chip',{hasText:'Mañana'}).click();await settled();
+  ok('usa el chip de fecha y vuelve a proponer',(await last()).includes('Agrego'));
+  await cancelar();
 
   await say('llévame a notas');
   ok('navega sin cerrar el panel',await p.evaluate(()=>tab)==='notas'&&await p.locator('#chat-panel').count()===1);

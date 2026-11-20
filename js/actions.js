@@ -236,6 +236,10 @@ function validState(j){
     for(const e of dia)if(!(e&&RX.date.test(e.date)&&[e.mood,e.energy,e.sleep].every(v=>v==null||int(v,1,5))&&(e.tags===undefined||(Array.isArray(e.tags)&&e.tags.every(t=>str(t,40))))&&(e.note===undefined||str(e.note,5000))))return 'diario';
   }
   if(j.tools!==undefined&&!validTools(j.tools))return 'herramientas';
+  if(j.weeklySummary!==undefined){
+    if(!j.weeklySummary||typeof j.weeklySummary!=='object'||Array.isArray(j.weeklySummary))return 'resumen semanal';
+    if(j.weeklySummary.dismissedWeek!==undefined&&j.weeklySummary.dismissedWeek!==null&&!(typeof j.weeklySummary.dismissedWeek==='string'&&RX.date.test(j.weeklySummary.dismissedWeek)))return 'resumen semanal';
+  }
   if(j.certamen!==undefined){
     if(!j.certamen||typeof j.certamen!=='object'||Array.isArray(j.certamen)||!Array.isArray(j.certamen.plans))return 'modo certamen';
     for(const p of j.certamen.plans){
@@ -270,6 +274,7 @@ function cleanState(j){
     linkedAt:a&&RX.date.test(a.linkedAt||'')?a.linkedAt:null,
     auth:knownInst?cleanAuth(a&&a.auth):null};
   c.institutionConsentAt=RX.date.test(j.institutionConsentAt||'')?j.institutionConsentAt:null;
+  c.weeklySummary={dismissedWeek:j.weeklySummary&&RX.date.test(j.weeklySummary.dismissedWeek||'')?j.weeklySummary.dismissedWeek:null};
   c.tools=cleanTools(j.tools);
   c.wellbeing={diary:((j.wellbeing&&j.wellbeing.diary)||[]).map(e=>({date:e.date,mood:e.mood??null,energy:e.energy??null,sleep:e.sleep??null,tags:e.tags||[],note:e.note||'',ts:Number(e.ts)||0}))};
   c.support={name:String((j.support&&j.support.name)||'').slice(0,120),contact:String((j.support&&j.support.contact)||'').slice(0,300)};

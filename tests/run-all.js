@@ -47,7 +47,8 @@ server.listen(0, '127.0.0.1', async () => {
     await run('institucional.test.js', [base, path.join(out, 'institucional')]),     // modo institucional (prototipo)
     await run('inst-auth.test.js', [base, path.join(out, 'inst-auth')]),             // verificación y contraseña institucional
     await run('entrada.test.js', [base, path.join(out, 'entrada')]),                 // elección de modo y migración de entrada
-    await run('chatbot.test.js', [base, path.join(out, 'chatbot')])                  // chat con Arvis (prototipo)
+    await run('chatbot.test.js', [base, path.join(out, 'chatbot')]),                // chat con Arvis (prototipo)
+    await run('ia-semana.test.js', [base, path.join(out, 'ia-semana')])              // IA simulada y resumen semanal
   ];
   server.close();
   const failed = codes.filter(c => c !== 0).length;

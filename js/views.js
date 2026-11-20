@@ -212,6 +212,47 @@ function institutionDoneNotice(){
     <button class="lnk" onclick="dismissInstitutionDone()">Entendido</button>
     <span class="tag inst-example">Datos de ejemplo</span></div>`;
 }
+const aiDemoTag=()=>`<span class="tag inst-example ai-demo-tag" title="Respuestas generadas en tu dispositivo, sin IA real" aria-label="Respuestas generadas en tu dispositivo, sin IA real">IA · demo</span>`;
+function weeklyResumen(){
+  if(typeof isInstitutional!=='function'||!isInstitutional()||typeof ArvisIA==='undefined')return null;
+  return ArvisIA.weeklySummarySync();
+}
+function weeklyText(res){
+  if(!res)return '';
+  return (res.parrafos||[]).map(p=>`<p>${esc(p)}</p>`).join('');
+}
+function weeklyLista(items){
+  if(!items||!items.length)return '';
+  return `<ul>${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+}
+function weeklyInicioHtml(){
+  const res=weeklyResumen(),semana=mondayOf(today());
+  if(!res||S.weeklySummary&&S.weeklySummary.dismissedWeek===semana)return '';
+  return `<div class="card" id="weekly-inicio"><div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px">
+    <div><h3 style="margin:0">${esc(res.titulo)}</h3><span class="mute">Un vistazo corto a los próximos 7 días</span></div>${aiDemoTag()}</div>
+    <p>${esc(res.parrafos[0]||'')}</p>
+    ${res.prioridades.length?`<p class="mute" style="margin:6px 0"><b>Prioridad:</b> ${esc(res.prioridades[0])}</p>`:''}
+    <div class="row" style="margin-top:8px"><button class="btn sec" onclick="go('semana')">Ver resumen</button>
+      <button class="lnk" onclick="dismissWeeklySummary()">Ahora no</button></div></div>`;
+}
+function weeklyCardHtml(){
+  const res=weeklyResumen();if(!res)return '';
+  const suave=res.modoSuave&&typeof softOn==='function'&&!softOn(today());
+  return `<div class="card" id="weekly-card"><div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px">
+    <div><h2 style="margin:0">${esc(res.titulo)}</h2><span class="mute">Próximos 7 días · sin presión</span></div>
+    <div class="row" style="gap:6px">${aiDemoTag()}<span class="tag">${esc(res.estado==='celebrando'?'Semana liviana':res.estado==='preocupado'?'Semana exigente':'Semana estable')}</span></div></div>
+    ${weeklyText(res)}
+    <div class="row" style="justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:240px"><b>Prioridades</b>${weeklyLista(res.prioridades.slice(0,3))}</div>
+      <div style="flex:1;min-width:240px"><b>Alertas suaves</b>${res.alertas.length?weeklyLista(res.alertas):'<p class="mute" style="margin:4px 0">Sin choques por ahora.</p>'}</div></div>
+    <div class="row" style="margin-top:10px"><button class="btn sec" onclick="chatAskWeek()">Pregúntale a Arvis sobre tu semana</button>
+      ${suave?'<button class="btn" onclick="applySoft()">Activar modo suave</button>':''}
+      <button class="lnk" onclick="go('semana')">Ver calendario</button></div></div>`;
+}
+function dismissWeeklySummary(){
+  S.weeklySummary=S.weeklySummary&&typeof S.weeklySummary==='object'?S.weeklySummary:{dismissedWeek:null};
+  S.weeklySummary.dismissedWeek=mondayOf(today());save();render();
+}
 function viewInicio(){
   const name=S.profile&&S.profile.name?esc(S.profile.name):'';
   const descs={planificacion:'Tu día y tu semana, sin sobrecargas.',academico:'Ramos, fechas, notas y carga.',bienestar:'Check-in, pausas y apoyo.',social:'Coordina sesiones con amigos.',ajustes:'Perfil, tema y privacidad.'};
@@ -227,6 +268,7 @@ function viewInicio(){
   ${isInstitutional()?`<div class="inst-inicio"><span class="inst-identity"><b>${esc(currentInstitution().name)}</b></span><span class="tag inst-example">Prototipo</span></div>`:''}
   <div class="home-head"><div><h2>Hola, ${name}</h2><p class="mute" style="margin-bottom:0">Elige por dónde empezar hoy.</p></div></div>
   ${arvisInicioHtml()}
+  ${weeklyInicioHtml()}
   ${institutionDoneNotice()}
   ${homeNotice()}
   ${arvisAlertaHtml()}
@@ -475,7 +517,7 @@ function viewHoy(){
 function viewSemana(){
   const days=[...Array(7)].map((_,i)=>addDays(weekStart,i)),t0=today(),H0=7,H1=22,HH=44;
   const crit=criticalClusters(),isCrit=d=>crit.some(g=>d>=g.start&&d<=g.end);
-  let h=`${screenHelp('semana')}<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px">
+  let h=`${screenHelp('semana')}${weeklyCardHtml()}<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px">
     <h2 style="margin:0">Semana ${dshort(days[0])} – ${dshort(days[6])}</h2>
     <div class="row"><button class="btn sec" aria-label="Semana anterior" onclick="weekStart=addDays(weekStart,-7);render()">←</button>
     <button class="btn sec" onclick="weekStart=mondayOf(today());render()">Hoy</button>
