@@ -82,7 +82,7 @@ function logrosDesbloqueados(){
   const c=logrosCfg();return Array.isArray(c.desbloqueados)?c.desbloqueados:[];
 }
 const logrosTiene=l=>logrosDesbloqueados().indexOf(l.accesorio)>=0;
-function logrosRevisar(){
+function logrosRevisar(silencioso){
   const c=logrosCfg(),antes=logrosDesbloqueados().slice();
   LOGROS.forEach(l=>{
     if(l.pronto||typeof l.condicion!=='function')return;
@@ -92,7 +92,7 @@ function logrosRevisar(){
   if(c.desbloqueados.length!==antes.length){
     save();
     const nuevo=c.desbloqueados.find(id=>antes.indexOf(id)<0);
-    if(nuevo)logrosMostrarAviso(logroPorAccesorio(nuevo));
+    if(nuevo&&silencioso!==true)logrosMostrarAviso(logroPorAccesorio(nuevo));
   }
 }
 function logrosCerrarAviso(){
@@ -129,14 +129,12 @@ function logrosMarcarVistos(){
   const c=logrosCfg(),vistos=c.desbloqueados.slice();
   if(vistos.join('|')!==(c.vistos||[]).join('|')){
     c.vistos=vistos;save();
-    const slot=document.getElementById('arvis-header');
-    if(slot&&typeof arvisHeaderHtml==='function')slot.innerHTML=arvisHeaderHtml();
   }
 }
 const LOGROS_ESPACIOS=[['cabeza','Cabeza'],['cara','Cara'],['espalda','Espalda'],['mano','Mano']];
 function viewArvis(){
   logrosMarcarVistos();
-  const c=logrosCfg(),desbloqueados=logrosDesbloqueados(),nombre=(S&&S.profile&&S.profile.name)||'Arvis';
+  const c=logrosCfg(),desbloqueados=logrosDesbloqueados();
   const grupos=LOGROS_ESPACIOS.map(([slot,label])=>{
     const items=Object.keys(ARVIS_ITEMS).filter(id=>ARVIS_ITEMS[id].espacio===slot);
     const cards=items.map(id=>{
@@ -146,7 +144,7 @@ function viewArvis(){
       const barra=!on&&!l.pronto&&p.total>1?`<div class="logro-bar" role="presentation"><span style="width:${Math.round(100*p.actual/p.total)}%"></span></div>`:'';
       return `<button class="logro-item ${on?'on':''} ${eq?'eq':''}" type="button" aria-pressed="${eq?'true':'false'}" ${on?`onclick="logrosEquipar('${esc(l.id)}')"`:'disabled'}
         data-focus-id="item-${esc(id)}">
-        <span class="logro-item-img"><img src="${esc(item.src)}" alt="" loading="lazy"></span>
+        <span class="logro-item-img">${arvisFigura('normal',64,'',{[item.espacio]:id})}</span>
         <span class="logro-item-copy"><b>${esc(item.nombre)}</b>${texto}${barra}</span>
       </button>`;
     }).join('');
@@ -164,7 +162,7 @@ function viewArvis(){
   }).join('');
   return `<div class="card arvis-personalizar">
     <h2>Personalizar a Arvis</h2>
-    <div class="arvis-preview">${arvisFigura(arvisEstadoDelDia(),200)}<div><h3 style="margin-bottom:4px">${esc(nombre)}</h3>
+    <div class="arvis-preview">${arvisFigura(arvisEstadoDelDia(),200)}<div><h3 style="margin-bottom:4px">Arvis</h3>
       <p class="mute" style="margin:0">Los accesorios se ganan con hábitos sostenibles. Ningún logro premia estudiar de noche ni superar tu límite diario.</p></div></div>
   </div>
   <div class="card"><h3>Accesorios por espacio</h3><p class="mute">Toca uno para ponérselo; tócalo de nuevo para quitarlo. Solo se puede llevar uno por espacio.</p>${grupos}</div>

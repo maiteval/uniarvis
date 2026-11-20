@@ -59,10 +59,10 @@ const arvisConfig=()=>{
 };
 const arvisOn=()=>arvisConfig().enabled!==false;
 const arvisPick=arr=>arr[Math.floor(Math.random()*arr.length)];
-function arvisFigura(estado,tamano,baseClass){
+function arvisFigura(estado,tamano,baseClass,equipadosOverride){
   const size=Number(tamano)>0?Number(tamano):96;
   const key=ARVIS_MENSAJES[estado]?estado:'normal';
-  const eq=arvisConfig().equipados||{};
+  const eq=equipadosOverride||arvisConfig().equipados||{};
   const layer=slot=>{
     const id=eq[slot],item=id&&ARVIS_ITEMS[id];
     return item&&item.espacio===slot&&id!=='capa'&&id!=='mochila'?`<img class="arvis-item" src="${item.src}" alt="">`:'';
@@ -76,15 +76,10 @@ function arvisFigura(estado,tamano,baseClass){
     ${back}${layer('cabeza')}${cara}${mano}
   </span>`;
 }
-const ARVIS_ESTADOS_LABEL={energia:'Con energía',normal:'Aquí',cansado:'Cansado',descansando:'Descansando'};
-function arvisHeaderHtml(){
-  if(!arvisOn())return '';
-  const cfg=arvisConfig(),nuevo=(cfg.desbloqueados||[]).some(id=>(cfg.vistos||[]).indexOf(id)<0);
-  const estado=arvisEstadoDelDia(),label=ARVIS_ESTADOS_LABEL[estado]||'Arvis';
-  return `<button class="arvis-header-btn" type="button" aria-label="Personalizar a Arvis" title="Estado de hoy: ${esc(label)}" onclick="go('arvis')" data-focus-id="arvis-header">
-    ${arvisFigura(estado,34)}<span class="arvis-header-label">${esc(label)}</span>${nuevo?'<span class="arvis-nuevo" aria-hidden="true"></span>':''}
-  </button>`;
-}
+const arvisPuntoNuevo=()=>{
+  const c=arvisConfig();
+  return (c.desbloqueados||[]).some(id=>(c.vistos||[]).indexOf(id)<0)?'<span class="arvis-nuevo" aria-hidden="true"></span>':'';
+};
 function arvisCheckinHoy(){
   const d=today();
   if(typeof diaryOn==='function'){
@@ -108,15 +103,17 @@ function arvis(estado,mensaje,opciones){
   const o=opciones||{},key=ARVIS_MENSAJES[estado]?estado:'normal';
   const txt=mensaje||o.mensaje||arvisPick(ARVIS_MENSAJES[key]);
   const action=o.action?`<div class="arvis-action">${o.action}</div>`:'';
+  const figura=arvisFigura(key,o.mediano?120:o.pequeno?56:96);
+  const figuraHtml=o.tocable?`<button type="button" class="arvis-tocable" aria-label="Personalizar a Arvis" onclick="go('arvis')" data-focus-id="arvis-tocable">${figura}${arvisPuntoNuevo()}</button>`:figura;
   return `<div class="arvis-card${o.mediano?' arvis-md':o.pequeno?' arvis-sm':''}${o.clase?' '+esc(o.clase):''}"${o.id?` id="${esc(o.id)}"`:''}>
-    ${arvisFigura(key,o.mediano?120:o.pequeno?56:96)}
+    ${figuraHtml}
     <div class="arvis-bubble"><p>${esc(txt)}</p>${action}</div>
   </div>`;
 }
 function arvisInicioHtml(){
   if(!arvisOn())return '';
-  if(!arvisCheckinHoy())return arvis('normal',arvisPick(ARVIS_MENSAJES.sinCheckin),{action:'<button class="lnk" type="button" onclick="go(\'bienestar\')">Hacer check-in</button>',id:'arvis-inicio'});
-  return arvis(arvisEstadoDelDia(),null,{id:'arvis-inicio'});
+  if(!arvisCheckinHoy())return arvis('normal',arvisPick(ARVIS_MENSAJES.sinCheckin),{action:'<button class="lnk" type="button" onclick="go(\'bienestar\')">Hacer check-in</button>',id:'arvis-inicio',tocable:true});
+  return arvis(arvisEstadoDelDia(),null,{id:'arvis-inicio',tocable:true});
 }
 function arvisCelebrar(mensaje,scope){
   if(arvisOn())arvisMomento={ts:Date.now(),mensaje:mensaje||'',scope:scope||''};

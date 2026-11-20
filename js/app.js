@@ -132,8 +132,6 @@ function renderCore(){
   const who=S.profile&&S.profile.name?`<span class="hud-user"> · ${esc(S.profile.name)}</span>`:'';
   const brand=document.querySelector('.brand');
   if(brand)brand.innerHTML='U.A.R.V.I.S.'+who;
-  const arvisSlot=$('#arvis-header');
-  if(arvisSlot)arvisSlot.innerHTML=typeof arvisHeaderHtml==='function'?arvisHeaderHtml():'';
   if(section==='inicio'){
     $('#nav').innerHTML='';
     let mob=$('#mobile-nav');if(mob)mob.remove();
@@ -171,6 +169,7 @@ function checkNewDay(previous){
 }
 function start(){
   loadDraft();
+  if(typeof logrosRevisar==='function')logrosRevisar(true);
   if(typeof pomResume==='function')pomResume();
   lastPlanDay=today();
   if(S.lastPlan!==today()&&S.courses.length)replanAll();

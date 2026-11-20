@@ -184,7 +184,15 @@ function boot(){                  // lee lo guardado; si está cifrado, queda en
 }
 let C={};                         // caché de cálculos; se invalida en cada cambio
 const inval=()=>{C={}};
-function save(){inval();persist();try{if(typeof socialAfterSave==='function')socialAfterSave()}catch(e){}}
+let logrosRevisando=false;
+function save(){
+  inval();persist();
+  try{if(typeof socialAfterSave==='function')socialAfterSave()}catch(e){}
+  if(typeof logrosRevisar==='function'&&!logrosRevisando){
+    logrosRevisando=true;
+    try{logrosRevisar()}finally{logrosRevisando=false}
+  }
+}
 function persist(){
   const json=JSON.stringify(S);
   if(KEYOBJ)writeQ=writeQ.then(()=>encryptState(json)).then(s=>{try{localStorage.setItem(KEY,s)}catch(e){}}).catch(()=>{});
