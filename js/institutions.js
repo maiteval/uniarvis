@@ -198,11 +198,11 @@ const InstitutionalFlow=(function(){
   function next(){if(flow&&flow.step==='choose'){flow.step='login';flow.error=''}}
   function setEmail(v){if(flow){flow.email=String(v||'').trim().slice(0,120);flow.error='';invalidateCode()}}
   function setCode(v){if(flow){flow.codeInput=String(v||'').replace(/\D/g,'').slice(0,6);flow.error=''}}
-  function submitProfile(name,career){
+  function submitProfile(name,career,chronotype){
     if(!flow||flow.step!=='profile')return false;
     const n=String(name||'').trim(),c=String(career||'').trim();
     if(!n||!c){flow.error='Ingresa tu nombre y carrera.';return false}
-    flow.profile={name:n.slice(0,60),career:c.slice(0,80)};
+    flow.profile={name:n.slice(0,60),career:c.slice(0,80),chronotype:chronotypeOk(chronotype)?chronotype:'no_se'};
     flow.step='consent';flow.error='';return true;
   }
   function submitEmail(){
@@ -257,6 +257,7 @@ const InstitutionalFlow=(function(){
     if(!flow||flow.step!=='consent')return false;
     if(flow.profile){
       S.profile.name=flow.profile.name;S.profile.career=flow.profile.career;
+      if(flow.profile.chronotype)S.settings.chronotype=flow.profile.chronotype;
     }
     linkInstitution(INSTITUTIONS[0].id,flow.email,flow.auth);flow=null;return true;
   }
@@ -275,8 +276,8 @@ function institutionalBack(){
 function institutionalCancel(){InstitutionalFlow.cancel();entryChoice=null;choiceOrigin='entry';if(typeof render==='function')render()}
 function institutionalNext(){InstitutionalFlow.next();if(typeof render==='function')render()}
 function institutionalProfileNext(){
-  const a=$('#inst-profile-name'),b=$('#inst-profile-career');
-  InstitutionalFlow.submitProfile(a?a.value:'',b?b.value:'');
+  const a=$('#inst-profile-name'),b=$('#inst-profile-career'),c=$('#inst-profile-chronotype');
+  InstitutionalFlow.submitProfile(a?a.value:'',b?b.value:'',c?c.value:'no_se');
   if(typeof render==='function')render();
 }
 function institutionalEmail(v){InstitutionalFlow.setEmail(v)}

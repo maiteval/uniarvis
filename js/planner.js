@@ -1,12 +1,49 @@
 /* U.A.R.V.I.S. · Planificador de micro-tareas y detección de semanas críticas */
 /* ===================== Planificador predictivo ===================== */
 const BASE={evaluacion:360,entrega:240,control:90,otro:60};
-const STAGES={
-  evaluacion:['Repasar apuntes y conceptos clave','Ejercicios guiados','Simulacro tipo evaluación'],
-  entrega:['Planificar y reunir material','Desarrollar avance','Revisar y pulir la entrega'],
-  control:['Repaso rápido','Ejercicios tipo control'],
-  otro:['Preparación']
+const KIND_LABEL={nuevo:'Primera vez',recuperar:'Recuperar',ejercicios:'Ejercicios',simulacro:'Simulacro',repaso_ligero:'Repaso ligero'};
+const KIND_TITLE={recuperar:'Recuperar a distancia',ejercicios:'Ejercicios mezclados',simulacro:'Simulacro tipo evaluación',repaso_ligero:'Repaso ligero'};
+const chronoTag=kind=>{
+  const ch=(S.settings&&S.settings.chronotype)||'no_se',label=EVIDENCE.plan.chronotypeLabels[ch]||'';
+  if(!label)return '';
+  if(['nuevo','ejercicios','simulacro'].indexOf(kind)>=0)return `Mejor en tu franja: ${label}`;
+  if(['recuperar','repaso_ligero'].indexOf(kind)>=0)return 'cuando puedas';
+  return '';
 };
+const taskKindTitle=(kind,ev)=>kind==='nuevo'?EVIDENCE.plan.retrievalTitle:`${KIND_TITLE[kind]||'Practicar'} · ${ev.title}`;
+function needsInterleave(t){
+  if(!t||(t.kind!=='ejercicios'&&!t.certamen))return false;
+  const plan=t.certamen&&certPlans().find(p=>p.eventId===t.eventId);
+  const topics=plan?plan.topics.map(x=>x.id):S.courses.map(c=>c.id);
+  if(topics.length<EVIDENCE.plan.interleaveMinTopics)return false;
+  return topics.every(id=>S.tasks.some(x=>x.done&&x.courseId===(plan?t.courseId:id)&&x.date<t.date&&(!plan||x.topicId===id)));
+}
+function taskSlots(ev,days,n,diff){
+  const P=EVIDENCE.plan,eve=addDays(ev.date,-1);
+  const beforeEve=days.filter(d=>d<eve),useDays=beforeEve.length?beforeEve:days;
+  const first=useDays[0],left=first?diffDays(first,ev.date):0;
+  const gap1=Math.max(P.minGapDays,Math.round(left*P.gapRatioMin)),gap2=Math.max(gap1+1,Math.round(left*P.gapRatioMax));
+  const rec1=useDays.find(d=>diffDays(first,d)>=gap1)||null;
+  const rec2=rec1&&useDays.find(d=>diffDays(first,d)>=gap2)||null;
+  const mock=days.find(d=>{const l=diffDays(d,ev.date);return l>=P.mockBeforeMin&&l<=P.mockBeforeMax})||null;
+  const exercise=useDays.find(d=>(!rec2||d>rec2)&&(!mock||d<mock))||null;
+  const order=useDays.map(d=>{
+    if(d===first)return {date:d,kind:'nuevo'};
+    if(d===rec1||d===rec2)return {date:d,kind:'recuperar'};
+    if(d===mock)return {date:d,kind:'simulacro'};
+    return {date:d,kind:'ejercicios'};
+  });
+  if(days.includes(eve))order.push({date:eve,kind:'repaso_ligero'});
+  if(!order.length)order.push({date:days[0],kind:'repaso_ligero'});
+  const extra=order.filter(x=>x.date!==eve);
+  const out=[];
+  while(out.length<n){
+    const s=order[out.length%order.length],e=extra.length?extra[out.length%extra.length]:s;
+    const pick=out.length<order.length?s:{date:e.date,kind:e.kind==='recuperar'?'ejercicios':e.kind};
+    out.push({date:pick.date,kind:pick.date===eve?'repaso_ligero':pick.kind});
+  }
+  return out;
+}
 const dayLoad=date=>S.tasks.filter(t=>t.date===date).reduce((a,t)=>a+t.minutes,0)+
                     S.sessions.filter(x=>x.date===date&&!x.taskId).reduce((a,x)=>a+x.minutes,0);
 function splitMinutes(total,chunk){                     // bloques parejos de 15 a 30 min, sin restos de 5 o 10 min
@@ -29,19 +66,26 @@ function planEvent(ev){
   const days=[];for(let d=start;d<=end;d=addDays(d,1))if(!sinTarea.includes(d))days.push(d);
   if(!days.length)return 0;
   const chunk=ev.type==='control'?15:(diff>=4?25:30);                      // micro-tareas de 15 a 30 min
+  const amounts=splitMinutes(remaining,chunk),slots=taskSlots(ev,days,amounts.length,diff);
+  const eve=addDays(ev.date,-1),P=EVIDENCE.plan;
+  const limit=d=>d===eve?Math.min(planCap(d),P.eveMaxMinutes):planCap(d);
   const picks=[];let overflow=0;
   const load=d=>dayLoad(d)+picks.filter(p=>p.date===d).reduce((a,p)=>a+p.minutes,0);
-  for(const m of splitMinutes(remaining,chunk)){
-    let cands=days.filter(d=>load(d)+m<=planCap(d));
-    if(!cands.length){cands=days;overflow++}
-    cands.sort((a,b)=>load(a)/planCap(a)-load(b)/planCap(b)||b.localeCompare(a));
-    picks.push({date:cands[0],minutes:m});
-  }
+  amounts.forEach((m,i)=>{
+    const preferred=slots[i];let target=preferred.date;
+    if(load(target)+m>limit(target)){
+      const rest=days.filter(d=>d!==target&&load(d)+m<=limit(d));
+      rest.sort((a,b)=>load(a)/limit(a)-load(b)/limit(b)||b.localeCompare(a));
+      if(rest.length)target=rest[0];else overflow++;
+    }
+    if(target===eve&&preferred.kind!=='repaso_ligero')preferred.kind='repaso_ligero';
+    picks.push({date:target,minutes:m,kind:target===eve?'repaso_ligero':preferred.kind});
+  });
   picks.sort((a,b)=>a.date.localeCompare(b.date));
-  const st=STAGES[ev.type];
-  picks.forEach((p,i)=>{
-    const stage=st[Math.min(st.length-1,Math.floor(i/picks.length*st.length))];
-    S.tasks.push({id:uid(),eventId:ev.id,courseId:ev.courseId,title:`${stage} · ${ev.title}`,date:p.date,minutes:p.minutes,done:false});
+  picks.forEach(p=>{
+    const chrono=chronoTag(p.kind);
+    S.tasks.push({id:uid(),eventId:ev.id,courseId:ev.courseId,title:taskKindTitle(p.kind,ev),date:p.date,minutes:p.minutes,done:false,
+      kind:p.kind,...(chrono?{chrono}:{})});
   });
   return overflow;
 }
@@ -125,7 +169,7 @@ function criticalHtml(){
   }).join('');
 }
 
-const CERT_PHASES={teoria:'Repaso de teoría',ejercicios:'Ejercicios por tema',ensayo:'Ensayo cronometrado',errores:'Revisión de errores',repaso:'Repaso ligero de errores'};
+const CERT_PHASES={teoria:'Recordar sin mirar',ejercicios:'Ejercicios por tema',ensayo:'Ensayo cronometrado',errores:'Revisión de errores',repaso:'Repaso ligero de errores'};
 let certDraft=null;
 const certPlans=()=>S.certamen&&Array.isArray(S.certamen.plans)?S.certamen.plans:[];
 const certIsExam=e=>e.type==='evaluacion'||e.type==='control'||(e.type==='otro'&&/(prueba|certamen|examen|control)/.test(norm(e.title)));
@@ -183,19 +227,22 @@ function certShare(date,plan,plans){
   const total=mates.reduce((a,e)=>a+weight(e),0);
   return total?weight(ev)/total:1;
 }
+const CERT_KIND={teoria:'recuperar',ejercicios:'ejercicios',ensayo:'simulacro',errores:'repaso_ligero',repaso:'repaso_ligero'};
 function buildCertamenTasks(t0,previous){
   S.tasks=S.tasks.filter(t=>!t.certamen||t.done);
   const done=new Set((previous||[]).filter(t=>t.certamen&&t.done).map(t=>t.eventId+'|'+(t.topicId||'')+'|'+t.phase));
   const plans=certPlans().filter(p=>p.date>t0&&S.events.some(e=>e.id===p.eventId));
-  const blocks=[];
+  const blocks=[],firstTheory=new Set();
   plans.forEach(p=>{
     p.leftOut=[];
     const N=clamp(diffDays(t0,p.date),1,7),topics=[...p.topics].sort((a,b)=>(b.hard?1:0)-(a.hard?1:0));
     const offset=o=>clamp(Math.ceil(o*N/7),2,N);
     const put=(n,minutes,phase,topic,priority)=>{
       if(done.has(p.eventId+'|'+(topic?topic.id:'')+'|'+phase))return;
+      const key=p.eventId+'|'+(topic?topic.id:''),first=phase==='teoria'&&!firstTheory.has(key);
+      if(first)firstTheory.add(key);
       blocks.push({plan:p,date:addDays(p.date,-n),minutes,phase,topic,priority,
-        title:`${CERT_PHASES[phase]} · ${topic?topic.name:p.title}`});
+        kind:first?'nuevo':CERT_KIND[phase],title:`${CERT_PHASES[phase]} · ${topic?topic.name:p.title}`});
     };
     if(N>=3)topics.forEach((t,i)=>put(offset(7-Math.min(i,2)),25,'teoria',t,(t.hard?50:30)+i));
     if(N>=2)topics.forEach((t,i)=>put(offset(4-Math.min(i,1)),25,'ejercicios',t,(t.hard?80:60)+i));
@@ -226,8 +273,9 @@ function buildCertamenTasks(t0,previous){
     }
     const {fit}=roomFor(target,b);
     if(fit<15||(b.phase==='ensayo'&&fit<b.minutes)){b.plan.leftOut.push({label:b.title,minutes:b.minutes});return}
+    const chrono=chronoTag(b.kind);
     S.tasks.push({id:uid(),eventId:b.plan.eventId,courseId:b.plan.courseId,title:b.title,date:target,minutes:fit,done:false,
-      certamen:true,phase:b.phase,topicId:b.topic?b.topic.id:''});
+      certamen:true,phase:b.phase,kind:b.kind,topicId:b.topic?b.topic.id:'',...(chrono?{chrono}:{})});
   };
   const first=b=>b.phase==='ensayo'||b.phase==='errores';
   dates.forEach(date=>byDate[date].filter(first).sort((a,b)=>b.priority-a.priority).forEach(place));

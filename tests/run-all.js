@@ -32,6 +32,7 @@ server.listen(0, '127.0.0.1', async () => {
   const base = `http://127.0.0.1:${server.address().port}/`;
   const codes = [
     await run('ui.test.js', [path.join(root, 'index.html'), path.join(out, 'ui')]),   // por file://
+    await run('evidencia.test.js', [path.join(root, 'index.html')]),                                     // base en evidencia
     await run('notas.test.js', [path.join(root, 'index.html')]),                                          // calculadora de notas
     await run('herramientas.test.js', [path.join(root, 'index.html')]),                                   // Pomodoro y flashcards
     await run('certamen.test.js', [path.join(root, 'index.html')]),                                       // modo certamen

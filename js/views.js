@@ -1,10 +1,12 @@
 /* U.A.R.V.I.S. · Vistas (HTML de cada pestaña) */
 /* ===================== Vistas ===================== */
+const chronotypeOptions=(id,current)=>`<select id="${id}">${CHRONOTYPES.map(([v,l])=>`<option value="${v}" ${current===v?'selected':''}>${l}</option>`).join('')}</select>`;
 function viewLanding(){
   const calma=(S.settings&&S.settings.style)==='calma';
   const uni='<option value="">Sin definir</option>'+UNIVERSITIES_CHILE.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')+
     `<option value="${esc(UNIVERSITY_OTHER)}">${esc(UNIVERSITY_OTHER)}</option><option value="${esc(UNIVERSITY_PREFERS_NOT)}">${esc(UNIVERSITY_PREFERS_NOT)}</option>`;
   const university=`<label>Universidad (opcional)<select id="reg-university">${uni}</select></label>`;
+  const chrono=`<label>¿A qué hora del día te concentras mejor? (opcional)${chronotypeOptions('reg-chronotype',(S.settings&&S.settings.chronotype)||'no_se')}</label>`;
   const back='<button class="btn sec" data-focus-id="reg-back" onclick="choosePersonalBack()">Volver</button>';
   if(calma)return `<div class="landing landing-calma"><div class="landing-bg"></div><div class="landing-panel">
     <h1 class="landing-title">Bienvenido/a</h1>
@@ -13,6 +15,7 @@ function viewLanding(){
       <label>Nombre<input id="reg-name" type="text" maxlength="60" placeholder="Tu nombre"></label>
       <label>Carrera / Programa<input id="reg-career" type="text" maxlength="80" placeholder="Tu carrera"></label>
       ${university}
+      ${chrono}
       <div class="row"><button class="btn hud-btn" onclick="registerProfile()">Empezar</button>${back}</div>
     </div>
     <p class="mute hud-note">Los datos se guardan solo en este navegador (localStorage).</p>
@@ -25,6 +28,7 @@ function viewLanding(){
       <label>Identificación / Nombre<input id="reg-name" type="text" maxlength="60" placeholder="Tu nombre"></label>
       <label>Carrera / Programa<input id="reg-career" type="text" maxlength="80" placeholder="Tu carrera"></label>
       ${university}
+      ${chrono}
       <div class="row"><button class="btn hud-btn" onclick="registerProfile()">INICIAR SISTEMA</button>${back}</div>
     </div>
     <p class="mute hud-note">Los datos se guardan solo en este navegador (localStorage).</p>
@@ -103,6 +107,7 @@ function viewInstitutionalFlow(){
       <div class="hud-form"><label>Nombre<input id="inst-profile-name" type="text" maxlength="60" placeholder="Tu nombre" value="${esc(p.name||'')}"></label>
       <label>Carrera / Programa<input id="inst-profile-career" type="text" maxlength="80" placeholder="Tu carrera" value="${esc(p.career||'')}"></label>
       <label>Universidad<input id="inst-profile-university" type="text" value="${esc(inst.name)}" disabled aria-readonly="true"></label>
+      <label>¿A qué hora del día te concentras mejor? (opcional)${chronotypeOptions('inst-profile-chronotype',(f.profile&&f.profile.chronotype)||(S.settings&&S.settings.chronotype)||'no_se')}</label>
       <button class="btn" data-focus-id="inst-profile-next" onclick="institutionalProfileNext()">Continuar</button></div>
       ${f.error?`<div class="banner go" role="alert">${esc(f.error)}</div>`:''}
       <div class="row">${back}</div>`;
@@ -246,6 +251,8 @@ function viewPerfil(){
       <label>Nombre<input id="pf-name" type="text" maxlength="60" value="${esc(p.name||'')}"></label>
       <label>Carrera / Programa<input id="pf-career" type="text" maxlength="80" value="${esc(p.career||'')}"></label>
       ${universityField}
+      <label>¿A qué hora del día te concentras mejor?${chronotypeOptions('pf-chronotype',(S.settings&&S.settings.chronotype)||'no_se')}</label>
+      <p class="mute" style="margin:0">Opcional. Solo etiquetamos tus tareas según tu franja; no asumimos horas exactas.</p>
       <button class="btn" data-focus-id="save-profile" onclick="saveProfile()">Guardar cambios</button>
     </div></div>`;
 }
@@ -321,9 +328,14 @@ function energyBoxes(cap,min,done){
 }
 const evDate=t=>{const e=S.events.find(x=>x.id===t.eventId);return e?e.date:'9999'};
 function taskRow(t,locked){
+  const deck=t.kind==='recuperar'&&(S.tools&&S.tools.flashcards&&S.tools.flashcards.decks||[]).find(d=>d.courseId===t.courseId);
+  const fcBtn=deck?`<button class="btn sec" data-focus-id="fc-task-${t.id}" onclick="openCourseFlashcards('${t.courseId}')">Repasar flashcards de este ramo</button>`:'';
+  const kind=t.kind?`<span class="tag">${esc(KIND_LABEL[t.kind]||t.kind)}</span>`:'';
+  const chrono=t.chrono?`<br><span class="mute">${esc(t.chrono)}</span>`:'';
+  const hint=needsInterleave(t)?`<br><span class="mute">${esc(EVIDENCE.plan.interleaveHint)}</span>`:'';
   return `<div class="task ${t.done?'done':''}"><input type="checkbox" aria-label="${t.done?'Marcar como pendiente':'Marcar como hecha'}: ${esc(t.title)}" data-focus-id="task-${t.id}" ${t.done?'checked':''} ${locked&&!t.done?'disabled':''} onchange="toggleTask('${t.id}')">
     <span aria-hidden="true" class="dot" style="background:${ccolor(t.courseId)}"></span>
-    <span class="t" style="flex:1">${esc(t.title)}<br><span class="mute">${esc(cname(t.courseId))}</span></span><span class="tag">${t.minutes} min</span></div>`;
+    <span class="t" style="flex:1">${esc(t.title)}<br><span class="mute">${esc(cname(t.courseId))}${chrono}${hint}</span></span>${kind}<span class="tag">${t.minutes} min</span>${fcBtn}</div>`;
 }
 function agendaItems(date){
   const items=[],wd=(parse(date).getDay()+6)%7;
@@ -332,7 +344,7 @@ function agendaItems(date){
   S.events.filter(e=>e.date===date).forEach(e=>items.push({time:e.type==='evaluacion'?('9:00'):'',order:1,
     html:`<b>${TYPE_LABEL[e.type]} · ${esc(cname(e.courseId))}</b><br><span class="mute">${esc(e.title)}</span>`}));
   S.tasks.filter(t=>t.date===date).forEach(t=>items.push({time:'',order:2,done:t.done,
-    html:`<b>${esc(t.title)}</b><br><span class="mute">${esc(cname(t.courseId))} · ${t.minutes} min</span>`}));
+    html:`<b>${esc(t.title)}</b><br><span class="mute">${esc(cname(t.courseId))}${t.kind?` · ${esc(KIND_LABEL[t.kind]||t.kind)}`:''}${t.chrono?` · ${esc(t.chrono)}`:''} · ${t.minutes} min</span>`}));
   if(typeof socialAgendaItems==='function')socialAgendaItems(date).forEach(x=>items.push(x));
   return items.sort((a,b)=>String(a.time||'99:99').localeCompare(String(b.time||'99:99'))||a.order-b.order);
 }
@@ -373,11 +385,13 @@ function certamenActiveHtml(){
       const cell=phase=>{
         const task=tasks.find(x=>x.topicId===t.id&&x.phase===phase),label=CERT_PHASES[phase].toLowerCase();
         if(!task)return `<span class="mute">${label}: sin bloque</span>`;
-        return `<label class="mute"><input type="checkbox" aria-label="${esc(t.name)}: ${label}" data-focus-id="cert-${t.id}-${phase}" ${task.done?'checked':''} onchange="toggleTask('${task.id}')"> ${label}</label>`;
+        const kind=task.kind?` · ${esc(KIND_LABEL[task.kind]||task.kind)}`:'';
+        return `<label class="mute"><input type="checkbox" aria-label="${esc(t.name)}: ${label}" data-focus-id="cert-${t.id}-${phase}" ${task.done?'checked':''} onchange="toggleTask('${task.id}')"> ${label}${kind}</label>`;
       };
       return `<div class="task" style="flex-wrap:wrap"><b style="flex:1;min-width:140px">${esc(t.name)}${t.hard?' <span class="tag">me cuesta</span>':''}</b>
         <span class="row" style="gap:10px">${cell('teoria')}${cell('ejercicios')}${cell('repaso')}</span></div>`;
     }).join('');
+    const hint=tasks.some(t=>needsInterleave(t))?`<p class="mute">${esc(EVIDENCE.plan.interleaveHint)}</p>`:'';
     const mock=tasks.find(x=>x.phase==='ensayo'),next=tasks.find(x=>!x.done&&x.date>=today());
     const decks=(S.tools&&S.tools.flashcards&&S.tools.flashcards.decks||[]).filter(d=>d.courseId===p.courseId);
     const deckBtn=decks.length?`<button class="btn sec" data-focus-id="cert-flashcards-${p.eventId}" onclick="openCourseFlashcards('${p.courseId}')">Repasar flashcards de este ramo</button>`:'';
@@ -387,8 +401,10 @@ function certamenActiveHtml(){
       <h3 style="margin:0">Modo certamen · ${esc(p.title)}</h3>
       <button class="btn sec" data-focus-id="cert-exit-${p.eventId}" onclick="exitCertamen('${p.eventId}')">Salir del modo certamen</button></div>
       <p class="mute">${dshort(ev.date)} · ${diffDays(today(),ev.date)} día(s) · ensayo de ${p.mockMin} min${mock?` (${dshort(mock.date)})`:''}</p>
+      <p class="mute">Recordar sin mirar: escribe lo que sabes y luego revisa. Repetir en días distintos ayuda a retener.</p>
       ${rows}
-      <div class="row" style="margin-top:10px">${deckBtn}${pomBtn}<button class="btn sec" onclick="goBreath('s478')">Pausa nocturna 4-7-8</button></div>
+      ${hint}
+      <div class="row" style="margin-top:10px">${deckBtn}${pomBtn}<button class="btn sec" onclick="goBreath('s478')">Pausa nocturna 4-7-8 (opcional)</button></div>
       ${left}
       <p class="mute" style="margin-bottom:0">La noche anterior solo hay repaso ligero y la pausa que ya está en Pausas: nada de contenido nuevo.</p>
     </div>`;
@@ -615,6 +631,20 @@ function trend(key,label,color){
   return `<div class="mute">${label}</div><div class="trend">${dates.map(d=>{const e=ci(d);const v=e?e[key]:0;
     return `<i title="${dshort(d)}${v?': '+v+' de 5':': sin registro'}" style="height:${v?v*20:5}%;background:${v?color:'var(--line)'}"></i>`}).join('')}</div>`;
 }
+function evidenceHtml(){
+  const s=EVIDENCE.sources;
+  return `<div class="card"><h3>¿En qué se basa?</h3>
+    <p class="mute" style="margin-top:0">Esta app no es tratamiento ni diagnóstico. Reúne hallazgos generales y los convierte en reglas simples que se adaptan con tus propios datos.</p>
+    <ul>
+      <li><b>Sueño y capacidad:</b> ${s.sleepDebt} ${s.individualSleep}</li>
+      <li><b>Práctica distribuida y recuperación:</b> ${s.spacing} ${s.retrieval}</li>
+      <li><b>Intercalar ejercicios:</b> ${s.interleaving}</li>
+      <li><b>Pausas y respiración:</b> ${s.microbreaks} ${s.breathing}</li>
+      <li><b>Hora del día:</b> ${s.chronotype}</li>
+    </ul>
+    <p class="mute" style="margin-bottom:0"><b>Estimaciones de diseño:</b> la base de 14 h / 6 h / 60 %, los multiplicadores de energía, las horas aproximadas del sueño y los topes de deuda o calibración son decisiones de esta app, no umbrales clínicos. Las mostramos para que sepas qué se está ajustando.</p>
+  </div>`;
+}
 function viewCheckin(){
   if(!draft)loadDraft();
   const ok=S.consent&&S.consent.health,pt=ok?patterns():null;
@@ -633,12 +663,13 @@ function viewCheckin(){
     ${recent.slice(0,10).map(e=>`<div class="task"><span style="font-size:22px">${MOODS[e.mood-1][0]}</span>
       <span style="flex:1"><b>${dshort(e.date)}</b> · Ánimo ${MOODS[e.mood-1][1].toLowerCase()}${e.energy!=null?` · Energía ${ENERGY[e.energy-1][1].toLowerCase()} · Sueño ${SLEEP[e.sleep-1][1]}`:''}
       ${(e.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join(' ')}${e.note?`<br><span class="mute">${esc(e.note)}</span>`:''}</span>
-      <button class="btn del" onclick="delDiary('${e.date}')">Borrar</button></div>`).join('')||'<div class="empty">Aún no hay registros. Guarda tu check-in de hoy para comenzar tu historial.</div>'}</div>`:''}`;
+      <button class="btn del" onclick="delDiary('${e.date}')">Borrar</button></div>`).join('')||'<div class="empty">Aún no hay registros. Guarda tu check-in de hoy para comenzar tu historial.</div>'}</div>`:''}
+  ${evidenceHtml()}`;
 }
 function viewBienestar(){return viewCheckin()}
 function viewRespiracion(){
   const T=TECH[bsel];
-  const other=Object.entries(TECH).filter(([k])=>k!=='larga');
+  const other=Object.entries(TECH).filter(([k])=>k!=='suspiro');
   return `${screenHelp('respiracion')}
   <div class="card"><h2>Respiración</h2>
     <div class="mute">Herramientas breves para bajar la activación. No son un tratamiento: solo te ayudan a hacer una pausa consciente.</div></div>

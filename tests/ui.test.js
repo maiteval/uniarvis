@@ -94,6 +94,7 @@ const fs=require('fs');
   await p.locator('button[onclick="wipe()"]').focus();
   await p.click('text=Borrar todo');
   const dlg=p.locator('#confirm-dialog');await dlg.waitFor({state:'visible'});
+  await p.waitForFunction(()=>document.activeElement&&document.activeElement.id==='confirm-word');
   const m=await p.evaluate(()=>({role:document.querySelector('[role="dialog"]').getAttribute('aria-modal'),
     focus:document.activeElement.id,disabled:document.getElementById('confirm-ok').disabled}));
   ok('modal accesible y exige BORRAR',m.role==='true'&&m.focus==='confirm-word'&&m.disabled,JSON.stringify(m));
@@ -222,12 +223,12 @@ const fs=require('fs');
   ok('pausas antes/después de pruebas',pi.some(x=>x.includes('Hoy'))&&pi.some(x=>x.includes('Mañana')),pi.join(' | '));
 
   // 10. Respiración: una sola técnica visible por defecto y las pausas abren la correcta
-  await p.evaluate(()=>{stopBreath(true);stopMed(true);bsel='larga';go('respiracion')});
+  await p.evaluate(()=>{stopBreath(true);stopMed(true);bsel='suspiro';go('respiracion')});
   const def=await p.evaluate(()=>{
     const mas=[...document.querySelectorAll('details')].find(d=>d.querySelector('summary')&&d.querySelector('summary').textContent==='Más opciones');
     return {texto:[...document.querySelectorAll('#app .card')][1].textContent,abierto:!!mas&&mas.open};
   });
-  ok('solo la exhalación larga visible por defecto',def.texto.includes('Respiración guiada')&&def.texto.includes('Exhalación larga (4-6)')&&!def.abierto,JSON.stringify(def.texto.slice(0,80)));
+  ok('solo el suspiro cíclico visible por defecto',def.texto.includes('Respiración guiada')&&def.texto.includes('Suspiro cíclico')&&!def.abierto,JSON.stringify(def.texto.slice(0,80)));
   ok('otras técnicas y meditaciones ocultas',!await p.locator('button:has-text("4-7-8")').isVisible()&&!await p.locator('summary:has-text("Escaneo corporal")').isVisible());
   await p.click('summary:has-text("Más opciones")');
   ok('Más opciones revela técnicas y meditaciones',await p.locator('button:has-text("4-7-8")').isVisible()&&await p.locator('summary:has-text("Escaneo corporal")').isVisible());

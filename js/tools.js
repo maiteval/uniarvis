@@ -37,13 +37,22 @@ function pomTrackUntargeted(p){
   if(p.todayDate!==d){p.todayDate=d;p.todayMinutes=0}
   p.todayMinutes=(p.todayMinutes||0)+p.focusMin;
 }
+function pomFocusKind(){
+  const p=pomCfg();
+  if(!p.target||p.target.indexOf('task:')!==0)return '';
+  const t=S.tasks.find(x=>x.id===p.target.slice(5));
+  return t?(t.kind||(t.certamen&&CERT_KIND[t.phase])||''):'';
+}
+const pomSuggestLongBreak=p=>p.phase!=='focus'&&EVIDENCE.breaks.longAfterKinds.indexOf(p.kindStreak)>=0&&(p.kindCount||0)>=EVIDENCE.breaks.longAfterBlocks;
 function pomFinishPhase(p,now){
   const from=p.phase;
   if(from==='focus'){
     p.pomodoros++;
-    const logged=pomLogFocus(p);
+    const logged=pomLogFocus(p),kind=pomFocusKind();
     p.completed=(p.completed||0)+1;
     if(!logged)pomTrackUntargeted(p);
+    if(EVIDENCE.breaks.longAfterKinds.indexOf(kind)>=0){p.kindStreak=kind;p.kindCount=(p.kindCount||0)+1}
+    else{p.kindStreak='';p.kindCount=0}
     if(p.pomodoros>=p.longEvery){p.phase='long';p.pomodoros=0}
     else p.phase='short';
   }else{p.phase='focus';pomStartMsg=true}
@@ -61,7 +70,7 @@ function pomArvisHtml(){
   if(pomAwayPrompt)return arvis('normal','Te esperé. ¿Seguimos?',{action:'<button class="lnk" type="button" onclick="pomEscape(true)">Seguir</button><button class="lnk" type="button" onclick="pomEscape(false)">Terminar por hoy</button>',id:'arvis-pomodoro-vuelta'});
   if(pomLimitPrompt)return arvis('normal','Ya cumpliste por hoy',{action:'<button class="lnk" type="button" onclick="pomStart(true)">Iniciar igual</button>',id:'arvis-pomodoro-limite'});
   const p=pomCfg();
-  if(p.phase!=='focus')return arvis('descansando','Pausa. Estírate o toma agua.',{mediano:true,id:'arvis-pomodoro-descanso'});
+  if(p.phase!=='focus')return arvis('descansando',pomSuggestLongBreak(p)?'Pausa. Tras dos focos exigentes, considera una pausa larga de más de 10 min.':'Pausa. Estírate o toma agua.',{mediano:true,id:'arvis-pomodoro-descanso'});
   if(!p.running)return '';
   const msg=pomStartMsg?'Vamos, yo también me concentro.':null;
   pomStartMsg=false;
@@ -98,7 +107,7 @@ function pomStart(force){
 function pomEscape(keep){
   pomAwayPrompt=false;pomAway=false;
   if(keep){render();return}
-  const p=pomCfg();p.running=false;p.endsAt=null;p.leftMs=pomDuration(p);
+  const p=pomCfg();p.running=false;p.endsAt=null;p.leftMs=pomDuration(p);p.kindStreak='';p.kindCount=0;
   if(arvisOn())arvisCelebrar('Lo que alcanzaste igual cuenta','pomodoro');
   save();render();
 }
@@ -108,7 +117,7 @@ function pomPause(){
 }
 function pomReset(){
   const p=pomCfg(),early=p.phase==='focus'&&p.running;
-  p.running=false;p.endsAt=null;p.leftMs=pomDuration(p);
+  p.running=false;p.endsAt=null;p.leftMs=pomDuration(p);p.kindStreak='';p.kindCount=0;
   pomLimitPrompt=false;pomAwayPrompt=false;pomStartMsg=false;
   if(early&&arvisOn())arvisCelebrar('Lo que alcanzaste igual cuenta','pomodoro');
   save();render();pomFocusRefresh();
@@ -116,6 +125,7 @@ function pomReset(){
 function pomSkip(){
   const p=pomCfg(),now=Date.now(),leavingFocus=p.phase==='focus';
   p.phase=leavingFocus?'short':'focus';
+  if(leavingFocus){p.kindStreak='';p.kindCount=0}
   p.leftMs=pomDuration(p);p.endsAt=p.running?now+p.leftMs:null;
   pomLimitPrompt=false;pomAwayPrompt=false;pomStartMsg=!leavingFocus;
   if(leavingFocus&&arvisOn())arvisCelebrar('Lo que alcanzaste igual cuenta','pomodoro');
@@ -175,7 +185,10 @@ function pomFocusHtml(){
   </div>`;
 }
 function pomodoroHtml(){
-  const p=pomCfg(),breath=p.phase!=='focus';
+  const p=pomCfg(),breath=p.phase!=='focus',longSug=pomSuggestLongBreak(p);
+  const breakText=longSug
+    ?`Llevas ${p.kindCount} focos seguidos de ${esc(KIND_LABEL[p.kindStreak]||p.kindStreak)}. La pausa es para recuperar energía y bienestar, no una promesa de rendimiento: considera un descanso largo de más de ${EVIDENCE.breaks.longMinMinutes} min.`
+    :'Descanso: es para recuperar energía y bienestar, no una promesa de rendimiento. Si quieres, haz el suspiro por defecto de Bienestar.';
   return `${pomArvisHtml()}<div class="card tools-card" id="pomodoro"><h2>Pomodoro</h2>
     <div class="stats"><div class="stat pom-clock"><b id="pom-time">${pomClock(pomRemaining(p))}</b><span class="mute" id="pom-phase">${POM_PHASES[p.phase]} · ${pomCount(p)} de ${p.longEvery}</span>
       <div class="pom-bar" id="pom-progress" style="--f:0%" aria-hidden="true"></div></div></div>
@@ -185,7 +198,7 @@ function pomodoroHtml(){
       <button class="btn sec" data-focus-id="pom-reset" onclick="pomReset()">Reiniciar</button>
       <button class="btn sec" data-focus-id="pom-skip" onclick="pomSkip()">Saltar fase</button></div>
     ${p.running?`<div class="pom-full-row"><button class="btn sec" data-focus-id="pom-full" onclick="pomFocusOpen()">Pantalla completa</button></div>`:''}
-    ${breath?`<div class="pom-breath"><span>Descanso: si quieres, haz la respiración por defecto de Bienestar (exhalación larga 4-6).</span><button class="btn sec" onclick="goBreath('larga')">Respirar</button></div>`:''}
+    ${breath?`<div class="pom-breath"><span>${breakText}</span><button class="btn sec" onclick="goBreath('suspiro')">Respirar</button></div>`:''}
     <details class="pom-settings"><summary><span class="pom-chevron" aria-hidden="true">▸</span>Configuración y registro</summary>
       <div class="pom-config-grid">
         <label class="mute"><span>Foco (min)</span><input id="pom-focus" type="number" min="1" max="180" value="${p.focusMin}" onchange="pomSetConfig('focusMin',this.value)"></label>

@@ -34,7 +34,7 @@ const fs=require('fs');
     await p.fill('#inst-code-input',code);await p.click('[data-focus-id="inst-code-submit"]');
   };
   const fillProfile=async(name='Ana',career='Medicina')=>{
-    await p.fill('#inst-profile-name',name);await p.fill('#inst-profile-career',career);await p.click('[data-focus-id="inst-profile-next"]');
+    await p.fill('#inst-profile-name',name);await p.fill('#inst-profile-career',career);await p.selectOption('#inst-profile-chronotype','tarde');await p.click('[data-focus-id="inst-profile-next"]');
     await p.waitForFunction(()=>!!document.querySelector('[data-focus-id="inst-consent-ok"]')||!InstitutionalFlow.get());
   };
   const createPass=async(pass='Clave1234')=>{
@@ -114,6 +114,7 @@ const fs=require('fs');
   ok('desde el consentimiento se retrocede a Tus datos',await p.evaluate(()=>InstitutionalFlow.get().step==='profile')&&await p.locator('#inst-profile-name').count()===1);
   await fillProfile();
   await p.click('[data-focus-id="inst-consent-ok"]');
+  ok('cronotipo institucional se guarda',await p.evaluate(()=>S.settings.chronotype==='tarde'));
   ok('tras el consentimiento ofrece la importación simulada',(await text()).includes('Importando tus datos desde la UdeC'));
   await p.click('[data-focus-id="inst-import-skip"]');
   ok('tras la importación vuelve a Ajustes → Cuenta',(await text()).includes('Cuenta')&&await p.evaluate(()=>section==='ajustes'&&tab==='cuenta'));

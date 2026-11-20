@@ -120,7 +120,7 @@ const AYUDA={
     title:'Respiración',
     desc:'Herramientas breves de respiración guiada y meditaciones con temporizador para hacer una pausa consciente.',
     steps:[
-      'Comienza con la exhalación larga (4-6), que es la técnica visible por defecto.',
+      'Comienza con el suspiro cíclico (2-1-6), que es la técnica visible por defecto; 4-7-8 está en "Más opciones" y tiene menos evidencia formal.',
       'Sigue las indicaciones del círculo y los tiempos en pantalla.',
       'Abre "Más opciones" para otras respiraciones o para iniciar una meditación breve.'
     ]

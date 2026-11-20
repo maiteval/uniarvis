@@ -68,11 +68,16 @@ function registrationUniversity(){
   const el=$('#reg-university'),v=String((el&&el.value)||'').trim().slice(0,80);
   return !v||universityOk(v)?v:'';
 }
+function fieldChronotype(id){
+  const el=$(id),v=String((el&&el.value)||'');
+  return chronotypeOk(v)?v:'no_se';
+}
 function registerProfile(){
   const n=($('#reg-name')||{}).value||'',c=($('#reg-career')||{}).value||'';
   const name=String(n).trim(),career=String(c).trim();
   if(!name||!career)return toast('Ingresa tu nombre y carrera.');
   S.profile={name:name.slice(0,60),career:career.slice(0,80),university:registrationUniversity()};
+  S.settings.chronotype=fieldChronotype('#reg-chronotype');
   toast(`Bienvenido/a, ${S.profile.name}.`);
   finishPersonalMode();
 }
@@ -89,6 +94,7 @@ function saveProfile(){
   const name=String(n).trim(),career=String(c).trim();
   if(!name||!career)return toast('Ingresa tu nombre y carrera.');
   S.profile={name:name.slice(0,60),career:career.slice(0,80),university:profileUniversityField(S.profile&&S.profile.university)};
+  S.settings.chronotype=fieldChronotype('#pf-chronotype');
   save();toast('Perfil actualizado.');render();
 }
 function addCourse(){
@@ -216,6 +222,7 @@ function validState(j){
     if(!j.settings||typeof j.settings!=='object'||Array.isArray(j.settings))return 'ajustes';
     if(j.settings.arvis!==undefined&&typeof j.settings.arvis!=='boolean')return 'ajustes';
     if(j.settings.themeTouched!==undefined&&typeof j.settings.themeTouched!=='boolean')return 'ajustes';
+    if(j.settings.chronotype!==undefined&&!chronotypeOk(j.settings.chronotype))return 'ajustes';
   }
   if(j.account!==undefined){
     if(!j.account||typeof j.account!=='object'||Array.isArray(j.account))return 'cuenta';
@@ -253,7 +260,8 @@ function cleanState(j){
     passGrade:Number.isFinite(x.passGrade)?x.passGrade:4,roundFinal:x.roundFinal!==false,
     ...(x.origin==='udec-demo'?{origin:x.origin,code:x.code,section:x.section}:{}),
     grades:(x.grades||[]).map(g=>({id:g.id,name:String(g.name||'').slice(0,80),...(g.score!=null?{score:+g.score}:{}),weight:+g.weight}))}));
-  c.settings={min:int15(j.settings&&j.settings.min)?j.settings.min:60,theme:themeOk(j.settings&&j.settings.theme)?j.settings.theme:'cian',themeTouched:!!(j.settings&&j.settings.themeTouched===true),mode:modeOk(j.settings&&j.settings.mode)?j.settings.mode:'light',arvis:!(j.settings&&j.settings.arvis===false)};
+  const ss=j.settings&&typeof j.settings==='object'?j.settings:{};
+  c.settings={min:int15(ss.min)?ss.min:60,theme:themeOk(ss.theme)?ss.theme:'cian',themeTouched:ss.themeTouched===true,mode:modeOk(ss.mode)?ss.mode:'light',style:styleOk(ss.style)?ss.style:'calma',arvis:ss.arvis!==false,chronotype:chronotypeOk(ss.chronotype)?ss.chronotype:'no_se'};
   const a=j.account&&typeof j.account==='object'&&!Array.isArray(j.account)?j.account:null;
   const known=a&&(a.type==='personal'||a.type==='institucional');
   const knownInst=known&&a.type==='institucional'&&institutionById(a.institutionId);

@@ -67,7 +67,7 @@ function pauseItems(){
   S.events.filter(e=>e.type!=='otro').forEach(e=>{
     const nm=`${e.title} (${cname(e.courseId)})`;
     if(e.date===t0)out.push({t:`Hoy: ${nm}`,x:'Antes: 2 min de respiración en caja para bajar los nervios y enfocarte. Después: exhalación larga y un descanso real, sin estudiar.',tech:'caja',l:'Respiración en caja'});
-    else if(e.date===tm)out.push({t:`Mañana: ${nm}`,x:'Esta noche, la respiración 4-7-8 ayuda a dormir mejor. Dormir bien rinde más que una hora extra de repaso.',tech:'s478',l:'Respirar 4-7-8'});
+    else if(e.date===tm)out.push({t:`Mañana: ${nm}`,x:'Esta noche puedes probar el suspiro cíclico; 4-7-8 es opcional y tiene menos evidencia formal. Dormir bien rinde más que una hora extra de repaso.',tech:'suspiro',l:'Suspiro cíclico'});
     else if(e.date===ye)out.push({t:`Ayer: ${nm}`,x:'Date un respiro tras la exigencia: un escaneo corporal de 5 minutos o una caminata corta.',med:'cuerpo',l:'Escaneo corporal'});
   });
   const pend=S.tasks.filter(x=>x.date===t0&&!x.done).reduce((a,x)=>a+x.minutes,0);
@@ -82,9 +82,10 @@ function pauseCard(){
 
 /* ===================== Respiración y meditación ===================== */
 const TECH={
-  larga:{name:'Exhalación larga (4-6)',desc:'La más simple: exhalar más largo que inhalar ayuda a bajar la activación. Buena para los nervios antes o después de una prueba.',ph:[['Inhala por la nariz',4,1.6],['Exhala lento por la boca',6,1]]},
+  suspiro:{name:EVIDENCE.breathing.suspiro.name,desc:EVIDENCE.breathing.suspiro.desc,ph:EVIDENCE.breathing.suspiro.ph},
+  larga:{name:'Exhalación larga (4-6)',desc:'Exhalar más largo que inhalar ayuda a bajar la activación. Buena para los nervios antes o después de una prueba.',ph:[['Inhala por la nariz',4,1.6],['Exhala lento por la boca',6,1]]},
   caja:{name:'Respiración en caja (4-4-4-4)',desc:'Cuatro tiempos iguales. Ayuda a enfocarte antes de empezar a estudiar o de rendir.',ph:[['Inhala',4,1.6],['Sostén',4,1.6],['Exhala',4,1],['Sostén vacío',4,1]]},
-  s478:{name:'4-7-8',desc:'Pausa más profunda, útil para relajarte antes de dormir. Si te mareas, vuelve a respirar normal.',ph:[['Inhala',4,1.6],['Sostén',7,1.6],['Exhala suave',8,1]]}
+  s478:{name:'4-7-8',desc:EVIDENCE.breathing.s478Caveat,ph:[['Inhala',4,1.6],['Sostén',7,1.6],['Exhala suave',8,1]]}
 };
 function setBCount(){
   document.querySelectorAll('#bcount,[data-bcount]').forEach(el=>{if(bt)el.textContent=bt.left+' s'});

@@ -9,7 +9,10 @@ const UNIVERSITIES_CHILE=['Universidad de Concepción','Universidad de Chile','P
   'Universidad Católica de Temuco','Universidad de Playa Ancha','Pontificia Universidad Católica de Valparaíso','Universidad Andrés Bello',
   'Universidad San Sebastián','Universidad del Desarrollo','Universidad Mayor','Universidad Central de Chile'];
 const universityOk=v=>UNIVERSITIES_CHILE.indexOf(v)>=0||v===UNIVERSITY_OTHER||v===UNIVERSITY_PREFERS_NOT;
-function freshPomodoro(){return {focusMin:25,shortMin:5,longMin:15,longEvery:4,sound:true,phase:'focus',running:false,endsAt:null,leftMs:1500000,pomodoros:0,target:'',completed:0,todayDate:'',todayMinutes:0}}
+const CHRONOTYPES=[['manana','Mañana'],['tarde','Tarde'],['noche','Noche'],['no_se','No sé']];
+const chronotypeOk=v=>CHRONOTYPES.some(x=>x[0]===v);
+const chronotypeLabel=v=>CHRONOTYPES.find(x=>x[0]===v)?.[1]||'No sé';
+function freshPomodoro(){return {focusMin:25,shortMin:5,longMin:15,longEvery:4,sound:true,phase:'focus',running:false,endsAt:null,leftMs:1500000,pomodoros:0,target:'',completed:0,todayDate:'',todayMinutes:0,kindStreak:'',kindCount:0}}
 function freshFlashcards(){return {decks:[],activeDeckId:'',limit:20,correct:0}}
 function freshTools(){return {pomodoro:freshPomodoro(),flashcards:freshFlashcards()}}
 const toolInt=(v,a,b,d)=>Number.isInteger(v)&&v>=a&&v<=b?v:d;
@@ -30,6 +33,8 @@ function validTools(t){
   if(p.completed!==undefined&&(!Number.isInteger(p.completed)||p.completed<0||p.completed>1000000))return false;
   if(p.todayDate!==undefined&&p.todayDate!==''&&!RX_TOOL_DATE.test(p.todayDate))return false;
   if(p.todayMinutes!==undefined&&(!Number.isFinite(p.todayMinutes)||p.todayMinutes<0||p.todayMinutes>1440))return false;
+  if(p.kindStreak!==undefined&&p.kindStreak!==''&&['simulacro','ejercicios'].indexOf(p.kindStreak)<0)return false;
+  if(p.kindCount!==undefined&&(!Number.isInteger(p.kindCount)||p.kindCount<0||p.kindCount>1000000))return false;
   if(!f||typeof f!=='object'||Array.isArray(f))return false;
   if(!Number.isInteger(f.limit)||f.limit<1||f.limit>200)return false;
   if(f.correct!==undefined&&(!Number.isInteger(f.correct)||f.correct<0||f.correct>1000000))return false;
@@ -63,6 +68,8 @@ function cleanTools(t){
   P.completed=toolInt(p.completed,0,1000000,0);
   P.todayDate=RX_TOOL_DATE.test(p.todayDate||'')?p.todayDate:'';
   P.todayMinutes=P.todayDate===today()&&Number.isFinite(p.todayMinutes)?clamp(p.todayMinutes,0,1440):0;
+  P.kindStreak=['simulacro','ejercicios'].indexOf(p.kindStreak)>=0?p.kindStreak:'';
+  P.kindCount=P.kindStreak?toolInt(p.kindCount,0,1000000,0):0;
   const F=out.flashcards,seen={};let total=0;
   F.limit=toolInt(f.limit,1,200,20);
   F.correct=toolInt(f.correct,0,1000000,0);
@@ -94,7 +101,7 @@ function cleanAuth(a){
   const out={salt:a.salt,hash:a.hash,it:a.it,createdAt:a.createdAt};
   return validAuth(out)?out:null;
 }
-const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,theme:'cian',themeTouched:false,mode:'light',style:'calma',arvis:true},lastPlan:null,
+const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,theme:'cian',themeTouched:false,mode:'light',style:'calma',arvis:true,chronotype:'no_se'},lastPlan:null,
   wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},support:{name:'',contact:''},profile:{name:'',career:'',university:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
   account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null},institutionConsentAt:null});
 function migrate(s){
@@ -117,6 +124,7 @@ function migrate(s){
   if(!modeOk(s.settings.mode))s.settings.mode='light';
   if(!styleOk(s.settings.style))s.settings.style='hud';
   if(typeof s.settings.arvis!=='boolean')s.settings.arvis=true;
+  if(!chronotypeOk(s.settings.chronotype))s.settings.chronotype='no_se';
   delete s.settings.max;                          // la capacidad máxima ahora se calcula cada día
   delete s.reviews;                               // reseñas de texto libre de versiones anteriores: ya no se guardan
   delete s.ratings;                               // aportes anónimos de ramos de versiones anteriores: ya no se guardan
@@ -161,5 +169,5 @@ const course=id=>S.courses.find(c=>c.id===id);
 const cname=id=>course(id)?course(id).name:'(ramo eliminado)';
 const ccolor=id=>course(id)?course(id).color:'#6b7384';
 
-let section='inicio',tab='inicio',weekStart=mondayOf(today()),pending=[],sylText='',sylCourse='',draft=null,ciEdit=false,bsel='larga',bt=null,mt=null;
+let section='inicio',tab='inicio',weekStart=mondayOf(today()),pending=[],sylText='',sylCourse='',draft=null,ciEdit=false,bsel='suspiro',bt=null,mt=null;
 let icsPending=null,icsNotice='',icsEvaluations=[];
