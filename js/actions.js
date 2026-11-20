@@ -196,6 +196,7 @@ function validState(j){
     if(c.passGrade!==undefined&&!num(c.passGrade,1,7))return 'notas';
     if(c.roundFinal!==undefined&&typeof c.roundFinal!=='boolean')return 'notas';
     if(c.origin!==undefined&&c.origin!=='udec-demo')return 'ramos';
+    if(c.syllabusNotes!==undefined&&!str(c.syllabusNotes,2000))return 'ramos';
     if(c.grades!==undefined){
       if(!Array.isArray(c.grades))return 'notas';
       for(const g of c.grades)if(!(g&&RX.id.test(g.id)&&str(g.name,80)&&(g.score===undefined||g.score===null||num(g.score,-100,100))&&num(g.weight,0,100)))return 'notas';
@@ -262,6 +263,7 @@ function cleanState(j){
   c.sessions=j.sessions.map(s=>{const o={id:s.id,date:s.date,courseId:s.courseId,minutes:+s.minutes};if(s.taskId)o.taskId=s.taskId;if(s.socialId)o.socialId=s.socialId;return o});
   c.courses=(j.courses||[]).map(x=>({id:x.id,name:x.name,difficulty:x.difficulty,color:x.color,share:x.share===true,
     passGrade:Number.isFinite(x.passGrade)?x.passGrade:4,roundFinal:x.roundFinal!==false,
+    syllabusNotes:typeof x.syllabusNotes==='string'?x.syllabusNotes.slice(0,2000):'',
     ...(x.origin==='udec-demo'?{origin:x.origin,code:x.code,section:x.section}:{}),
     grades:(x.grades||[]).map(g=>({id:g.id,name:String(g.name||'').slice(0,80),...(g.score!=null?{score:+g.score}:{}),weight:+g.weight}))}));
   const ss=j.settings&&typeof j.settings==='object'?j.settings:{};

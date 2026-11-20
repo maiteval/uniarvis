@@ -1,6 +1,7 @@
 const POM_PHASES={focus:'Foco',short:'Descanso corto',long:'Descanso largo'};
 const LEITNER=[1,2,4,8,16];
-let fcPreview=[],fcEditId='',fcSession=null,fcShow=false;
+let fcPreview=[],fcEditId='',fcSession=null,fcShow=false,fcAiMode=false;
+let fcAi={texto:'',cantidad:'20',tipo:'preguntas',courseId:'',deckId:'__new__',busy:false,error:''};
 let pomAway=false,pomAwayPrompt=false,pomLimitPrompt=false,pomStartMsg=false,fcStreak=0,fcMomento=null;
 const pomCfg=()=>(S.tools&&S.tools.pomodoro)||freshPomodoro();
 const fcCfg=()=>(S.tools&&S.tools.flashcards)||freshFlashcards();
@@ -239,7 +240,7 @@ function createFlashcardDeck(){
   const F=fcCfg(),deck={id:uid(),name:name.slice(0,80),courseId:courseId,cards:[]};
   F.decks.push(deck);F.activeDeckId=deck.id;save();render();
 }
-function setActiveFlashcardDeck(id){const F=fcCfg();if(!F.decks.some(d=>d.id===id))return;F.activeDeckId=id;fcSession=null;fcEditId='';fcPreview=[];save();render()}
+function setActiveFlashcardDeck(id){const F=fcCfg();if(!F.decks.some(d=>d.id===id))return;F.activeDeckId=id;fcSession=null;fcEditId='';fcPreview=[];fcAiMode=false;save();render()}
 function renameFlashcardDeck(id,v){
   const d=fcCfg().decks.find(x=>x.id===id);if(!d)return;
   const name=String(v||'').trim();if(!name)return toast('El mazo necesita un nombre.');
@@ -257,7 +258,7 @@ async function delFlashcardDeck(id){
     if(F.activeDeckId===id)F.activeDeckId=F.decks[0]?F.decks[0].id:'';
     if(fcSession&&fcSession.deckId===id)fcSession=null;
     if(fcEditId)fcEditId='';
-    fcPreview=[];
+    fcPreview=[];fcAiMode=false;
   });
 }
 function setFlashcardLimit(v){
@@ -287,7 +288,7 @@ function delFlashcard(id){
 }
 function previewFlashcardsImport(){
   const text=String(($('#fc-import')||{}).value||''),room=Math.max(0,5000-fcCount());
-  let skipped=0;fcPreview=[];
+  let skipped=0;fcPreview=[];fcAiMode=false;
   text.split(/\r?\n/).forEach(line=>{
     const c=parseFlashcardLine(line);
     if(!c){if(line.trim())skipped++;return}
@@ -295,14 +296,68 @@ function previewFlashcardsImport(){
   });
   toast(`${fcPreview.length} tarjeta(s) listas para revisar${skipped?`; ${skipped} línea(s) no se pudieron leer`:''}.`);render();
 }
-function cancelFlashcardsImport(){fcPreview=[];render()}
+function cancelFlashcardsImport(){fcPreview=[];fcAiMode=false;render()}
 function confirmFlashcardsImport(){
   const d=fcActiveDeck();if(!d)return toast('Crea o abre un mazo antes de importar.');
   if(!fcPreview.length)return toast('No hay tarjetas en la vista previa.');
   const room=Math.max(0,5000-fcCount()),cards=fcPreview.slice(0,room).map(c=>({id:uid(),front:c.front,back:c.back,box:1,due:today()}));
   if(!cards.length)return toast('Ya alcanzaste el límite de 5000 tarjetas.');
-  cards.forEach(c=>d.cards.push(c));fcPreview=[];save();render();
+  cards.forEach(c=>d.cards.push(c));fcPreview=[];fcAiMode=false;save();render();
   toast(`${cards.length} tarjeta(s) agregadas al mazo.`);
+}
+const aiFlashcardsOn=()=>typeof isInstitutional==='function'&&isInstitutional()&&typeof ArvisIA!=='undefined';
+const fcAiCourse=()=>fcAi.courseId||(fcActiveDeck()&&fcActiveDeck().courseId)||(S.courses[0]&&S.courses[0].id)||'';
+function setFcAiOption(k,v){fcAi[k]=v}
+function setFcAiDeck(v){
+  fcAi.deckId=v;
+  const d=fcCfg().decks.find(x=>x.id===v);
+  if(d&&d.courseId)fcAi.courseId=d.courseId;
+  render();
+}
+async function onFcAiFile(inp){
+  const f=inp&&inp.files&&inp.files[0];if(!f)return;
+  try{
+    fcAi.texto=/\.pdf$/i.test(f.name)?await pdfText(f):await f.text();
+    const ta=$('#fc-ai-text');if(ta)ta.value=fcAi.texto;
+    toast('Apuntes leídos. Ahora crea las tarjetas con Arvis.');
+  }catch(e){toast('No se pudo leer el archivo: '+e.message)}
+}
+function fcUseSyllabus(){
+  const c=course(fcAiCourse());
+  if(!c||!String(c.syllabusNotes||'').trim())return toast('Ese ramo aún no tiene contenidos guardados del syllabus.');
+  fcAi.texto=String(c.syllabusNotes).slice(0,2000);
+  const ta=$('#fc-ai-text');if(ta)ta.value=fcAi.texto;
+  toast('Contenidos del syllabus cargados como texto de partida.');
+}
+async function createArvisFlashcards(){
+  if(!aiFlashcardsOn())return;
+  const texto=String(fcAi.texto||'').trim();
+  if(!texto)return toast('Pega tus apuntes o sube un archivo primero.');
+  fcAi.busy=true;fcAi.error='';fcAiMode=false;fcPreview=[];render();
+  try{
+    const r=await ArvisIA.makeFlashcards(texto,{cantidad:+fcAi.cantidad,tipo:fcAi.tipo});
+    fcAi.busy=false;
+    if(!r)return render();
+    if(!r.tarjetas.length){fcAi.error=r.mensaje;render();toast(r.mensaje);return}
+    fcAiMode=true;
+    fcPreview=r.tarjetas.map(c=>({id:uid(),front:c.front,back:c.back,tipo:c.tipo||'ia'}));
+    render();toast(`${fcPreview.length} tarjeta(s) listas para revisar.`);
+  }catch(e){fcAi.busy=false;render();toast('No se pudieron crear las tarjetas: '+e.message)}
+}
+function setFcPreviewField(i,k,v){const c=fcPreview[i];if(c)c[k]=String(v).slice(0,1000)}
+function discardFcPreview(i){if(!fcAiMode)return;fcPreview.splice(i,1);render()}
+function cancelArvisFlashcards(){fcPreview=[];fcAiMode=false;fcAi.error='';render()}
+async function confirmArvisFlashcards(){
+  if(!fcPreview.length)return toast('No hay tarjetas en la vista previa.');
+  if(fcAi.deckId==='__new__'||!fcCfg().decks.some(d=>d.id===fcAi.deckId)){
+    const cid=fcAiCourse(),c=cid?course(cid):null;
+    const d={id:uid(),name:(c?c.name:'Mazo de Arvis').slice(0,80),courseId:cid||'',cards:[]};
+    fcCfg().decks.push(d);fcCfg().activeDeckId=d.id;
+  }else fcCfg().activeDeckId=fcAi.deckId;
+  confirmFlashcardsImport();
+  fcAiMode=false;fcAi.texto='';fcAi.error='';
+  arvisCelebrar('Listo: tus tarjetas quedaron en el mazo.','flashcards');
+  render();
 }
 function exportFlashcardDeck(id){
   const d=fcCfg().decks.find(x=>x.id===id);if(!d)return;
@@ -422,8 +477,35 @@ function flashcardsHtml(){
         <span class="tag">Caja ${c.box} · vuelve ${dshort(c.due)}</span></span>
         <button class="btn sec" onclick="editFlashcard('${c.id}')">Editar</button>
         <button class="btn del" onclick="delFlashcard('${c.id}')">Quitar</button>`}</div>`).join('');
-  const preview=fcPreview.map((c,i)=>`<div class="task fc-list-row"><span class="fc-grow">
+  const preview=fcPreview.map((c,i)=>fcAiMode?`<div class="task fc-list-row fc-ai-row"><span class="fc-grow">
+      <input value="${esc(c.front)}" maxlength="1000" aria-label="Frente de la tarjeta ${i+1}" onchange="setFcPreviewField(${i},'front',this.value)">
+      <textarea class="fc-textarea" maxlength="1000" aria-label="Reverso de la tarjeta ${i+1}" onchange="setFcPreviewField(${i},'back',this.value)">${esc(c.back)}</textarea>
+      <span class="tag">${esc(c.tipo||'IA')}</span></span>
+      <button class="btn del" onclick="discardFcPreview(${i})">Descartar</button></div>`
+    :`<div class="task fc-list-row"><span class="fc-grow">
       <b>${i+1}. ${esc(c.front.replace(/\n/g,' / '))}</b><div class="tools-pre mute">${esc(c.back)}</div></span></div>`).join('');
+  const aiCourse=fcAiCourse(),haySyllabus=!!(course(aiCourse)&&String((course(aiCourse)||{}).syllabusNotes||'').trim());
+  const aiHtml=aiFlashcardsOn()?`<details class="fc-details fc-ai" id="fc-ai" ${fcAi.busy||fcAiMode||fcAi.error?'open':''}><summary>Crear con Arvis ${aiDemoTag()}</summary>
+    <div class="fc-ai-body">
+      <p class="mute" style="margin:0">IA simulada: lee tus apuntes en este dispositivo. El texto pegado o el archivo no se guardan; solo las tarjetas que confirmes.</p>
+      <div class="row form-stack">
+        <select id="fc-ai-course" aria-label="Ramo" onchange="setFcAiOption('courseId',this.value)"><option value="">Sin ramo</option>${S.courses.map(c=>`<option value="${c.id}" ${aiCourse===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
+        <select id="fc-ai-deck" aria-label="Mazo destino" onchange="setFcAiDeck(this.value)"><option value="__new__" ${fcAi.deckId==='__new__'?'selected':''}>Crear mazo nuevo…</option>${decks.map(d=>`<option value="${d.id}" ${fcAi.deckId===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}</select>
+        <select id="fc-ai-cant" aria-label="Cantidad" onchange="setFcAiOption('cantidad',this.value)">${[10,20,30].map(n=>`<option value="${n}" ${+fcAi.cantidad===n?'selected':''}>${n} tarjetas</option>`).join('')}</select>
+        <select id="fc-ai-tipo" aria-label="Tipo de tarjetas" onchange="setFcAiOption('tipo',this.value)">${[['preguntas','Preguntas'],['completar','Completar'],['mixto','Mixto']].map(([v,l])=>`<option value="${v}" ${fcAi.tipo===v?'selected':''}>${l}</option>`).join('')}</select>
+      </div>
+      <div class="row"><label class="btn sec" for="fc-ai-file">Elegir PDF o TXT<input id="fc-ai-file" class="file-input" type="file" accept=".pdf,.txt,.md" onchange="showFileLabel(this);onFcAiFile(this)"><span class="file-name mute">Ningún archivo</span></label>
+        ${haySyllabus?`<button class="btn sec" id="fc-ai-use" onclick="fcUseSyllabus()">Usar los contenidos del syllabus</button>`:''}</div>
+      <textarea id="fc-ai-text" class="fc-textarea" placeholder="Pega aquí tus apuntes (definiciones, fórmulas, listas o preguntas)…" oninput="fcAi.texto=this.value">${esc(fcAi.texto)}</textarea>
+      <div class="fc-actions"><button class="btn" id="fc-ai-create" data-focus-id="fc-ai-create" onclick="createArvisFlashcards()" ${fcAi.busy?'disabled':''}>Crear con Arvis</button>
+        <span class="mute">Hasta 50 tarjetas. Nada se guarda hasta que confirmes.</span></div>
+      ${fcAi.busy?'<div class="banner info" id="fc-ai-loading">Arvis está creando tus tarjetas…</div>':''}
+      ${fcAi.error?`<div class="banner info" id="fc-ai-empty">${esc(fcAi.error)}</div>`:''}
+      ${fcAiMode&&fcPreview.length?`<div class="fc-list fc-ai-preview" id="fc-ai-preview"><b>Vista previa · ${fcPreview.length} tarjeta(s)</b>${preview}
+        <div class="fc-actions"><button class="btn" data-focus-id="fc-ai-add" onclick="confirmArvisFlashcards()">Agregar al mazo</button>
+          <button class="btn sec" onclick="cancelArvisFlashcards()">Cancelar</button></div></div>`:''}
+    </div>
+  </details>`:'';
   return `${fcArvisHtml()}<div class="card tools-card" id="flashcards"><h2>Flashcards</h2>
     <p class="tools-help">Mazos por ramo (o sin ramo), con repaso espaciado en 5 cajas: 1, 2, 4, 8 y 16 días.</p>
     <div class="fc-new-row"><input id="fd-name" maxlength="80" placeholder="Nombre del mazo"><select id="fd-course">${courseOpts('')}</select>
@@ -441,7 +523,8 @@ function flashcardsHtml(){
         ${fcPreview.length?`<div class="fc-list"><b>Vista previa · ${fcPreview.length} tarjeta(s)</b>${preview}
           <div class="fc-actions"><button class="btn" data-focus-id="fc-import-confirm" onclick="confirmFlashcardsImport()">Confirmar importación</button>
           <button class="btn sec" onclick="cancelFlashcardsImport()">Cancelar</button></div></div>`:''}
-      </details></details>`:''}
+       </details></details>`:''}
+    ${aiHtml}
     <div class="fc-review"><h3 class="fc-review-title">Repaso</h3>
       <div class="fc-limit-row"><label class="mute" for="fc-limit">Tope diario</label>
         <input id="fc-limit" class="fc-limit-input" type="number" min="1" max="200" value="${F.limit}" onchange="setFlashcardLimit(this.value)"></div>

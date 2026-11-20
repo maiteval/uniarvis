@@ -422,9 +422,195 @@ const ArvisIA=(()=>{
     await wait(r);
     return r;
   }
-  function extractSyllabus(){return null}
-  function makeFlashcards(){return null}
+  const IA_SEGURO='Seguro',IA_REVISION='Revísalo';
+  const IA_FC_VACIO='No encontré material suficiente para tarjetas. Prueba con definiciones «Término: definición» u «X es Y», fórmulas con «=», listas con viñetas bajo un título o preguntas seguidas de su respuesta.';
+  const linea=s=>String(s||'').replace(/\s+/g,' ').trim();
+  const numero=s=>{const n=parseNum(String(s==null?'':s).replace(',','.'));return Number.isFinite(n)?n:null};
+  const notaStr=v=>Number(v).toFixed(1).replace('.',',');
+  const articulo=t=>/(as|iones|ades|ices)$/.test(tx(t))?'las':'los';
+
+  function extractSyllabusSync(texto,courseId){
+    if(!ready())return null;
+    const bruto=String(texto||''),lineas=bruto.split(/\r?\n/).map(linea).filter(Boolean);
+    const fechas=(typeof detectEvents==='function'?detectEvents(bruto,courseId):[]).map(e=>({
+      courseId:e.courseId,title:e.title,date:e.date,type:e.type,keep:e.keep,note:e.note||'',
+      confianza:e.type==='otro'||/rango|paso/.test(tx(e.note||''))?IA_REVISION:IA_SEGURO
+    }));
+    const reglas=[],contenidos=[],ponderaciones=[],avisos=[],usadas=new Set();
+    const agregarRegla=(texto,campo,valor,confianza,note)=>{
+      const t=linea(texto);if(t.length<4)return;
+      const clave=norm(t);if(reglas.some(r=>norm(r.texto)===clave))return;
+      reglas.push({texto:t.slice(0,200),campo:campo||'',valor:valor==null?null:valor,keep:true,confianza,note:note||''});
+    };
+    const agregarPonderacion=(nombre,peso,confianza,note)=>{
+      const n=linea(nombre).slice(0,80);if(n.length<2||!(peso>0&&peso<=100))return;
+      if(ponderaciones.some(p=>norm(p.nombre)===norm(n)))return;
+      ponderaciones.push({nombre:n,peso:Math.round(peso*10)/10,keep:true,confianza,note:note||''});
+    };
+    const agregarContenido=(texto,confianza)=>{
+      const t=linea(texto);if(t.length<3)return;
+      if(contenidos.some(c=>norm(c.texto)===norm(t)))return;
+      contenidos.push({texto:t.slice(0,200),keep:true,confianza});
+    };
+
+    lineas.forEach((l,i)=>{
+      const t=tx(l);let m;
+      if(/nota\s+(?:m[ií]nima|de aprobaci[oó]n|aprobatoria|para aprobar)/.test(t)&&(m=l.match(/(\d+(?:[.,]\d+)?)/))){
+        const v=numero(m[1]);
+        if(v>=1&&v<=7){agregarRegla(`Nota mínima ${notaStr(v)}`,'passGrade',v,/aprox|\?/.test(t)?IA_REVISION:IA_SEGURO);usadas.add(i)}
+      }
+      if(/exigencia/.test(t)&&(m=l.match(/(\d+(?:[.,]\d+)?)\s*%/))){
+        const v=numero(m[1]);
+        if(v>0&&v<=100){agregarRegla(`Exigencia: ${comma(Math.round(v*10)/10)} %`,'exigencia',v,/aprox|\?/.test(t)?IA_REVISION:IA_SEGURO);usadas.add(i)}
+      }
+      if(/eximici[oó]n|examen\s+obligatorio|asistencia\s+m[ií]nima/.test(t)){
+        agregarRegla(l,'',null,/aprox|\?|mas de|más de|menos de/.test(t)?IA_REVISION:IA_SEGURO,'Requisito informativo del syllabus');
+        usadas.add(i);
+      }
+    });
+
+    lineas.forEach((l,i)=>{
+      if(usadas.has(i))return;
+      const t=tx(l);
+      if(/nota final\s*=/.test(t)||/promedio final\s*=/.test(t)){
+        const rhs=l.split('=').slice(1).join('=');
+        const rx=/(\d+(?:[.,]\d+)?)\s*[·•*×xX]?\s*([A-Za-zÁÉÍÓÚáéíóúÑñ][\wÁÉÍÓÚáéíóúÑñ]*\d*)/g;
+        let m;
+        while((m=rx.exec(rhs))){
+          let w=numero(m[1]);if(w==null)continue;
+          if(w>0&&w<=1)w=Math.round(w*1000)/10;
+          agregarPonderacion(m[2],w,IA_SEGURO,'Peso obtenido de la fórmula de nota final');
+        }
+        return;
+      }
+      const pm=l.match(/(\d+(?:[.,]\d+)?)\s*%/);if(!pm)return;
+      const rango=l.match(/(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)\s*%/);
+      const dudoso=!!rango||/aprox|~|\?/.test(t);
+      const w=numero(rango?rango[1]:pm[1]);
+      let nombre=l.slice(0,(rango||pm).index).replace(/^[\s\-–—•·*|]+|[\s:;,()\-–—]+$/g,'').trim();
+      nombre=nombre.replace(/^(ponderaci[oó]n|pondera|vale)\s*(de|es|del|:)?\s*/i,'').trim();
+      if(nombre.length<2||/\d{1,2}[\/\-]\d{1,2}/.test(nombre))return;
+      agregarPonderacion(nombre,w,dudoso?IA_REVISION:IA_SEGURO,
+        dudoso?'Porcentaje ambiguo: revísalo':'');
+    });
+
+    let conTema=false;
+    lineas.forEach((l,i)=>{
+      if(usadas.has(i))return;
+      const m=l.match(/^(semana|unidad|m[oó]dulo|tema|cap[ií]tulo)\s*(\d{1,2})?\s*(?:[:.–-]\s*(.+))?$/i);
+      if(m){
+        const rotulo=cap(m[1])+(m[2]?' '+m[2]:'');
+        agregarContenido(m[3]?`${rotulo}: ${linea(m[3])}`:rotulo,m[3]?IA_SEGURO:IA_REVISION);
+        conTema=!!m[3];return;
+      }
+      if(conTema&&/^[-•*]\s+\S/.test(l)){
+        agregarContenido(l.replace(/^[-•*]\s+/,''),IA_REVISION);return;
+      }
+      if(l&&!/^[-•*]/.test(l))conTema=false;
+    });
+
+    const suma=ponderaciones.reduce((a,p)=>a+(Number(p.peso)||0),0);
+    if(Math.round(suma*10)/10!==100)avisos.push(`Las ponderaciones suman ${comma(Math.round(suma*10)/10)} %, no 100 %. Revísalas antes de confirmar.`);
+    if(fechas.some(f=>f.confianza===IA_REVISION))avisos.push('Hay fechas sin tipo claro o con rango: revísalas antes de confirmar.');
+    const pass=reglas.find(r=>r.campo==='passGrade'),exig=reglas.find(r=>r.campo==='exigencia');
+    return {courseId,fechas,ponderaciones,reglas,contenidos,avisos,
+      passGrade:pass?Math.round(pass.valor*100)/100:null,exigencia:exig?exig.valor:null};
+  }
+
+  function makeFlashcardsSync(texto,opciones){
+    if(!ready())return null;
+    const o=opciones||{};
+    const pedida=+o.cantidad;
+    const cantidad=Number.isFinite(pedida)?clamp(Math.round(pedida),1,50):20;
+    const tipo=['completar','mixto'].includes(tx(o.tipo))?tx(o.tipo):'preguntas';
+    const bruto=String(texto||''),todas=bruto.split(/\r?\n/).map(linea).filter(l=>l.trim().length>=4&&l.length<=300);
+    const descartadas=bruto.split(/\r?\n/).filter(l=>l.trim()).length-todas.length;
+    const preguntas=[],vistas=new Set(),usadas=new Set();
+    const add=(front,back,kind,indices)=>{
+      const f=linea(front).slice(0,300),b=linea(back).slice(0,300);
+      if(f.length<4||!b||b.length>300)return false;
+      const key=norm(f)+'|'+norm(b);if(vistas.has(key))return false;
+      vistas.add(key);preguntas.push({front:f,back:b,tipo:kind});
+      (indices||[]).forEach(i=>usadas.add(i));return true;
+    };
+
+    todas.forEach((l,i)=>{
+      if(usadas.has(i)||!/:$/.test(l)||/=|\?$/.test(l))return;
+      const vi=[],balas=/^(?:[-•*]\s+\S|\d+[.)]\s+\S)/;
+      let j=i+1;
+      while(j<todas.length&&balas.test(todas[j])){vi.push(todas[j].replace(/^(?:[-•*]\s+|\d+[.)]\s+)/,''));j++}
+      if(vi.length<2)return;
+      const titulo=l.slice(0,-1).trim();if(titulo.length>80)return;
+      add(`¿Cuáles son ${articulo(titulo)} ${titulo.toLowerCase()}?`,vi.join('; '),'lista',
+        Array.from({length:j-i},(_,k)=>i+k));
+    });
+    todas.forEach((l,i)=>{
+      if(usadas.has(i)||!/\?$/.test(l))return;
+      let j=i+1;while(j<todas.length&&!todas[j])j++;
+      if(j>=todas.length||usadas.has(j)||/\?$/.test(todas[j]))return;
+      add(l,todas[j],'pregunta',[i,j]);
+    });
+    todas.forEach((l,i)=>{
+      if(usadas.has(i)||!/=/.test(l))return;
+      if(/^(nota final|promedio final)\s*=/.test(tx(l)))return;
+      const izq=l.split('=')[0].replace(/^[\s\-–—:;•*|]+|[\s]+$/g,'').trim();
+      if(!izq||izq.length>120)return;
+      add(`¿Cuál es la fórmula de ${izq}?`,l,'formula',[i]);
+    });
+    todas.forEach((l,i)=>{
+      if(usadas.has(i))return;
+      const m=l.match(/^([^:?]{2,60}):\s*(.+)$/);
+      if(m&&m[1].trim().length>=2&&m[2].trim().length>=3){
+        add(`¿Qué es ${m[1].trim()}?`,m[2].trim().replace(/^se refiere a\s*/i,''),'definicion',[i]);return;
+      }
+      const d=l.match(/^(.{2,60}?)\s+(?:se define como|se refiere a|es|son)\s+(.{3,})$/i);
+      if(d)add(`¿Qué es ${d[1].trim()}?`,d[2].trim(),'definicion',[i]);
+    });
+
+    const completar=[];
+    todas.forEach((l,i)=>{
+      let termino=null,frente=null;
+      let m=l.match(/^([^:?]{2,60}):\s*(.+)$/);
+      if(m){termino=m[1].trim();frente='____'+l.slice(termino.length)}
+      else if((m=l.match(/^(.{2,60}?)\s+(?:se define como|se refiere a|es|son)\s+(.{3,})$/i))){
+        termino=m[1].trim();frente='____'+l.slice(termino.length);
+      }else if(/=/.test(l)&&!/^(nota final|promedio final)\s*=/.test(tx(l))){
+        termino=l.split('=')[0].trim();frente='____ = '+l.split('=').slice(1).join('=').trim();
+      }else if(/\?$/.test(l)&&todas[i+1]){
+        const respuesta=todas[i+1].replace(/^[-•*]\s+/,'').trim(),pal=respuesta.match(/[A-Za-zÁÉÍÓÚáéíóúÑñ]{4,}/);
+        if(pal){termino=pal[0];frente=respuesta.replace(termino,'____')}
+      }
+      if(termino&&frente&&termino.length<=60){
+        const key=norm(frente)+'|'+norm(termino);
+        if(!vistas.has(key)){vistas.add(key);completar.push({front:frente.slice(0,300),back:termino,tipo:'completar'})}
+      }
+    });
+
+    let elegidas=[];
+    if(tipo==='completar')elegidas=completar.slice(0,cantidad);
+    else if(tipo==='mixto'){
+      const p=preguntas.slice(0,Math.ceil(cantidad/2)),c=completar.slice(0,cantidad-Math.ceil(cantidad/2));
+      for(let i=0;i<cantidad&&(p.length||c.length);i++){
+        if(i%2===0&&p.length)elegidas.push(p.shift());
+        else if(c.length)elegidas.push(c.shift());
+        else if(p.length)elegidas.push(p.shift());
+      }
+      elegidas=elegidas.concat(p,c).slice(0,cantidad);
+    }else elegidas=preguntas.slice(0,cantidad);
+    return {tarjetas:elegidas,mensaje:elegidas.length?'':IA_FC_VACIO,avisos:[],
+      analizadas:todas.length,descartadas,cantidad,tipo};
+  }
+
+  async function extractSyllabus(texto,courseId){
+    if(!ready())return null;
+    const r=extractSyllabusSync(texto,courseId);await wait(r);return r;
+  }
+  async function makeFlashcards(texto,opciones){
+    if(!ready())return null;
+    const r=makeFlashcardsSync(texto,opciones);await wait(r);return r;
+  }
   function reset(){pendiente=null}
-  return {mode:ARVIS_IA_MODE,context,chat,weeklySummary,weeklySummarySync:buildSummary,extractSyllabus,makeFlashcards,reset,
+  return {mode:ARVIS_IA_MODE,context,chat,weeklySummary,weeklySummarySync:buildSummary,
+    extractSyllabus,extractSyllabusSync,makeFlashcards,makeFlashcardsSync,reset,
     parseDate,findCourse:(t,courses)=>findCourse(t,courses||S.courses),eventType,eventTitle,when,future:(days)=>future(useContext(null),days)};
 })();

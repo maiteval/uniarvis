@@ -149,6 +149,8 @@ function migrate(s){
     if(typeof c.share!=='boolean')c.share=false;
     if(!Number.isFinite(c.passGrade)||c.passGrade<1||c.passGrade>7)c.passGrade=4;
     if(typeof c.roundFinal!=='boolean')c.roundFinal=true;
+    if(typeof c.syllabusNotes!=='string')c.syllabusNotes='';
+    else c.syllabusNotes=c.syllabusNotes.slice(0,2000);
   });
   s.tools=migrateTools(s.tools);
   return s;
@@ -171,5 +173,5 @@ const course=id=>S.courses.find(c=>c.id===id);
 const cname=id=>course(id)?course(id).name:'(ramo eliminado)';
 const ccolor=id=>course(id)?course(id).color:'#6b7384';
 
-let section='inicio',tab='inicio',weekStart=mondayOf(today()),pending=[],sylText='',sylCourse='',draft=null,ciEdit=false,bsel='suspiro',bt=null,mt=null;
+let section='inicio',tab='inicio',weekStart=mondayOf(today()),pending=[],sylText='',sylCourse='',sylAi=null,sylAiLoading=false,draft=null,ciEdit=false,bsel='suspiro',bt=null,mt=null;
 let icsPending=null,icsNotice='',icsEvaluations=[];

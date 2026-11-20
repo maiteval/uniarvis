@@ -566,6 +566,10 @@ body.chat-open .chat-fab{display:none}
 .fc-limit-row{display:flex;align-items:center;gap:8px}
 .fc-limit-input{width:80px;height:var(--tool-field-h);flex:0 0 80px;border-radius:var(--radius-sm)}
 .fc-study-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fc-ai>summary{display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600}
+.fc-ai-body{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.fc-ai-row>span>input,.fc-ai-row>span>textarea{width:100%}
+.fc-ai-row>span>.tag{display:inline-block;margin-top:4px}
 @media (max-width:600px){
   .tools-card{padding:16px}
   .diff-field{flex:1 1 100%}

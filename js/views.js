@@ -213,6 +213,44 @@ function institutionDoneNotice(){
     <span class="tag inst-example">Datos de ejemplo</span></div>`;
 }
 const aiDemoTag=()=>`<span class="tag inst-example ai-demo-tag" title="Respuestas generadas en tu dispositivo, sin IA real" aria-label="Respuestas generadas en tu dispositivo, sin IA real">IA · demo</span>`;
+const aiSyllabusOn=()=>typeof isInstitutional==='function'&&isInstitutional()&&typeof ArvisIA!=='undefined';
+const iaConfianza=c=>`<span class="tag${c==='Revísalo'?' inst-example':''}">${esc(c||'Seguro')}</span>`;
+function aiSyllabusHtml(){
+  const r=sylAi;
+  return `${arvisMomentoHtml('syllabus')}<div class="card" id="syl-ai"><div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px">
+    <div><h2 style="margin:0">Lectura inteligente del syllabus</h2><span class="mute">Sugerencias generadas en tu dispositivo: nada se agrega sin tu confirmación.</span></div>
+    <button class="btn sec" data-focus-id="syl-ai-analyze" onclick="analyzeWithArvis()" ${sylAiLoading?'disabled':''}>Analizar con Arvis ${aiDemoTag()}</button></div>
+    ${sylAiLoading?'<div class="banner info" id="syl-ai-loading">Arvis está leyendo tu syllabus…</div>':''}
+    ${r?sylAiPreviewHtml(r):''}
+  </div>`;
+}
+function sylAiPreviewHtml(r){
+  const fechas=r.fechas.map((p,i)=>`<tr><td><input type="checkbox" ${p.keep?'checked':''} aria-label="Incluir fecha ${i+1}" onchange="setSylAiField('fechas',${i},'keep',this.checked)"></td>
+    <td><input type="date" value="${esc(p.date)}" aria-label="Fecha ${i+1}" onchange="setSylAiField('fechas',${i},'date',this.value)"></td>
+    <td><select aria-label="Tipo de fecha ${i+1}" onchange="setSylAiField('fechas',${i},'type',this.value)">${Object.entries(TYPE_LABEL).map(([k,v])=>`<option value="${k}" ${k===p.type?'selected':''}>${v}</option>`).join('')}</select></td>
+    <td><input style="width:100%" value="${esc(p.title)}" aria-label="Descripción de fecha ${i+1}" onchange="setSylAiField('fechas',${i},'title',this.value)">${p.note?`<div class="mute">⚠ ${esc(p.note)}</div>`:''}</td>
+    <td>${iaConfianza(p.confianza)}</td></tr>`).join('');
+  const pesos=r.ponderaciones.map((p,i)=>`<tr><td><input type="checkbox" ${p.keep?'checked':''} aria-label="Incluir ponderación ${i+1}" onchange="setSylAiField('ponderaciones',${i},'keep',this.checked)"></td>
+    <td><input style="width:100%" value="${esc(p.nombre)}" aria-label="Evaluación ${i+1}" onchange="setSylAiField('ponderaciones',${i},'nombre',this.value)"></td>
+    <td><input type="number" min="0" max="100" step="0.1" value="${esc(p.peso)}" aria-label="Peso ${i+1}" onchange="setSylAiField('ponderaciones',${i},'peso',this.value)"> %</td>
+    <td>${iaConfianza(p.confianza)}${p.note?`<div class="mute">⚠ ${esc(p.note)}</div>`:''}</td></tr>`).join('');
+  const reglas=r.reglas.map((p,i)=>`<tr><td><input type="checkbox" ${p.keep?'checked':''} aria-label="Incluir regla ${i+1}" onchange="setSylAiField('reglas',${i},'keep',this.checked)"></td>
+    <td><input style="width:100%" value="${esc(p.texto)}" aria-label="Regla ${i+1}" onchange="setSylAiField('reglas',${i},'texto',this.value)"></td>
+    <td>${p.campo?`<input type="number" min="1" max="7" step="0.1" value="${esc(p.valor)}" aria-label="Valor de regla ${i+1}" onchange="setSylAiField('reglas',${i},'valor',this.value)">`:'—'}</td>
+    <td>${iaConfianza(p.confianza)}</td></tr>`).join('');
+  const contenidos=r.contenidos.map((p,i)=>`<tr><td><input type="checkbox" ${p.keep?'checked':''} aria-label="Incluir contenido ${i+1}" onchange="setSylAiField('contenidos',${i},'keep',this.checked)"></td>
+    <td><input style="width:100%" value="${esc(p.texto)}" aria-label="Contenido ${i+1}" onchange="setSylAiField('contenidos',${i},'texto',this.value)"></td>
+    <td>${iaConfianza(p.confianza)}</td></tr>`).join('');
+  return `<div id="syl-ai-preview" style="margin-top:12px">
+    ${r.avisos.length?`<div class="banner go" id="syl-ai-avisos">${r.avisos.map(x=>`<div>⚠ ${esc(x)}</div>`).join('')}</div>`:''}
+    <h3>Fechas</h3><table><tr><th></th><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Confianza</th></tr>${fechas||'<tr><td colspan="5" class="mute">Sin fechas detectadas.</td></tr>'}</table>
+    <h3>Ponderaciones</h3><table><tr><th></th><th>Evaluación</th><th>Peso</th><th>Confianza</th></tr>${pesos||'<tr><td colspan="4" class="mute">Sin ponderaciones detectadas.</td></tr>'}</table>
+    <h3>Reglas del ramo</h3><table><tr><th></th><th>Regla</th><th>Valor</th><th>Confianza</th></tr>${reglas||'<tr><td colspan="4" class="mute">Sin reglas detectadas.</td></tr>'}</table>
+    <h3>Contenidos</h3><table><tr><th></th><th>Tema o unidad</th><th>Confianza</th></tr>${contenidos||'<tr><td colspan="3" class="mute">Sin contenidos detectados.</td></tr>'}</table>
+    <div class="row" style="margin-top:10px"><button class="btn" data-focus-id="syl-ai-add" onclick="addSyllabusAi()">Agregar lo seleccionado</button>
+      <button class="btn sec" onclick="cancelSyllabusAi()">Cancelar</button></div>
+  </div>`;
+}
 function weeklyResumen(){
   if(typeof isInstitutional!=='function'||!isInstitutional()||typeof ArvisIA==='undefined')return null;
   return ArvisIA.weeklySummarySync();
@@ -628,6 +666,7 @@ function viewSyllabus(){
   ${S.courses.filter(c=>importedCourse(c)&&!hasSyllabus(c.id)).length?`<div class="banner info inst-syllabus-pending"><b>Syllabus pendiente</b><br>
     ${S.courses.filter(c=>importedCourse(c)&&!hasSyllabus(c.id)).map(c=>esc(c.name)).join(', ')}. Sube el syllabus de cada ramo para afinar las fechas. <span class="tag inst-example">Datos de ejemplo</span></div>`:''}
   ${certamenOffersHtml()}${certamenDraftHtml()}${certamenActiveHtml()}
+  ${aiSyllabusOn()?aiSyllabusHtml():''}
   <div class="card"><h2>Subir syllabus</h2>
     <div class="row form-stack" style="margin-bottom:8px"><select onchange="sylCourse=this.value"><option value="">Ramo…</option>${opts}</select>
       <div class="file-pick"><label class="btn sec" for="syl-file">Elegir archivo (PDF o texto)</label>
