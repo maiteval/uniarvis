@@ -106,7 +106,7 @@ function institutionCalendarHtml(days){
     <p class="mute">Período: ${dshort(c.classesStart)} – ${dshort(c.classesEnd)}. Semanas de certámenes, recesos y feriados de la demo.</p>
     ${items.map(x=>`<div class="task inst-item ${x.type}"><span class="tag">${label(x)}</span>
       <span style="flex:1"><b>${esc(x.label)}</b><br><span class="mute">${x.end?`${dshort(x.start)} – ${dshort(x.end)}`:dshort(x.date)}${x.end&&x.end>=days[0]&&x.start<=weekEnd?' · esta semana':''}</span></span></div>`).join('')}
-    <p class="mute" style="margin-bottom:0">Los recesos y feriados no reciben micro-tareas. Las semanas de certámenes se consideran exigentes.</p></div>`;
+    <p class="mute" style="margin-bottom:0">Los recesos y feriados no reciben sesiones de estudio. Las semanas de certámenes se consideran exigentes.</p></div>`;
 }
 function institutionDayMark(date){
   const i=currentInstitution();if(!i)return null;

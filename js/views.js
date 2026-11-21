@@ -330,9 +330,13 @@ function viewPerfil(){
       ${identityFields}
       <label>¿Cómo quieres que Arvis te llame? (opcional)<input id="pf-nickname" type="text" maxlength="40" value="${esc(p.nickname||'')}" placeholder="Tu apodo"></label>
       <p class="mute" style="margin:0">Si lo dejas vacío, te llamaremos por tu primer nombre.</p>
-      <label>¿A qué hora del día te concentras mejor?${chronotypeOptions('pf-chronotype',(S.settings&&S.settings.chronotype)||'no_se')}</label>
-      <p class="mute" style="margin:0">Opcional. Solo etiquetamos tus tareas según tu franja; no asumimos horas exactas.</p>
-      <button class="btn" data-focus-id="save-profile" onclick="saveProfile()">Guardar cambios</button>
+       <label>¿A qué hora del día te concentras mejor?${chronotypeOptions('pf-chronotype',(S.settings&&S.settings.chronotype)||'no_se')}</label>
+       <label>Duración de mis sesiones de estudio
+         <select id="pf-session-min" data-focus-id="pf-session-min">${[45,60,90].map(n=>`<option value="${n}" ${n===((S.settings&&S.settings.sessionMin)||60)?'selected':''}>${n} min</option>`).join('')}</select></label>
+       <label>Sesiones por día
+         <select id="pf-max-sessions" data-focus-id="pf-max-sessions">${[1,2,3,4].map(n=>`<option value="${n}" ${n===((S.settings&&S.settings.maxSessions)||2)?'selected':''}>${n}</option>`).join('')}</select></label>
+       <p class="mute" style="margin:0">Preferimos sesiones largas de un solo ramo, colocadas en tus horarios libres. La hora es solo una sugerencia.</p>
+       <button class="btn" data-focus-id="save-profile" onclick="saveProfile()">Guardar cambios</button>
     </div></div>`;
 }
 function viewCuenta(){
@@ -410,11 +414,18 @@ function taskRow(t,locked){
   const deck=t.kind==='recuperar'&&(S.tools&&S.tools.flashcards&&S.tools.flashcards.decks||[]).find(d=>d.courseId===t.courseId);
   const fcBtn=deck?`<button class="btn sec" data-focus-id="fc-task-${t.id}" onclick="openCourseFlashcards('${t.courseId}')">Repasar flashcards de este ramo</button>`:'';
   const kind=t.kind?`<span class="tag">${esc(KIND_LABEL[t.kind]||t.kind)}</span>`:'';
+  const slot=t.slotStart&&t.slotEnd?`${t.slotStart}–${t.slotEnd}`:'Cuando puedas';
   const chrono=t.chrono?`<br><span class="mute">${esc(t.chrono)}</span>`:'';
-  const hint=needsInterleave(t)?`<br><span class="mute">${esc(EVIDENCE.plan.interleaveHint)}</span>`:'';
+  const hint=t.hint?`<br><span class="mute">${esc(t.hint)}</span>`:(needsInterleave(t)?`<br><span class="mute">${esc(EVIDENCE.plan.interleaveHint)}</span>`:'');
+  const why=t.why?`<details><summary>Por qué esta sesión</summary><span class="mute">${esc(t.why)}</span></details>`:'';
+  const pom=t.done?'':`<button class="btn sec" data-focus-id="pom-task-${t.id}" onclick="startTaskPomodoro('${t.id}')">Pomodoro</button>`;
+  const fb=t.done&&taskFeedbackId===t.id?`<div class="row" style="flex-wrap:wrap;margin-top:6px;gap:6px"><span class="mute">¿Cómo te fue?</span>
+    ${[['bien','Bien'],['medio','Más o menos'],['costo','Me costó']].map(([v,l])=>`<button class="btn sec" aria-pressed="${t.feeling===v}" data-focus-id="feel-${t.id}-${v}" onclick="setTaskFeeling('${t.id}','${v}')">${l}</button>`).join('')}
+    <label class="mute">¿Cuánto estudiaste realmente? <input type="number" min="1" max="600" step="5" style="width:80px" value="${Number(t.realMinutes)||t.minutes}" onchange="setTaskReal('${t.id}',this.value)"> min</label>
+    <button class="lnk" onclick="closeTaskFeedback()">Listo</button></div>`:'';
   return `<div class="task ${t.done?'done':''}"><input type="checkbox" aria-label="${t.done?'Marcar como pendiente':'Marcar como hecha'}: ${esc(t.title)}" data-focus-id="task-${t.id}" ${t.done?'checked':''} ${locked&&!t.done?'disabled':''} onchange="toggleTask('${t.id}')">
     <span aria-hidden="true" class="dot" style="background:${ccolor(t.courseId)}"></span>
-    <span class="t" style="flex:1">${esc(t.title)}<br><span class="mute">${esc(cname(t.courseId))}${chrono}${hint}</span></span>${kind}<span class="tag">${t.minutes} min</span>${fcBtn}</div>`;
+    <span class="t" style="min-width:0">${esc(t.title)}<br><span class="mute">${esc(cname(t.courseId))} · ${esc(slot)}${chrono}${hint}</span>${why}${fb}</span>${kind}<span class="tag">${t.minutes} min</span>${pom}${fcBtn}</div>`;
 }
 function agendaItems(date){
   const items=[],wd=(parse(date).getDay()+6)%7;
@@ -422,8 +433,11 @@ function agendaItems(date){
     html:`<b>${esc(cname(k.courseId))}</b><br><span class="mute">Clase ${k.start}–${k.end}</span>`}));
   S.events.filter(e=>e.date===date).forEach(e=>items.push({time:e.type==='evaluacion'?('9:00'):'',order:1,
     html:`<b>${TYPE_LABEL[e.type]} · ${esc(cname(e.courseId))}</b><br><span class="mute">${esc(e.title)}</span>`}));
-  S.tasks.filter(t=>t.date===date).forEach(t=>items.push({time:'',order:2,done:t.done,
-    html:`<b>${esc(t.title)}</b><br><span class="mute">${esc(cname(t.courseId))}${t.kind?` · ${esc(KIND_LABEL[t.kind]||t.kind)}`:''}${t.chrono?` · ${esc(t.chrono)}`:''} · ${t.minutes} min</span>`}));
+  S.tasks.filter(t=>t.date===date).forEach(t=>{
+    const slot=t.slotStart&&t.slotEnd?`${t.slotStart}–${t.slotEnd}`:'Cuando puedas';
+    items.push({time:t.slotStart||'',order:2,done:t.done,
+      html:`<b>${esc(t.title)}</b><br><span class="mute">${esc(slot)} · ${esc(cname(t.courseId))}${t.kind?` · ${esc(KIND_LABEL[t.kind]||t.kind)}`:''} · ${t.minutes} min${t.hint?`<br>${esc(t.hint)}`:''}</span>`});
+  });
   if(typeof socialAgendaItems==='function')socialAgendaItems(date).forEach(x=>items.push(x));
   return items.sort((a,b)=>String(a.time||'99:99').localeCompare(String(b.time||'99:99'))||a.order-b.order);
 }
@@ -498,13 +512,13 @@ function viewHoy(){
   if(locked)banner=`<div class="banner lock"><b>Cuota completada.</b> Hoy no se asigna materia nueva. Descansar ya es parte del plan: no hay nada que compensar ni de qué sentirse culpable.</div>`;
   else if(met)banner=`<div class="banner min"><b>Lo esencial de hoy está hecho.</b> Puedes seguir hasta ${cap-done} min más o cerrar el día con tranquilidad.</div>`;
   else if(low)banner=`<div class="banner soft">Hoy es un día de energía baja: <b>solo lo esencial</b>. Te faltan ${min-done} min; con eso el día cuenta.</div>`;
-  else banner=`<div class="banner go">Te faltan <b>${min-done} min</b> para tu mínimo de hoy. Con una micro-tarea corta ya avanzas.</div>`;
+  else banner=`<div class="banner go">Te faltan <b>${min-done} min</b> para tu mínimo de hoy. Con una sesión de estudio ya avanzas.</div>`;
   const notes=[];
   if(S.adapt&&S.adapt.date===t0){
-    if(S.adapt.low)notes.push(`Según tu check-in, hoy dejé solo lo esencial (${min} min)${S.adapt.n?` y moví ${S.adapt.n} micro-tarea(s) a otros días`:''}. No tienes que reorganizar nada.`);
-    else if(S.adapt.n)notes.push(`Ajusté tu plan según tu check-in: moví ${S.adapt.n} micro-tarea(s) para cuidar tu energía.`);
+    if(S.adapt.low)notes.push(`Según tu check-in, hoy dejé solo lo esencial (${min} min)${S.adapt.n?` y moví ${S.adapt.n} sesión(es) a otros días`:''}. No tienes que reorganizar nada.`);
+    else if(S.adapt.n)notes.push(`Ajusté tu plan según tu check-in: moví ${S.adapt.n} sesión(es) para cuidar tu energía.`);
   }
-  if(S.moved&&S.moved.date===t0)notes.push(`Reacomodé ${S.moved.n} micro-tarea(s) que quedaron de días anteriores. Ya están repartidas en los próximos días; no se acumula nada.`);
+  if(S.moved&&S.moved.date===t0)notes.push(`Reacomodé ${S.moved.n} sesión(es) que quedaron de días anteriores. Ya están repartidas en los próximos días; no se acumula nada.`);
   let rows='',acc=0;
   todays.forEach((t,i)=>{
     rows+=taskRow(t,locked);
@@ -533,9 +547,9 @@ function viewHoy(){
   </div>
   <div class="grid2">
     <div class="card"><h3>Plan de hoy</h3>
-      ${rows||`${arvisVacioHtml('tareas')}<div class="empty">No hay micro-tareas para hoy. Agrega ramos y fechas en <b>Académico &gt; Fechas</b> para generar tu plan, o registra estudio libre.</div>`}
+      ${rows||`${arvisVacioHtml('tareas')}<div class="empty">No hay sesiones para hoy. Agrega ramos y fechas en <b>Académico &gt; Fechas</b> para generar tu plan, o registra estudio libre.</div>`}
       ${locked?'<p class="mute">No se adelanta ni se asigna más materia hoy.</p>':
-        (low?'<p class="mute">Hoy no hace falta adelantar nada.</p>':(!pend.length&&nxt?`<button class="btn sec" onclick="pullNext()">Adelantar la siguiente micro-tarea (${nxt.minutes} min)</button>`:''))}
+        (low?'<p class="mute">Hoy no hace falta adelantar nada.</p>':(!pend.length&&nxt?`<button class="btn sec" onclick="pullNext()">Adelantar la siguiente sesión (${nxt.minutes} min)</button>`:''))}
     </div>
     <div>
       ${pauseCard()}
@@ -565,7 +579,7 @@ function viewSemana(){
   h+='<div class="lbl">Fechas</div>'+days.map(d=>`<div>${S.events.filter(e=>e.date===d).map(e=>
     `<div class="chip" style="border-color:${ccolor(e.courseId)}" title="${esc(e.title)}"><b>${TYPE_LABEL[e.type]}</b> ${esc(cname(e.courseId))}<br>${esc(e.title)}</div>`).join('')}</div>`).join('');
   h+='<div class="lbl">Plan</div>'+days.map(d=>`<div>${S.tasks.filter(t=>t.date===d).map(t=>
-    `<div class="chip ${t.done?'done':''}" style="border-color:${ccolor(t.courseId)}">${t.minutes}' ${esc(cname(t.courseId))}</div>`).join('')}<div class="mute">${dayLoad(d)||capFor(d)?dayLoad(d)+' / '+capFor(d)+' min':''}</div></div>`).join('');
+    `<div class="chip ${t.done?'done':''}" style="border-color:${ccolor(t.courseId)}" title="${esc(t.slotStart&&t.slotEnd?`${t.slotStart}–${t.slotEnd}`:'Cuando puedas')}">${t.slotStart&&t.slotEnd?`${t.slotStart}–${t.slotEnd} · `:''}${t.minutes}' ${esc(cname(t.courseId))}</div>`).join('')}<div class="mute">${dayLoad(d)||capFor(d)?dayLoad(d)+' / '+capFor(d)+' min':''}</div></div>`).join('');
   h+=`<div class="lbl" style="padding:0;position:relative;height:${(H1-H0)*HH}px">${[...Array(H1-H0)].map((_,i)=>`<div style="position:absolute;top:${i*HH}px;font-size:12px;padding-left:4px">${pad(H0+i)}:00</div>`).join('')}</div>`;
   h+=days.map((d,i)=>`<div class="col ${d===t0?'today':''}" style="height:${(H1-H0)*HH}px">${S.classes.filter(k=>k.day===i).map(k=>{
     const top=(toMin(k.start)-H0*60)/60*HH,ht=(toMin(k.end)-toMin(k.start))/60*HH;
@@ -642,7 +656,7 @@ function viewRamos(){
         <span class="diff-field"><label for="cd">Dificultad percibida</label>
           <select id="cd" title="Dificultad percibida">${difficultyOptions(3)}</select></span>
         <button class="btn" data-focus-id="add-course" onclick="addCourse()">Agregar</button></div>
-      <p class="mute">La dificultad percibida es qué tan pesado sientes el ramo, de 1 a 5. Más dificultad = más minutos de preparación, más días de margen y micro-tareas más cortas.</p>
+      <p class="mute">La dificultad percibida es qué tan pesado sientes el ramo, de 1 a 5. Más dificultad = más minutos de preparación y más días de margen.</p>
     </div>
     <div class="card"><h2>Horario de clases</h2>
       <div class="row"><select id="kc">${S.courses.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>

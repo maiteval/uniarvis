@@ -1,8 +1,21 @@
-/* U.A.R.V.I.S. · Planificador de micro-tareas y detección de semanas críticas */
+/* U.A.R.V.I.S. · Planificador de sesiones de estudio y detección de semanas críticas */
 /* ===================== Planificador predictivo ===================== */
 const BASE={evaluacion:360,entrega:240,control:90,otro:60};
 const KIND_LABEL={nuevo:'Primera vez',recuperar:'Recuperar',ejercicios:'Ejercicios',simulacro:'Simulacro',repaso_ligero:'Repaso ligero'};
 const KIND_TITLE={recuperar:'Recuperar a distancia',ejercicios:'Ejercicios mezclados',simulacro:'Simulacro tipo evaluación',repaso_ligero:'Repaso ligero'};
+const SESSION_LENGTHS=[45,60,90],SESSION_MAX_MERGE=90;
+const SLOT_DAY_START=8*60,SLOT_DAY_END=21*60+30,SLOT_MARGIN=15;
+const SESSION_HINT={
+  nuevo:'Primera pasada: lee y resume en 5 ideas clave',
+  ejercicios:'Resuelve ejercicios sin mirar la solución; marca los que te costaron',
+  recuperar:'Sin apuntes: escribe todo lo que recuerdas y luego compara',
+  simulacro:'Simulacro con tiempo, como si fuera la evaluación',
+  repaso_ligero:'Repaso suave de tus resúmenes y errores frecuentes. Duerme bien.'
+};
+const sessionMin=()=>SESSION_LENGTHS.indexOf(S.settings.sessionMin)>=0?S.settings.sessionMin:60;
+const maxSessions=()=>Number.isInteger(S.settings.maxSessions)?clamp(S.settings.maxSessions,1,4):2;
+const paceFactor=()=>Number.isFinite(S.settings.paceFactor)?clamp(S.settings.paceFactor,0.7,1.4):1;
+const clockOf=m=>`${pad(Math.floor(m/60))}:${pad(m%60)}`;
 const chronoTag=kind=>{
   const ch=(S.settings&&S.settings.chronotype)||'no_se',label=EVIDENCE.plan.chronotypeLabels[ch]||'';
   if(!label)return '';
@@ -33,70 +46,190 @@ function taskSlots(ev,days,n,diff){
     if(d===mock)return {date:d,kind:'simulacro'};
     return {date:d,kind:'ejercicios'};
   });
-  if(days.includes(eve))order.push({date:eve,kind:'repaso_ligero'});
-  if(!order.length)order.push({date:days[0],kind:'repaso_ligero'});
-  const extra=order.filter(x=>x.date!==eve);
-  const out=[];
-  while(out.length<n){
-    const s=order[out.length%order.length],e=extra.length?extra[out.length%extra.length]:s;
-    const pick=out.length<order.length?s:{date:e.date,kind:e.kind==='recuperar'?'ejercicios':e.kind};
-    out.push({date:pick.date,kind:pick.date===eve?'repaso_ligero':pick.kind});
+  const eveSlot=days.includes(eve)?{date:eve,kind:'repaso_ligero'}:null;
+  const base=order.filter(x=>!eveSlot||x.date!==eve);
+  const pool=base.length?base:[{date:days[0],kind:'repaso_ligero'}];
+  const out=[],want=eveSlot?Math.max(0,n-1):n;
+  while(out.length<want){
+    const s=pool[out.length%pool.length];
+    const pick=out.length<pool.length?s:(pool.find(x=>x.date!==s.date&&x.date!==eve)||s);
+    const kind=pick.kind==='recuperar'&&out.length>=pool.length?'ejercicios':pick.kind;
+    out.push({date:pick.date,kind:pick.date===eve?'repaso_ligero':kind});
   }
-  return out;
+  if(eveSlot)out.push(eveSlot);
+  if(!out.length)out.push(pool[0]);
+  return out.slice(0,n);
 }
 const dayLoad=date=>S.tasks.filter(t=>t.date===date).reduce((a,t)=>a+t.minutes,0)+
-                    S.sessions.filter(x=>x.date===date&&!x.taskId).reduce((a,x)=>a+x.minutes,0);
-function splitMinutes(total,chunk){                     // bloques parejos de 15 a 30 min, sin restos de 5 o 10 min
-  if(total<=0)return[];
-  const n=Math.max(1,Math.min(Math.ceil(total/chunk),Math.floor(total/15)));
-  const base=Math.floor(total/n/5)*5,extra=Math.round((total-base*n)/5);
-  return Array.from({length:n},(_,i)=>base+(i<extra?5:0));
+                     S.sessions.filter(x=>x.date===date&&!x.taskId).reduce((a,x)=>a+x.minutes,0);
+function splitMinutes(total,size){                      // bloques largos: sin restos sueltos menores a 20 min
+  if(!(total>0))return[];
+  const session=SESSION_LENGTHS.indexOf(size)>=0?size:sessionMin();
+  if(total<=session)return [total];
+  const full=Math.floor(total/session),rest=total-full*session;
+  if(!rest)return Array(full).fill(session);
+  if(rest<20){const out=Array(Math.max(0,full-1)).fill(session);out.push(session+rest);return out}
+  const last=Math.max(30,rest),out=Array(Math.max(0,full-1)).fill(session);
+  if(full)out.push(session-(last-rest));
+  out.push(last);
+  return out.filter(x=>x>0);
+}
+function importanceFor(ev){
+  const c=course(ev.courseId),grades=c&&Array.isArray(c.grades)?c.grades:[];
+  const name=norm(String(ev.title||'').trim());
+  const found=grades.find(g=>norm(String(g.name||'').trim())===name&&Number.isFinite(+g.weight));
+  const weight=found?clamp(0.6+(+found.weight)/50,0.6,1.6):1;
+  const sum=typeof gradeSummary==='function'&&grades.length?gradeSummary(grades,c):null;
+  const need=sum&&Number.isFinite(sum.need)?sum.need:null;
+  let risk=1;
+  if(need!=null&&need>5)risk=1.2;
+  else if(sum&&((need!=null&&need<=1)||(need==null&&sum.avg!=null&&sum.avg>=sum.pass)))risk=0.8;
+  return {weight:found?+found.weight:null,need,factor:Math.round(weight*risk*100)/100,risk};
+}
+function sessionWhy(ev,kind,imp,daysLeft){
+  const parts=[];
+  if(imp.weight!=null)parts.push(`«${ev.title}» pondera ${comma(String(imp.weight))}% en ${cname(ev.courseId)}`);
+  if(imp.need!=null)parts.push(`necesitas ${Number(imp.need).toFixed(1).replace('.',',')} para aprobar`);
+  if(daysLeft<=1)parts.push('la fecha está muy cerca');
+  else parts.push(`quedan ${daysLeft} días antes de ${ev.title}`);
+  if(imp.risk>1)parts.push('es una evaluación de riesgo');
+  if(!parts.length)parts.push('conviene repartir el estudio antes de la fecha');
+  return String(parts.join('. ')+'.').slice(0,240);
+}
+function feedbackFor(ev){
+  const felt=S.tasks.filter(t=>t.done&&t.eventId===ev.id&&t.feeling).sort((a,b)=>a.date.localeCompare(b.date));
+  const last=felt[felt.length-1],two=felt.slice(-2);
+  return {extra:!!last&&last.feeling==='costo',
+    skipKind:two.length===2&&two.every(t=>t.feeling==='bien')&&two[0].kind&&two[0].kind===two[1].kind?two[0].kind:null};
+}
+function learnPace(){
+  const recent=S.tasks.filter(t=>t.done&&Number.isFinite(t.realMinutes)&&t.minutes>0)
+    .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
+  if(recent.length<3)return;
+  const ratio=avg(recent.map(t=>t.realMinutes/t.minutes));
+  if(ratio<0.7||ratio>1.3)S.settings.paceFactor=clamp(Math.round((1+(ratio-1)*0.5)*100)/100,0.7,1.4);
+}
+function classWindows(date){
+  const dow=(parse(date).getDay()+6)%7;
+  return S.classes.filter(k=>k.day===dow&&toMin(k.end)>toMin(k.start))
+    .map(k=>({a:toMin(k.start),b:toMin(k.end)})).sort((a,b)=>a.a-b.a);
+}
+function freeWindows(date,minutes){
+  let cursor=SLOT_DAY_START;const out=[];
+  classWindows(date).forEach(k=>{
+    if(k.a-cursor>=minutes)out.push([cursor,k.a]);
+    cursor=Math.max(cursor,k.b+SLOT_MARGIN);
+  });
+  if(SLOT_DAY_END-cursor>=minutes)out.push([cursor,SLOT_DAY_END]);
+  return out;
+}
+function slotFor(date,minutes,kind){
+  const wins=freeWindows(date,minutes);if(!wins.length)return null;
+  const ch=S.settings.chronotype,classes=classWindows(date);
+  const after=classes.length?Math.min(SLOT_DAY_END,classes[classes.length-1].b+SLOT_MARGIN):SLOT_DAY_START;
+  let pick;
+  if(ch==='manana')pick=wins.find(w=>w[0]<12*60);
+  else if(ch==='tarde')pick=wins.find(w=>w[0]>=12*60&&w[0]<18*60);
+  else if(ch==='noche')pick=wins.slice().reverse().find(w=>w[0]>=18*60);
+  else pick=wins.find(w=>w[0]>=after);
+  if(!pick)pick=wins[0];
+  return {slotStart:clockOf(pick[0]),slotEnd:clockOf(pick[0]+minutes)};
+}
+function sessionState(date){
+  const ts=S.tasks.filter(t=>t.date===date);
+  return {count:ts.length,load:ts.reduce((a,t)=>a+t.minutes,0),courses:new Set(ts.map(t=>t.courseId))};
+}
+function dayBudget(date,eveDate,useFull){
+  const cap=planCap(date),limit=date===eveDate?Math.min(cap,EVIDENCE.plan.eveMaxMinutes):cap;
+  return useFull?Math.floor(limit):Math.floor(limit*0.8/5)*5;
+}
+function commitSession(b){
+  const slot=slotFor(b.date,b.minutes,b.kind),chrono=chronoTag(b.kind);
+  S.tasks.push({id:uid(),eventId:b.eventId,courseId:b.courseId,title:b.title,date:b.date,minutes:b.minutes,done:false,
+    kind:b.kind,hint:String(b.hint||'').slice(0,160),why:String(b.why||'').slice(0,240),
+    ...(slot||{}),...(chrono?{chrono}:{}),...(b.certamen?{certamen:true,phase:b.phase||'',...(b.topicId?{topicId:b.topicId}:{})}:{})});
+}
+function allocateSessions(blocks,ctx){
+  const placed=[],noTask=ctx.noTask||[],last=ctx.last||'9999',first=today();
+  const state=d=>{
+    const st=sessionState(d);
+    placed.filter(p=>p.date===d).forEach(p=>{st.count++;st.load+=p.minutes;st.courses.add(p.courseId)});
+    return st;
+  };
+  const options=b=>{
+    const ds=new Set(ctx.days||[]);if(b.date)ds.add(b.date);ds.add(b.date);
+    return [...ds].filter(d=>d>=first&&d<=last&&!noTask.includes(d)).sort((a,c)=>
+      (a===b.date?-1:0)-(c===b.date?-1:0)||a.localeCompare(c));
+  };
+  const put=(b,useFull)=>{
+    const budget=dayBudget(b.date,ctx.eveDate,useFull),st=state(b.date);
+    if(st.count>=maxSessions()||st.load+b.minutes>budget)return false;
+    if(st.courses.size>=2&&!st.courses.has(b.courseId))return false;
+    const merge=placed.find(p=>p.date===b.date&&p.courseId===b.courseId&&p.minutes+b.minutes<=SESSION_MAX_MERGE);
+    if(merge)merge.minutes+=b.minutes;
+    else placed.push({...b});
+    return true;
+  };
+  const remaining=[],ordered=blocks.slice().sort((a,b)=>
+    (b.date===ctx.eveDate?1:0)-(a.date===ctx.eveDate?1:0));
+  ordered.forEach(b=>{
+    for(const d of options(b)){
+      const trial={...b,date:d};
+      if(put(trial,d===ctx.eveDate))return;
+    }
+    remaining.push(b);
+  });
+  let overflow=0;
+  remaining.forEach(b=>{
+    for(const d of options(b)){
+      const trial={...b,date:d};
+      if(put(trial,true))return;
+    }
+    overflow++;
+  });
+  placed.sort((a,b)=>a.date.localeCompare(b.date)).forEach(commitSession);
+  return overflow;
 }
 function planEvent(ev){
-  const t0=today(),c=course(ev.courseId),diff=c?c.difficulty:3;
-  const total=Math.round(BASE[ev.type]*(0.7+0.15*diff)/15)*15;           // más dificultad → más minutos
+  const t0=today(),c=course(ev.courseId),diff=c?c.difficulty:3,imp=importanceFor(ev),eve=addDays(ev.date,-1);
+  const total=Math.round(BASE[ev.type]*(0.7+0.15*diff)*imp.factor*paceFactor()/15)*15;
   const doneMin=S.tasks.filter(t=>t.eventId===ev.id&&t.done).reduce((a,t)=>a+t.minutes,0);
-  let remaining=total-doneMin;if(remaining<10)return 0;
-  const lead=Math.min(35,7+3*diff+(ev.early?7:0));                        // más dificultad → empieza antes
-  const s0=addDays(ev.date,-lead),start=s0>t0?s0:t0;
-  let end=addDays(ev.date,(diff>=4&&ev.type==='evaluacion')?-2:-1);        // día de respiro antes de evaluaciones difíciles
+  const remaining=total-doneMin;if(remaining<10)return 0;
+  const lead=Math.min(35,7+3*diff+(ev.early?7:0)),s0=addDays(ev.date,-lead),start=s0>t0?s0:t0;
+  let end=addDays(ev.date,(diff>=4&&ev.type==='evaluacion')?-2:-1);  // día de respiro antes de evaluaciones difíciles
   if(end<start)end=addDays(ev.date,-1);
   if(end<start)return 0;
   const sinTarea=typeof institutionNoTaskDates==='function'?institutionNoTaskDates():[];
   const days=[];for(let d=start;d<=end;d=addDays(d,1))if(!sinTarea.includes(d))days.push(d);
   if(!days.length)return 0;
-  const chunk=ev.type==='control'?15:(diff>=4?25:30);                      // micro-tareas de 15 a 30 min
-  const amounts=splitMinutes(remaining,chunk),slots=taskSlots(ev,days,amounts.length,diff);
-  const eve=addDays(ev.date,-1),P=EVIDENCE.plan;
-  const limit=d=>d===eve?Math.min(planCap(d),P.eveMaxMinutes):planCap(d);
-  const picks=[];let overflow=0;
-  const load=d=>dayLoad(d)+picks.filter(p=>p.date===d).reduce((a,p)=>a+p.minutes,0);
-  amounts.forEach((m,i)=>{
-    const preferred=slots[i];let target=preferred.date;
-    if(load(target)+m>limit(target)){
-      const rest=days.filter(d=>d!==target&&load(d)+m<=limit(d));
-      rest.sort((a,b)=>load(a)/limit(a)-load(b)/limit(b)||b.localeCompare(a));
-      if(rest.length)target=rest[0];else overflow++;
-    }
-    if(target===eve&&preferred.kind!=='repaso_ligero')preferred.kind='repaso_ligero';
-    picks.push({date:target,minutes:m,kind:target===eve?'repaso_ligero':preferred.kind});
+  const fb=feedbackFor(ev);
+  let amounts=splitMinutes(remaining,sessionMin()),slots=taskSlots(ev,days,amounts.length,diff);
+  if(fb.skipKind&&amounts.length>1){
+    const at=slots.map((s,i)=>({s,i})).filter(x=>x.i<slots.length-1).reverse().find(x=>x.s.kind===fb.skipKind);
+    if(at){amounts.splice(at.i,1);slots.splice(at.i,1)}
+  }
+  if(fb.extra){amounts.push(sessionMin());slots.push({date:slots.length?slots[slots.length-1].date:days[0],kind:'ejercicios'})}
+  const blocks=amounts.map((m,i)=>{
+    const s=slots[i]||{date:days[0],kind:'ejercicios'},onEve=s.date===eve,kind=onEve?'repaso_ligero':s.kind;
+    return {date:s.date,minutes:onEve?Math.min(m,EVIDENCE.plan.eveMaxMinutes):m,kind,
+      eventId:ev.id,courseId:ev.courseId,title:taskKindTitle(kind,ev),hint:SESSION_HINT[kind],
+      why:sessionWhy(ev,kind,imp,Math.max(0,diffDays(s.date,ev.date)))};
   });
-  picks.sort((a,b)=>a.date.localeCompare(b.date));
-  picks.forEach(p=>{
-    const chrono=chronoTag(p.kind);
-    S.tasks.push({id:uid(),eventId:ev.id,courseId:ev.courseId,title:taskKindTitle(p.kind,ev),date:p.date,minutes:p.minutes,done:false,
-      kind:p.kind,...(chrono?{chrono}:{})});
-  });
-  return overflow;
+  return allocateSessions(blocks,{days,noTask:sinTarea,eveDate:eve,last:addDays(ev.date,-1)});
 }
+const eventPriority=(a,b)=>{
+  const ia=importanceFor(a),ib=importanceFor(b);
+  return a.date.localeCompare(b.date)||ib.factor-ia.factor||ib.risk-ia.risk||a.id.localeCompare(b.id);
+};
 function replanAll(){                                   // reprogramación sin culpa: lo pendiente se redistribuye solo
   inval();const t0=today();
   const stale=S.tasks.filter(t=>!t.done&&t.date<t0).length;
   if(stale>0)S.moved={date:t0,n:stale};
   const certKeep=S.tasks.filter(t=>t.certamen);
   S.tasks=S.tasks.filter(t=>t.done);
+  learnPace();
   let over=0;
-  S.events.filter(e=>e.date>=t0&&!certPlans().some(p=>p.eventId===e.id)).sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>over+=planEvent(e));
+  S.events.filter(e=>e.date>=t0&&!certPlans().some(p=>p.eventId===e.id)).sort(eventPriority).forEach(e=>over+=planEvent(e));
   if(certPlans().length)buildCertamenTasks(t0,certKeep);
   S.lastPlan=t0;save();
   if(over)toast('Esos días quedaron muy cargados: repartí lo más parejo posible. Quizá conviene mover alguna fecha o pedir ayuda.');
@@ -161,7 +294,7 @@ function criticalHtml(){
         ${real.length===1?`Hay ${fechas} en este tramo`:`Se juntan ${fechas} en pocos días`}: ${names}.<br>
         ${inst?'Coincide con la semana de certámenes de la UdeC.<br>':''}
         ${allEarly?`Ya reservé margen extra${f?`: tu preparación parte el ${dshort(f)}`:''}. Nada más que hacer por ahora.`
-        :'Conviene empezar antes: puedo adelantar el inicio de la preparación y repartirla en más días, con micro-tareas más livianas.'}`;
+        :'Conviene empezar antes: puedo adelantar el inicio de la preparación y repartirla en más días, con sesiones más livianas.'}`;
     return `<div class="banner go">${detalle}
       ${low?'<br>Además tus últimos días vienen pesados: cuida tus pausas y mira las opciones de apoyo.':''}
       <div class="row" style="margin-top:8px">${!real.length||allEarly?'':`<button class="btn" onclick="applyEarly('${ids}')">Reservar margen extra</button>`}
@@ -210,13 +343,13 @@ function activateCertamen(){
   certDraft=null;replanAll();
   if(typeof metricsTrack==='function')metricsTrack('certamen_activado');
   render();
-  toast('Modo certamen activo: reemplacé las micro-tareas sueltas por un plan por fases.');
+  toast('Modo certamen activo: reemplacé las sesiones sueltas por un plan por fases.');
 }
 function exitCertamen(eventId){
   S.certamen.plans=S.certamen.plans.filter(p=>p.eventId!==eventId);
   S.tasks=S.tasks.filter(t=>!(t.certamen&&t.eventId===eventId&&!t.done));
   replanAll();render();
-  toast('Saliste del modo certamen: volviste a las micro-tareas normales.');
+  toast('Saliste del modo certamen: volviste a las sesiones normales.');
 }
 function certShare(date,plan,plans){
   const ev=S.events.find(e=>e.id===plan.eventId);if(!ev)return 1;
@@ -244,42 +377,59 @@ function buildCertamenTasks(t0,previous){
       blocks.push({plan:p,date:addDays(p.date,-n),minutes,phase,topic,priority,
         kind:first?'nuevo':CERT_KIND[phase],title:`${CERT_PHASES[phase]} · ${topic?topic.name:p.title}`});
     };
-    if(N>=3)topics.forEach((t,i)=>put(offset(7-Math.min(i,2)),25,'teoria',t,(t.hard?50:30)+i));
-    if(N>=2)topics.forEach((t,i)=>put(offset(4-Math.min(i,1)),25,'ejercicios',t,(t.hard?80:60)+i));
+    const size=sessionMin();
+    if(N>=3)topics.forEach((t,i)=>put(offset(7-Math.min(i,2)),size,'teoria',t,(t.hard?50:30)+i));
+    if(N>=2)topics.forEach((t,i)=>put(offset(4-Math.min(i,1)),size,'ejercicios',t,(t.hard?80:60)+i));
     put(N>=2?2:1,p.mockMin,'ensayo',null,100);
-    put(N>=2?2:1,15,'errores',null,90);
-    const rev=topics.slice(0,Math.min(3,Math.floor(45/15)));
-    const each=Math.floor(45/rev.length/5)*5,extra=Math.round((45-each*rev.length)/5);
-    rev.forEach((t,i)=>put(1,each+(i<extra?5:0),'repaso',t,(t.hard?70:40)+i));
-    if(N<3)topics.forEach(t=>p.leftOut.push({label:`${CERT_PHASES.teoria} · ${t.name}`,minutes:25}));
-    if(N<2)topics.forEach(t=>p.leftOut.push({label:`${CERT_PHASES.ejercicios} · ${t.name}`,minutes:25}));
+    put(N>=2?2:1,Math.min(30,size),'errores',null,90);
+    const rev=topics.slice(0,3),eveParts=[[45],[20,25],[15,15,15]][rev.length-1]||[45];
+    rev.forEach((t,i)=>put(1,eveParts[i],'repaso',t,(t.hard?70:40)+i));
+    if(N<3)topics.forEach(t=>p.leftOut.push({label:`${CERT_PHASES.teoria} · ${t.name}`,minutes:size}));
+    if(N<2)topics.forEach(t=>p.leftOut.push({label:`${CERT_PHASES.ejercicios} · ${t.name}`,minutes:size}));
   });
   const byDate={};
   blocks.forEach(b=>{(byDate[b.date]=byDate[b.date]||[]).push(b)});
   const dates=Object.keys(byDate).sort();
-  const roomFor=(date,b)=>{
-    const cap=planCap(date),share=certShare(date,b.plan,plans);
-    const limit=Math.max(15,Math.min(cap,Math.floor(cap*share/15)*15));
-    return {limit,fit:Math.min(b.minutes,Math.floor(Math.max(0,limit-dayLoad(date))/5)*5)};
-  };
   const sinTarea=typeof institutionNoTaskDates==='function'?institutionNoTaskDates():[];
-  const place=b=>{
-    let target=b.date;
-    while(sinTarea.includes(target)&&target<b.plan.date)target=addDays(target,1);   // recesos y feriados: sin micro-tareas
-    if(sinTarea.includes(target))return;
-    if(b.phase==='ensayo'&&roomFor(target,b).fit<b.minutes){
-      const last=addDays(b.plan.date,-1);
-      for(let d=addDays(target,1);d<=last;d=addDays(d,1))if(roomFor(d,b).fit>=b.minutes){target=d;break}
-    }
-    const {fit}=roomFor(target,b);
-    if(fit<15||(b.phase==='ensayo'&&fit<b.minutes)){b.plan.leftOut.push({label:b.title,minutes:b.minutes});return}
-    const chrono=chronoTag(b.kind);
-    S.tasks.push({id:uid(),eventId:b.plan.eventId,courseId:b.plan.courseId,title:b.title,date:target,minutes:fit,done:false,
-      certamen:true,phase:b.phase,kind:b.kind,topicId:b.topic?b.topic.id:'',...(chrono?{chrono}:{})});
+  const budgetFor=(date,b,useFull)=>{
+    const cap=planCap(date),share=certShare(date,b.plan,plans);
+    const limit=Math.max(0,Math.min(cap,Math.floor(cap*share/5)*5));
+    const soft=Math.floor(limit*0.8/5)*5;
+    return useFull?limit:Math.max(Math.min(15,limit),soft);
   };
-  const first=b=>b.phase==='ensayo'||b.phase==='errores';
-  dates.forEach(date=>byDate[date].filter(first).sort((a,b)=>b.priority-a.priority).forEach(place));
-  dates.forEach(date=>byDate[date].filter(b=>!first(b)).sort((a,b)=>b.priority-a.priority).forEach(place));
+  const roomFor=(date,b,useFull,minutes=b.minutes)=>{
+    const budget=budgetFor(date,b,useFull),st=sessionState(date);
+    return st.load+minutes<=budget&&st.count<maxSessions()&&(st.courses.size<2||st.courses.has(b.plan.courseId));
+  };
+  const place=(b,useFull)=>{
+    const last=addDays(b.plan.date,-1),earliest=b.phase==='repaso'?last:t0;
+    const candidates=[b.date];
+    for(let d=earliest;d<=last;d=addDays(d,1))if(d!==b.date)candidates.push(d);
+    candidates.sort((a,c)=>Math.abs(diffDays(b.date,a))-Math.abs(diffDays(b.date,c))||a.localeCompare(c));
+    for(const d of candidates){
+      if(sinTarea.includes(d)||d<earliest||d>last)continue;
+      const budget=budgetFor(d,b,useFull);
+      let minutes=b.minutes;
+      if(budget<minutes&&b.phase!=='ensayo')minutes=Math.max(15,Math.floor(budget/5)*5);
+      if(minutes<15||!roomFor(d,b,useFull,minutes))continue;
+      const imp=importanceFor({id:b.plan.eventId,title:b.plan.title,courseId:b.plan.courseId});
+      commitSession({...b,date:d,minutes,certamen:true,eventId:b.plan.eventId,courseId:b.plan.courseId,
+        ...(b.topic?{topicId:b.topic.id}:{}),hint:SESSION_HINT[b.kind],
+        why:`Por qué esta sesión: fase ${CERT_PHASES[b.phase].toLowerCase()} de «${b.plan.title}», el ${dshort(b.plan.date)}.`+
+          (imp.need!=null?` Nota necesaria: ${Number(imp.need).toFixed(1).replace('.',',')}.`:'')});
+      return true;
+    }
+    return false;
+  };
+  const first=b=>b.phase==='ensayo'||b.phase==='errores'||b.phase==='repaso'||(b.phase==='teoria'&&!!(b.topic&&b.topic.hard));
+  const ordered=[];
+  dates.forEach(date=>ordered.push(...byDate[date].filter(first).sort((a,b)=>b.priority-a.priority)));
+  dates.forEach(date=>ordered.push(...byDate[date].filter(b=>!first(b)).sort((a,b)=>b.priority-a.priority)));
+  const shareOf=b=>certShare(addDays(b.plan.date,-1),b.plan,plans),rank=b=>(first(b)?1:0);
+  ordered.sort((a,b)=>shareOf(b)-shareOf(a)||rank(b)-rank(a)||b.priority-a.priority||a.date.localeCompare(b.date));
+  const later=[];
+  ordered.forEach(b=>{if(!place(b,false))later.push(b)});
+  later.forEach(b=>{if(!place(b,true))b.plan.leftOut.push({label:b.title,minutes:b.minutes})});
   plans.forEach(p=>{
     const seen=new Set();
     p.leftOut=p.leftOut.filter(x=>{const k=x.label+'|'+x.minutes;if(seen.has(k))return false;seen.add(k);return true});

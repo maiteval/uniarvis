@@ -101,7 +101,7 @@ function cleanAuth(a){
   const out={salt:a.salt,hash:a.hash,it:a.it,createdAt:a.createdAt};
   return validAuth(out)?out:null;
 }
-const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,theme:'cian',themeTouched:false,mode:'light',style:'calma',arvis:true,chronotype:'no_se'},lastPlan:null,
+const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,sessionMin:60,maxSessions:2,paceFactor:1,theme:'cian',themeTouched:false,mode:'light',style:'calma',arvis:true,chronotype:'no_se'},lastPlan:null,
   wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},weeklySummary:{dismissedWeek:null},support:{name:'',contact:''},profile:{name:'',career:'',university:'',nickname:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
   account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null,auth:null,studentId:''},institutionConsentAt:null});
 function migrate(s){
@@ -127,6 +127,16 @@ function migrate(s){
   if(!styleOk(s.settings.style))s.settings.style='hud';
   if(typeof s.settings.arvis!=='boolean')s.settings.arvis=true;
   if(!chronotypeOk(s.settings.chronotype))s.settings.chronotype='no_se';
+  if([45,60,90].indexOf(s.settings.sessionMin)<0)s.settings.sessionMin=60;
+  if(!Number.isInteger(s.settings.maxSessions)||s.settings.maxSessions<1||s.settings.maxSessions>4)s.settings.maxSessions=2;
+  if(!Number.isFinite(s.settings.paceFactor)||s.settings.paceFactor<0.7||s.settings.paceFactor>1.4)s.settings.paceFactor=1;
+  if(Array.isArray(s.tasks))s.tasks.forEach(t=>{
+    if(!t||typeof t!=='object')return;
+    ['slotStart','slotEnd'].forEach(k=>{if(t[k]!==undefined&&!/^\d{2}:\d{2}$/.test(String(t[k])))delete t[k]});
+    ['hint','why'].forEach(k=>{if(t[k]!==undefined)t[k]=String(t[k]).slice(0,k==='hint'?160:240)});
+    if(t.feeling!==undefined&&['bien','medio','costo'].indexOf(t.feeling)<0)delete t.feeling;
+    if(t.realMinutes!==undefined&&(!Number.isFinite(t.realMinutes)||t.realMinutes<1||t.realMinutes>1440))delete t.realMinutes;
+  });
   delete s.settings.max;                          // la capacidad máxima ahora se calcula cada día
   delete s.reviews;                               // reseñas de texto libre de versiones anteriores: ya no se guardan
   delete s.ratings;                               // aportes anónimos de ramos de versiones anteriores: ya no se guardan

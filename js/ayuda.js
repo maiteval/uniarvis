@@ -46,19 +46,19 @@ const AYUDA={
   },
   hoy:{
     title:'Hoy',
-    desc:'Muestra tu plan del día ajustado a tu capacidad, tu mínimo viable y el avance de tus micro-tareas.',
+    desc:'Muestra tus sesiones de estudio del día, ajustadas a tu capacidad, tu mínimo viable y tu horario de clases.',
     steps:[
       'Revisa la capacidad del día, que puedes ajustar con el check-in en Bienestar.',
-      'Marca las micro-tareas realizadas y registra estudio libre si corresponde.',
-      'Revisa tu mínimo, tu capacidad y las sugerencias o pausas del día.'
+      'Cada sesión trae una instrucción concreta, una franja sugerida y el motivo por el que aparece; la hora es solo una sugerencia.',
+      'Marca las sesiones realizadas, cuéntanos cómo te fue y registra estudio libre si corresponde.'
     ]
   },
   semana:{
     title:'Semana',
-    desc:'Calendario semanal con tu horario de clases, fechas importantes y tareas planificadas.',
+    desc:'Calendario semanal con tu horario de clases, fechas importantes y tus sesiones de estudio planificadas.',
     steps:[
       'Navega entre semanas con las flechas o vuelve a la semana actual con "Hoy".',
-      'Revisa clases, fechas y la carga planificada en cada día.',
+      'Revisa clases, fechas y la carga planificada en cada día; cada sesión muestra su franja sugerida.',
       'Identifica tramos exigentes para anticiparte y organizar mejor tu estudio.'
     ]
   },
@@ -94,7 +94,7 @@ const AYUDA={
     desc:'Pomodoro con fases configurables y flashcards con repaso espaciado para estudiar sin perder el hilo.',
     steps:[
       'Inicia un foco de 25 minutos (o ajusta los tiempos) y pausa, reinicia o salta de fase cuando lo necesites.',
-      'Si eliges una micro-tarea de hoy, al terminar el foco se suman esos minutos como estudio.',
+      'Si eliges una sesión de hoy, al terminar el foco se suman esos minutos como estudio.',
       'Crea mazos, importa tarjetas desde texto y repasa solo lo que toca hoy con las 5 cajas Leitner.'
     ]
   },
@@ -154,11 +154,11 @@ const AYUDA={
   },
   perfil:{
     title:'Perfil',
-    desc:'Define y actualiza tu nombre y carrera para personalizar tu experiencia en la app.',
+    desc:'Define tu nombre y carrera, tu cronotipo y la duración de tus sesiones de estudio.',
     steps:[
-      'Escribe o modifica tu nombre.',
-      'Actualiza tu carrera o programa.',
-      'Guarda los cambios para verlos reflejados en la app.'
+      'Escribe o modifica tu nombre y tu carrera o programa.',
+      'Elige tu franja de concentración y la duración de tus sesiones (45, 60 o 90 minutos).',
+      'Guarda los cambios para que el plan se reorganice con tu preferencia.'
     ]
   },
   tema:{

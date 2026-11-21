@@ -166,6 +166,7 @@ textarea{width:100%;min-height:96px;resize:vertical}
 .task{display:flex;gap:12px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);border-radius:8px;transition:background-color .2s ease}
 .task:hover{background:var(--bg-subtle)}
 .task:last-child{border:0}
+.task .t{flex:1;min-width:0;overflow-wrap:anywhere}
 .task.done span.t{text-decoration:line-through;color:var(--mute)}
 .diff-field{display:grid;gap:2px;min-width:0}
 .diff-field label{font-size:12px;line-height:1.2;white-space:nowrap}
@@ -356,6 +357,9 @@ filter:blur(10px);opacity:.9;animation:hudPulse 8s ease-in-out infinite alternat
   nav button{padding:6px 10px;font-size:13px}
   nav button.back{display:none}
   .home-card{padding:16px}
+  .task{flex-wrap:wrap;gap:8px;align-items:flex-start}
+  .task .t{flex:1 1 100%}
+  .task .tag,.task .btn{flex:0 0 auto}
   .arvis-card{gap:10px;padding:10px}
   .arvis-card img{width:72px;flex-basis:72px}
   .arvis-card.arvis-md img{width:96px;flex-basis:96px}

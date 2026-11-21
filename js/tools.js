@@ -209,7 +209,7 @@ function pomodoroHtml(){
       <label class="mute pom-check"><input type="checkbox" ${p.sound?'checked':''} onchange="pomSetSound(this.checked)"> Sonido suave al terminar cada fase</label>
       <label class="mute pom-target">Trabajar en
         <select onchange="pomSetTarget(this.value)">${pomTargetOptions()}</select></label>
-      <p class="tools-help">Si eliges una micro-tarea de hoy, al terminar un foco se suman esos minutos como estudio. Las notificaciones solo aparecen si ya diste permiso en el navegador; aquí no se pide.</p>
+      <p class="tools-help">Si eliges una sesión de hoy, al terminar un foco se suman esos minutos como estudio. Las notificaciones solo aparecen si ya diste permiso en el navegador; aquí no se pide.</p>
     </details>
   </div>`;
 }

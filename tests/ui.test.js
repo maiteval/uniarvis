@@ -130,8 +130,8 @@ const fs=require('fs');
   await open('Planificación','Hoy');
   const base=await p.evaluate(()=>({tasks:S.tasks.length,sizes:[...new Set(S.tasks.map(t=>t.minutes))].sort((a,b)=>a-b),
     cap:capFor(today()),min:minFor(today())}));
-  ok('plan generado con micro-tareas',base.tasks>20,JSON.stringify(base));
-  ok('micro-tareas entre 15 y 30 min',base.sizes.every(x=>x>=15&&x<=30),'tamaños '+base.sizes.join(','));
+  ok('plan generado con sesiones de estudio',base.tasks>5,JSON.stringify(base));
+  ok('sesiones largas, sin restos sueltos',base.sizes.every(x=>x>=30),'tamaños '+base.sizes.join(','));
   const hoyTxt=await p.textContent('#app');
   ok('Hoy muestra agenda con horas',hoyTxt.includes('Agenda de hoy')&&/\d{1,2}:\d{2}/.test(hoyTxt));
   ok('pestaña activa marcada para lectores de pantalla',(await p.textContent('nav button[aria-current="page"]'))==='Hoy');
@@ -171,12 +171,14 @@ const fs=require('fs');
   await p.locator('.ci-row').nth(2).locator('.sc').nth(1).click();
   await p.click('text=Guardar y ajustar mi plan');
   await p.evaluate(()=>go('hoy'));
-  const low=await p.evaluate(()=>({low:lowMode(today()),min:minFor(today()),cap:capFor(today()),
+  const low=await p.evaluate(()=>({low:lowMode(today()),min:minFor(today()),cap:capFor(today()),ses:sessionMin(),
     pend:S.tasks.filter(t=>t.date===today()&&!t.done).reduce((a,t)=>a+t.minutes,0),
     total:S.tasks.filter(t=>!t.done).reduce((a,t)=>a+t.minutes,0)}));
+  const lost=totalBefore-low.total;
   ok('energía baja activa el modo suave',low.low);
   ok('hoy queda solo el mínimo viable',low.pend<=low.min,`pendiente hoy ${low.pend} (antes ${before}) / mínimo ${low.min}`);
-  ok('lo movido no se pierde (total pendiente se conserva ±15)',Math.abs(low.total-totalBefore)<=15,`antes ${totalBefore} después ${low.total}`);
+  ok('lo que no cabe se reparte o se explica sin culpa',lost>=0&&lost<=before+low.ses&&low.total>0,
+    `antes ${totalBefore} después ${low.total}, se liberaron ${before} min y caben ${low.ses} por sesión`);
   t=await p.textContent('#app');
   ok('el mensaje explica el ajuste sin culpa',t.includes('solo lo esencial'));
   ok('no aparece la palabra "atrasad"',!/atrasad/i.test(t));
@@ -244,12 +246,12 @@ const fs=require('fs');
   ok('sin consentimiento el check-in no cambia la capacidad',capWithout>capWith,`con ${capWith} sin ${capWithout}`);
   await p.evaluate(()=>{S.consent={health:true,at:today()};save()});
 
-  // 11b. Micro-tareas: siempre entre 15 y 30 min y suman el total
-  const sp=await p.evaluate(()=>{const bad=[];for(const ch of [15,25,30])for(let t=15;t<=900;t+=5){const s=splitMinutes(t,ch);
-    if(s.reduce((a,x)=>a+x,0)!==t||s.some(x=>x<15||x>30))bad.push(t+'/'+ch+':'+s.join(','))}return bad.slice(0,5)});
-  ok('splitMinutes: bloques de 15–30 min que suman el total',sp.length===0,sp.join(' | '));
+  // 11b. Sesiones: bloques del tamaño elegido, sin restos menores a 20 min
+  const sp=await p.evaluate(()=>{const bad=[];for(const ch of [45,60,90])for(let t=30;t<=900;t+=15){const s=splitMinutes(t,ch);
+    if(s.reduce((a,x)=>a+x,0)!==t||s.some((x,i)=>i<s.length-1&&(x<ch||x>ch+19))||s.some(x=>x<20))bad.push(t+'/'+ch+':'+s.join(','))}return bad.slice(0,5)});
+  ok('splitMinutes: bloques largos que suman el total',sp.length===0,sp.join(' | '));
   const sz=await p.evaluate(()=>[...new Set(S.tasks.map(t=>t.minutes))].sort((a,b)=>a-b));
-  ok('plan real sin micro-tareas fuera de 15–30',sz.every(x=>x>=15&&x<=30),sz.join(','));
+  ok('plan real sin restos sueltos',sz.every(x=>x>=20),sz.join(','));
 
   // 11c. Revocar consentimiento borra (si aceptas) y deja de usar el check-in
   const consentPromise=p.evaluate(()=>setConsent(false));await confirmOk();await consentPromise;

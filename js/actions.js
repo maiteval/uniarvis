@@ -23,17 +23,44 @@ function go(t,fromRoute){
 }
 function goBreath(k){stopBreath(true);stopMed(true);bsel=k;go('respiracion');startBreath()}
 function goMed(id){stopBreath(true);stopMed(true);go('respiracion');startMed(id)}
+let taskFeedbackId=null;
 function toggleTask(id){
   const t=S.tasks.find(x=>x.id===id);if(!t)return;
   if(!t.done){
     if(doneToday()>=capFor(today()))return toast('Hoy ya completaste tu capacidad. Descansar también es parte del plan.');
     t.done=true;t.date=today();
+    taskFeedbackId=id;
     S.sessions.push({id:uid(),date:today(),courseId:t.courseId,minutes:t.minutes,taskId:t.id});
     if(typeof arvisCelebrar==='function')arvisCelebrar();
-  }else{t.done=false;S.sessions=S.sessions.filter(x=>x.taskId!==t.id)}
+  }else{
+    t.done=false;delete t.feeling;delete t.realMinutes;
+    if(taskFeedbackId===id)taskFeedbackId=null;
+    S.sessions=S.sessions.filter(x=>x.taskId!==t.id)
+  }
   save();
   if(doneToday()>=capFor(today()))replanAll();
   render();
+}
+function setTaskFeeling(id,feeling){
+  const t=S.tasks.find(x=>x.id===id);if(!t||!t.done||['bien','medio','costo'].indexOf(feeling)<0)return;
+  t.feeling=feeling;save();render();
+}
+function setTaskReal(id,value){
+  const t=S.tasks.find(x=>x.id===id);if(!t||!t.done)return;
+  const n=parseInt(value,10);
+  if(Number.isInteger(n)&&n>=1)t.realMinutes=Math.min(n,1440);else delete t.realMinutes;
+  save();
+}
+function closeTaskFeedback(){taskFeedbackId=null;render()}
+function startTaskPomodoro(id){
+  const t=S.tasks.find(x=>x.id===id&&!x.done);if(!t)return;
+  if(t.date>today()){
+    if(dayLoad(today())+t.minutes>capFor(today()))return toast('Hoy no cabe esa sesión: se priorizó lo que ya está en tu plan.');
+    t.date=today();save();
+  }
+  if(typeof pomSetTarget!=='function')return;
+  pomSetTarget('task:'+t.id);go('herramientas');
+  if(typeof pomStart==='function')pomStart();
 }
 function pullNext(){
   const t0=today(),nxt=S.tasks.filter(t=>!t.done&&t.date>t0).sort((a,b)=>a.date.localeCompare(b.date))[0];
@@ -96,7 +123,13 @@ function saveProfile(){
   const nickname=String(($('#pf-nickname')||{}).value||'').trim().slice(0,40);
   S.profile={name:name.slice(0,60),career:career.slice(0,80),university:profileUniversityField(S.profile&&S.profile.university),nickname};
   S.settings.chronotype=fieldChronotype('#pf-chronotype');
-  save();toast('Perfil actualizado.');render();
+  const sesEl=$('#pf-session-min'),maxEl=$('#pf-max-sessions');
+  const sv=parseInt((sesEl&&sesEl.value)||'',10),mv=parseInt((maxEl&&maxEl.value)||'',10);
+  const session=[45,60,90].indexOf(sv)>=0?sv:60,maxSes=Number.isInteger(mv)&&mv>=1&&mv<=4?mv:2;
+  const changed=session!==S.settings.sessionMin||maxSes!==S.settings.maxSessions;
+  S.settings.sessionMin=session;S.settings.maxSessions=maxSes;
+  if(changed)replanAll();else save();
+  toast('Perfil actualizado.');render();
 }
 function addCourse(){
   const n=$('#cn').value.trim();if(!n)return;
@@ -212,7 +245,20 @@ function validState(j){
     if(e.src!==undefined&&!(e.src&&typeof e.src==='object'&&!Array.isArray(e.src)&&RX.id.test(e.src.owner)&&RX.id.test(e.src.id)))return 'fechas';
     if(e.origin!==undefined&&e.origin!=='udec-demo')return 'fechas';
   }
-  for(const t of j.tasks)if(!(t&&RX.id.test(t.id)&&RX.id.test(t.eventId)&&RX.id.test(t.courseId)&&str(t.title,300)&&RX.date.test(t.date)&&num(t.minutes,1,600)&&typeof t.done==='boolean'))return 'tareas';
+  for(const t of j.tasks){
+    if(!(t&&RX.id.test(t.id)&&RX.id.test(t.eventId)&&RX.id.test(t.courseId)&&str(t.title,300)&&RX.date.test(t.date)&&num(t.minutes,1,600)&&typeof t.done==='boolean'))return 'tareas';
+    if(t.kind!==undefined&&!str(t.kind,40))return 'tareas';
+    if(t.chrono!==undefined&&!str(t.chrono,120))return 'tareas';
+    if(t.certamen!==undefined&&typeof t.certamen!=='boolean')return 'tareas';
+    if(t.phase!==undefined&&!str(t.phase,40))return 'tareas';
+    if(t.topicId!==undefined&&!RX.id.test(t.topicId))return 'tareas';
+    if(t.slotStart!==undefined&&!RX.time.test(t.slotStart))return 'tareas';
+    if(t.slotEnd!==undefined&&!RX.time.test(t.slotEnd))return 'tareas';
+    if(t.hint!==undefined&&!str(t.hint,160))return 'tareas';
+    if(t.why!==undefined&&!str(t.why,240))return 'tareas';
+    if(t.feeling!==undefined&&['bien','medio','costo'].indexOf(t.feeling)<0)return 'tareas';
+    if(t.realMinutes!==undefined&&!num(t.realMinutes,1,1440))return 'tareas';
+  }
   for(const s of j.sessions)if(!(s&&RX.id.test(s.id)&&RX.id.test(s.courseId)&&RX.date.test(s.date)&&num(s.minutes,1,1440)&&(s.taskId===undefined||RX.id.test(s.taskId))&&(s.socialId===undefined||RX.id.test(s.socialId))))return 'sesiones';
   if(j.profile!==undefined){
     if(!j.profile||typeof j.profile!=='object'||Array.isArray(j.profile))return 'perfil';
@@ -226,10 +272,13 @@ function validState(j){
     if(j.settings.arvis!==undefined&&typeof j.settings.arvis!=='boolean')return 'ajustes';
     if(j.settings.themeTouched!==undefined&&typeof j.settings.themeTouched!=='boolean')return 'ajustes';
     if(j.settings.chronotype!==undefined&&!chronotypeOk(j.settings.chronotype))return 'ajustes';
+    if(j.settings.sessionMin!==undefined&&[45,60,90].indexOf(j.settings.sessionMin)<0)return 'ajustes';
+    if(j.settings.maxSessions!==undefined&&!int(j.settings.maxSessions,1,4))return 'ajustes';
+    if(j.settings.paceFactor!==undefined&&!num(j.settings.paceFactor,0.7,1.4))return 'ajustes';
   }
   if(j.account!==undefined){
     if(!j.account||typeof j.account!=='object'||Array.isArray(j.account))return 'cuenta';
-    if(j.account.type!==undefined&&j.account.type!=='personal'&&j.account.type!=='institucional')return 'cuenta';
+    if(j.account.type!==undefined&&j.account.type!==null&&j.account.type!=='personal'&&j.account.type!=='institucional')return 'cuenta';
     if(j.account.auth!==undefined&&j.account.auth!==null&&!validAuth(j.account.auth))return 'cuenta';
     if(j.account.studentId!==undefined&&!str(j.account.studentId,40))return 'cuenta';
     if(j.account.password!==undefined||j.account.code!==undefined)return 'cuenta';
@@ -261,7 +310,21 @@ function validState(j){
 }
 function cleanState(j){
   const c=fresh();
-  c.classes=j.classes.map(k=>({...k}));c.tasks=j.tasks.map(t=>({...t}));
+  c.classes=j.classes.map(k=>({...k}));
+  c.tasks=j.tasks.map(t=>{
+    const o={id:t.id,eventId:t.eventId,courseId:t.courseId,title:String(t.title||'').slice(0,300),date:t.date,minutes:+t.minutes,done:t.done===true};
+    if(typeof t.kind==='string')o.kind=t.kind.slice(0,40);
+    if(typeof t.chrono==='string')o.chrono=t.chrono.slice(0,120);
+    if(t.certamen===true)o.certamen=true;
+    if(typeof t.phase==='string')o.phase=t.phase.slice(0,40);
+    if(RX.id.test(t.topicId||''))o.topicId=t.topicId;
+    ['slotStart','slotEnd'].forEach(k=>{if(RX.time.test(t[k]||''))o[k]=t[k]});
+    if(typeof t.hint==='string')o.hint=t.hint.slice(0,160);
+    if(typeof t.why==='string')o.why=t.why.slice(0,240);
+    if(['bien','medio','costo'].indexOf(t.feeling)>=0)o.feeling=t.feeling;
+    if(Number.isFinite(t.realMinutes))o.realMinutes=clamp(Math.round(t.realMinutes),1,1440);
+    return o;
+  });
   c.events=j.events.map(e=>{const o={id:e.id,courseId:e.courseId,title:String(e.title||'').slice(0,200),date:e.date,type:e.type};if(e.early)o.early=true;if(e.src)o.src={owner:String(e.src.owner).slice(0,40),id:String(e.src.id).slice(0,40)};if(e.origin==='udec-demo')o.origin=e.origin;return o});
   c.sessions=j.sessions.map(s=>{const o={id:s.id,date:s.date,courseId:s.courseId,minutes:+s.minutes};if(s.taskId)o.taskId=s.taskId;if(s.socialId)o.socialId=s.socialId;return o});
   c.courses=(j.courses||[]).map(x=>({id:x.id,name:x.name,difficulty:x.difficulty,color:x.color,share:x.share===true,
@@ -270,7 +333,10 @@ function cleanState(j){
     ...(x.origin==='udec-demo'?{origin:x.origin,code:x.code,section:x.section}:{}),
     grades:(x.grades||[]).map(g=>({id:g.id,name:String(g.name||'').slice(0,80),...(g.score!=null?{score:+g.score}:{}),weight:+g.weight}))}));
   const ss=j.settings&&typeof j.settings==='object'?j.settings:{};
-  c.settings={min:int15(ss.min)?ss.min:60,theme:themeOk(ss.theme)?ss.theme:'cian',themeTouched:ss.themeTouched===true,mode:modeOk(ss.mode)?ss.mode:'light',style:styleOk(ss.style)?ss.style:'calma',arvis:ss.arvis!==false,chronotype:chronotypeOk(ss.chronotype)?ss.chronotype:'no_se'};
+  c.settings={min:int15(ss.min)?ss.min:60,sessionMin:[45,60,90].indexOf(ss.sessionMin)>=0?ss.sessionMin:60,
+    maxSessions:Number.isInteger(ss.maxSessions)&&ss.maxSessions>=1&&ss.maxSessions<=4?ss.maxSessions:2,
+    paceFactor:Number.isFinite(ss.paceFactor)?clamp(ss.paceFactor,0.7,1.4):1,
+    theme:themeOk(ss.theme)?ss.theme:'cian',themeTouched:ss.themeTouched===true,mode:modeOk(ss.mode)?ss.mode:'light',style:styleOk(ss.style)?ss.style:'calma',arvis:ss.arvis!==false,chronotype:chronotypeOk(ss.chronotype)?ss.chronotype:'no_se'};
   const a=j.account&&typeof j.account==='object'&&!Array.isArray(j.account)?j.account:null;
   const known=a&&(a.type==='personal'||a.type==='institucional');
   const knownInst=known&&a.type==='institucional'&&institutionById(a.institutionId);

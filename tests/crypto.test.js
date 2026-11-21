@@ -23,8 +23,12 @@ const fs=require('fs');
     }
   };
   const open=async(sec,sub)=>{
+    await p.locator('.brand').waitFor({state:'visible'});
     await p.locator('.brand').click();
-    if(sec!=='Inicio')await p.locator('.home-card').filter({hasText:sec}).click();
+    if(sec!=='Inicio'){
+      await p.locator('.home-card').filter({hasText:sec}).waitFor({state:'visible'});
+      await p.locator('.home-card').filter({hasText:sec}).click();
+    }
     if(sub)await p.click('nav >> text="'+sub+'"');
   };
   const confirmOk=async(word)=>{
