@@ -278,6 +278,7 @@ function weeklyCardHtml(){
     <div class="row" style="justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
       <div style="flex:1;min-width:240px"><b>Prioridades</b>${weeklyLista(res.prioridades.slice(0,3))}</div>
       <div style="flex:1;min-width:240px"><b>Alertas suaves</b>${res.alertas.length?weeklyLista(res.alertas):'<p class="mute" style="margin:4px 0">Sin choques por ahora.</p>'}</div></div>
+    ${typeof weekPlanHtml==='function'?weekPlanHtml():''}
     <div class="row" style="margin-top:10px"><button class="btn sec" onclick="chatAskWeek()">Pregúntale a Arvis sobre tu semana</button>
       ${suave?'<button class="btn" onclick="applySoft()">Activar modo suave</button>':''}
       <button class="lnk" onclick="go('semana')">Ver calendario</button></div></div>`;
@@ -546,10 +547,12 @@ function viewHoy(){
     <details><summary>¿Cómo se calculó mi capacidad de hoy?</summary><ul>${capExplain(info).map(x=>`<li>${x}</li>`).join('')}</ul></details>
   </div>
   <div class="grid2">
-    <div class="card"><h3>Plan de hoy</h3>
+    <div class="card"><div class="row" style="justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0">Plan de hoy</h3>
+      ${typeof topicsOn==='function'&&topicsOn()&&todays.some(t=>Array.isArray(t.topicIds)&&t.topicIds.length)?aiDemoTag():''}</div>
       ${rows||`${arvisVacioHtml('tareas')}<div class="empty">No hay sesiones para hoy. Agrega ramos y fechas en <b>Académico &gt; Fechas</b> para generar tu plan, o registra estudio libre.</div>`}
       ${locked?'<p class="mute">No se adelanta ni se asigna más materia hoy.</p>':
         (low?'<p class="mute">Hoy no hace falta adelantar nada.</p>':(!pend.length&&nxt?`<button class="btn sec" onclick="pullNext()">Adelantar la siguiente sesión (${nxt.minutes} min)</button>`:''))}
+      ${typeof topicsOn==='function'&&topicsOn()&&pend.length?`<button class="btn sec" data-focus-id="skip-today" onclick="skipToday()">Hoy no puedo</button>`:''}
     </div>
     <div>
       ${pauseCard()}
@@ -680,6 +683,7 @@ function viewSyllabus(){
     ${S.courses.filter(c=>importedCourse(c)&&!hasSyllabus(c.id)).map(c=>esc(c.name)).join(', ')}. Sube el syllabus de cada ramo para afinar las fechas. <span class="tag inst-example">Datos de ejemplo</span></div>`:''}
   ${certamenOffersHtml()}${certamenDraftHtml()}${certamenActiveHtml()}
   ${aiSyllabusOn()?aiSyllabusHtml():''}
+  ${typeof topicsCardHtml==='function'?topicsCardHtml():''}
   <div class="card"><h2>Subir syllabus</h2>
     <div class="row form-stack" style="margin-bottom:8px"><select onchange="sylCourse=this.value"><option value="">Ramo…</option>${opts}</select>
       <div class="file-pick"><label class="btn sec" for="syl-file">Elegir archivo (PDF o texto)</label>

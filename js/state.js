@@ -101,8 +101,24 @@ function cleanAuth(a){
   const out={salt:a.salt,hash:a.hash,it:a.it,createdAt:a.createdAt};
   return validAuth(out)?out:null;
 }
+/* Temas por evaluación (planificación por temas, modo institucional). Se valida todo y solo se copian campos conocidos. */
+function validTopic(t){
+  return !!t&&typeof t==='object'&&!Array.isArray(t)&&/^[\w-]{1,40}$/.test(t.id)&&/^[\w-]{1,40}$/.test(t.courseId)&&
+    typeof t.name==='string'&&t.name.trim().length>0&&t.name.length<=120&&[0,1,2].indexOf(t.mastery)>=0&&
+    (t.unit==null||(Number.isInteger(t.unit)&&t.unit>=1&&t.unit<=99))&&(t.week==null||(Number.isInteger(t.week)&&t.week>=1&&t.week<=60))&&
+    (t.lastStudied==null||/^\d{4}-\d{2}-\d{2}$/.test(t.lastStudied))&&
+    (t.history===undefined||(Array.isArray(t.history)&&t.history.length<=20&&t.history.every(h=>h&&/^\d{4}-\d{2}-\d{2}$/.test(h.date)&&['bien','medio','costo'].indexOf(h.feeling)>=0&&(h.taskId===undefined||/^[\w-]{1,40}$/.test(h.taskId)))))&&
+    (t.source===undefined||t.source==='syllabus'||t.source==='manual');
+}
+function cleanTopics(list){
+  if(!Array.isArray(list))return [];
+  const per={};
+  return list.filter(validTopic).filter(t=>(per[t.courseId]=(per[t.courseId]||0)+1)<=60).map(t=>({id:t.id,courseId:t.courseId,name:t.name.trim().slice(0,120),
+    unit:t.unit??null,week:t.week??null,mastery:t.mastery,lastStudied:t.lastStudied??null,
+    history:(t.history||[]).map(h=>({date:h.date,feeling:h.feeling,...(h.taskId?{taskId:h.taskId}:{})})),source:t.source==='manual'?'manual':'syllabus'}));
+}
 const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,sessionMin:60,maxSessions:2,paceFactor:1,theme:'cian',themeTouched:false,mode:'light',style:'calma',arvis:true,chronotype:'no_se'},lastPlan:null,
-  wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},weeklySummary:{dismissedWeek:null},support:{name:'',contact:''},profile:{name:'',career:'',university:'',nickname:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
+  wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},weeklySummary:{dismissedWeek:null},topics:[],skipDay:null,support:{name:'',contact:''},profile:{name:'',career:'',university:'',nickname:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
   account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null,auth:null,studentId:''},institutionConsentAt:null});
 function migrate(s){
   const f=fresh();for(const k in f)if(s[k]===undefined)s[k]=f[k];
@@ -115,6 +131,13 @@ function migrate(s){
   if(typeof s.institutionConsentAt!=='string')s.institutionConsentAt=null;
   if(!s.weeklySummary||typeof s.weeklySummary!=='object'||Array.isArray(s.weeklySummary))s.weeklySummary={dismissedWeek:null};
   if(!/^\d{4}-\d{2}-\d{2}$/.test(s.weeklySummary.dismissedWeek||''))s.weeklySummary.dismissedWeek=null;
+  s.topics=cleanTopics(s.topics);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s.skipDay||''))s.skipDay=null;
+  if(Array.isArray(s.events))s.events.forEach(e=>{
+    if(!e||typeof e!=='object')return;
+    if(e.topicIds!==undefined)e.topicIds=Array.isArray(e.topicIds)?e.topicIds.filter(id=>/^[\w-]{1,40}$/.test(id)).slice(0,60):[];
+    if(e.topicsManual!==undefined&&e.topicsManual!==true)delete e.topicsManual;
+  });
   if(!s.wellbeing||!Array.isArray(s.wellbeing.diary))s.wellbeing={diary:[]};
   if(!s.settings||typeof s.settings!=='object')s.settings={};
   if(!s.settings.min)s.settings.min=60;
@@ -135,6 +158,8 @@ function migrate(s){
     ['slotStart','slotEnd'].forEach(k=>{if(t[k]!==undefined&&!/^\d{2}:\d{2}$/.test(String(t[k])))delete t[k]});
     ['hint','why'].forEach(k=>{if(t[k]!==undefined)t[k]=String(t[k]).slice(0,k==='hint'?160:240)});
     if(t.feeling!==undefined&&['bien','medio','costo'].indexOf(t.feeling)<0)delete t.feeling;
+    if(t.topicIds!==undefined)t.topicIds=Array.isArray(t.topicIds)?t.topicIds.filter(id=>/^[\w-]{1,40}$/.test(id)).slice(0,3):[];
+    if(t.topicFb!==undefined&&['bien','medio','costo'].indexOf(t.topicFb)<0)delete t.topicFb;
     if(t.realMinutes!==undefined&&(!Number.isFinite(t.realMinutes)||t.realMinutes<1||t.realMinutes>1440))delete t.realMinutes;
   });
   delete s.settings.max;                          // la capacidad máxima ahora se calcula cada día

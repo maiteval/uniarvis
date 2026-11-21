@@ -60,6 +60,11 @@ function taskSlots(ev,days,n,diff){
   if(!out.length)out.push(pool[0]);
   return out.slice(0,n);
 }
+function planNoTaskDates(){                             // feriados/recesos de la institución + "Hoy no puedo"
+  const out=typeof institutionNoTaskDates==='function'?institutionNoTaskDates().slice():[];
+  if(S.skipDay&&S.skipDay===today()&&out.indexOf(S.skipDay)<0)out.push(S.skipDay);
+  return out;
+}
 const dayLoad=date=>S.tasks.filter(t=>t.date===date).reduce((a,t)=>a+t.minutes,0)+
                      S.sessions.filter(x=>x.date===date&&!x.taskId).reduce((a,x)=>a+x.minutes,0);
 function splitMinutes(total,size){                      // bloques largos: sin restos sueltos menores a 20 min
@@ -114,9 +119,14 @@ function classWindows(date){
   return S.classes.filter(k=>k.day===dow&&toMin(k.end)>toMin(k.start))
     .map(k=>({a:toMin(k.start),b:toMin(k.end)})).sort((a,b)=>a.a-b.a);
 }
+function busyWindows(date){                              // clases + sesiones ya ubicadas ese día (para no superponerlas)
+  const ses=S.tasks.filter(t=>t.date===date&&t.slotStart&&t.slotEnd&&toMin(t.slotEnd)>toMin(t.slotStart))
+    .map(t=>({a:toMin(t.slotStart),b:toMin(t.slotEnd)}));
+  return classWindows(date).concat(ses).sort((a,b)=>a.a-b.a);
+}
 function freeWindows(date,minutes){
   let cursor=SLOT_DAY_START;const out=[];
-  classWindows(date).forEach(k=>{
+  busyWindows(date).forEach(k=>{
     if(k.a-cursor>=minutes)out.push([cursor,k.a]);
     cursor=Math.max(cursor,k.b+SLOT_MARGIN);
   });
@@ -147,6 +157,7 @@ function commitSession(b){
   const slot=slotFor(b.date,b.minutes,b.kind),chrono=chronoTag(b.kind);
   S.tasks.push({id:uid(),eventId:b.eventId,courseId:b.courseId,title:b.title,date:b.date,minutes:b.minutes,done:false,
     kind:b.kind,hint:String(b.hint||'').slice(0,160),why:String(b.why||'').slice(0,240),
+    ...(Array.isArray(b.topicIds)&&b.topicIds.length?{topicIds:b.topicIds.slice(0,3)}:{}),
     ...(slot||{}),...(chrono?{chrono}:{}),...(b.certamen?{certamen:true,phase:b.phase||'',...(b.topicId?{topicId:b.topicId}:{})}:{})});
 }
 function allocateSessions(blocks,ctx){
@@ -158,14 +169,17 @@ function allocateSessions(blocks,ctx){
   };
   const options=b=>{
     const ds=new Set(ctx.days||[]);if(b.date)ds.add(b.date);ds.add(b.date);
-    return [...ds].filter(d=>d>=first&&d<=last&&!noTask.includes(d)).sort((a,c)=>
+    const list=[...ds].filter(d=>d>=first&&d<=last&&!noTask.includes(d));
+    if(ctx.topics)return list.sort((a,c)=>Math.abs(diffDays(b.date,a))-Math.abs(diffDays(b.date,c))||c.localeCompare(a));   // temas: lo más cerca posible de la fecha ideal
+    return list.sort((a,c)=>
       (a===b.date?-1:0)-(c===b.date?-1:0)||a.localeCompare(c));
   };
   const put=(b,useFull)=>{
     const budget=dayBudget(b.date,ctx.eveDate,useFull),st=state(b.date);
     if(st.count>=maxSessions()||st.load+b.minutes>budget)return false;
     if(st.courses.size>=2&&!st.courses.has(b.courseId))return false;
-    const merge=placed.find(p=>p.date===b.date&&p.courseId===b.courseId&&p.minutes+b.minutes<=SESSION_MAX_MERGE);
+    if(ctx.topics&&Array.isArray(b.topicIds)&&b.kind!=='simulacro'&&b.kind!=='repaso_ligero'&&placed.some(p=>p.date===b.date&&p.eventId===b.eventId&&(p.topicIds||[]).some(id=>b.topicIds.includes(id))))return false;
+    const merge=!ctx.topics&&placed.find(p=>p.date===b.date&&p.courseId===b.courseId&&p.minutes+b.minutes<=SESSION_MAX_MERGE);
     if(merge)merge.minutes+=b.minutes;
     else placed.push({...b});
     return true;
@@ -191,6 +205,7 @@ function allocateSessions(blocks,ctx){
   return overflow;
 }
 function planEvent(ev){
+  if(typeof topicPlanApplies==='function'&&topicPlanApplies(ev))return planEventTopics(ev);   // institucional: plan por temas (js/topics.js)
   const t0=today(),c=course(ev.courseId),diff=c?c.difficulty:3,imp=importanceFor(ev),eve=addDays(ev.date,-1);
   const total=Math.round(BASE[ev.type]*(0.7+0.15*diff)*imp.factor*paceFactor()/15)*15;
   const doneMin=S.tasks.filter(t=>t.eventId===ev.id&&t.done).reduce((a,t)=>a+t.minutes,0);
@@ -199,7 +214,7 @@ function planEvent(ev){
   let end=addDays(ev.date,(diff>=4&&ev.type==='evaluacion')?-2:-1);  // día de respiro antes de evaluaciones difíciles
   if(end<start)end=addDays(ev.date,-1);
   if(end<start)return 0;
-  const sinTarea=typeof institutionNoTaskDates==='function'?institutionNoTaskDates():[];
+  const sinTarea=planNoTaskDates();
   const days=[];for(let d=start;d<=end;d=addDays(d,1))if(!sinTarea.includes(d))days.push(d);
   if(!days.length)return 0;
   const fb=feedbackFor(ev);
@@ -228,6 +243,8 @@ function replanAll(){                                   // reprogramación sin c
   const certKeep=S.tasks.filter(t=>t.certamen);
   S.tasks=S.tasks.filter(t=>t.done);
   learnPace();
+  if(S.skipDay&&S.skipDay!==t0)S.skipDay=null;
+  if(typeof topicsSync==='function'){topicPlanWarnings={};topicsSync()}
   let over=0;
   S.events.filter(e=>e.date>=t0&&!certPlans().some(p=>p.eventId===e.id)).sort(eventPriority).forEach(e=>over+=planEvent(e));
   if(certPlans().length)buildCertamenTasks(t0,certKeep);
@@ -390,7 +407,7 @@ function buildCertamenTasks(t0,previous){
   const byDate={};
   blocks.forEach(b=>{(byDate[b.date]=byDate[b.date]||[]).push(b)});
   const dates=Object.keys(byDate).sort();
-  const sinTarea=typeof institutionNoTaskDates==='function'?institutionNoTaskDates():[];
+  const sinTarea=planNoTaskDates();
   const budgetFor=(date,b,useFull)=>{
     const cap=planCap(date),share=certShare(date,b.plan,plans);
     const limit=Math.max(0,Math.min(cap,Math.floor(cap*share/5)*5));

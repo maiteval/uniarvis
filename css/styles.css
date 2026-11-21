@@ -624,3 +624,18 @@ body.focus-open #toast{bottom:calc(78px + env(safe-area-inset-bottom,0px));z-ind
   .focus-fc-card{font-size:22px;padding:16px;max-height:52vh}
   .focus-breath-label{font-size:21px}
 }
+
+/* ===================== Temario por evaluación (planificación por temas · institucional) ===================== */
+.topic-event{border-top:1px solid var(--line);padding:12px 0}
+.topic-event:first-of-type{border-top:0}
+.topic-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:6px 0}
+.topic-name{flex:1;min-width:160px;overflow-wrap:anywhere}
+.topic-mastery{display:flex;gap:4px;flex-wrap:wrap}
+.topic-mastery .chip-btn{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer;min-height:32px}
+.topic-mastery .chip-btn.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.topic-mastery .chip-btn:focus-visible{outline:none;box-shadow:var(--ring)}
+.topic-bar{height:6px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:8px}
+.topic-bar span{display:block;height:100%;background:var(--accent)}
+.topic-editor textarea{width:100%;margin-top:4px}
+.week-plan ul{margin:4px 0;padding-left:18px}
+@media (max-width:640px){.topic-mastery{width:100%}.topic-mastery .chip-btn{flex:1}}

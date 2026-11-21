@@ -307,6 +307,8 @@ const ArvisIA=(()=>{
         'Si hay peligro inmediato: 131 (ambulancia) o 133.',
         inst?`${inst.support.service}: ${inst.support.email} · ${inst.support.phone} (dato de ejemplo).`:''].filter(Boolean),
       acciones:[goAction('apoyo')],estado:'preocupado'};
+    const temas=typeof topicsChatReply==='function'?topicsChatReply(raw):null;      // planificación por temas (js/topics.js)
+    if(temas){pendiente=null;return {...base(),...temas}}
     if(/\b(llevame|abre|abrir|vamos a|ir a)\b/.test(t)){const k=helpKey(t);if(k)return {texto:'Vamos a '+(IA_TAB_LABEL[k]||k)+'.',acciones:[goAction(k)],navegar:k}}
     if(/^(hola|holi|buenas|buenos dias|buenas tardes|buenas noches|hey|que tal)\b/.test(t)&&t.length<25)
       return {texto:pick([`¡Hola, ${displayName()}! Soy Arvis. Puedo contarte qué tienes hoy, tus próximas evaluaciones y cómo vas en notas, agregar fechas o bajarte la carga. ¿Qué necesitas?`,`¡Hola, ${displayName()}! Estoy aquí para ayudarte a ordenar la semana, revisar notas o preparar lo que viene. ¿Por dónde empezamos?`]),sugerir:true};
@@ -610,7 +612,15 @@ const ArvisIA=(()=>{
     const r=makeFlashcardsSync(texto,opciones);await wait(r);return r;
   }
   function reset(){pendiente=null}
-  return {mode:ARVIS_IA_MODE,context,chat,weeklySummary,weeklySummarySync:buildSummary,
+  /* Planificación por temas: hoy reglas locales (js/topics.js).
+     TODO (licencia): reemplazar por un modelo de lenguaje vía Supabase Edge Function, enviando solo temas, fechas, pesos y dominio. */
+  function buildTopicMap(){return ready()&&typeof topicsSync==='function'?topicsSync():null}
+  async function planStudy(){
+    if(!ready()||typeof replanAll!=='function')return null;
+    replanAll();const r=typeof weekPlanSync==='function'?weekPlanSync():null;await wait(r);return r;
+  }
+  function weekPlan(){return ready()&&typeof weekPlanSync==='function'?weekPlanSync():null}
+  return {mode:ARVIS_IA_MODE,context,chat,weeklySummary,weeklySummarySync:buildSummary,buildTopicMap,planStudy,weekPlan,
     extractSyllabus,extractSyllabusSync,makeFlashcards,makeFlashcardsSync,reset,
     parseDate,findCourse:(t,courses)=>findCourse(t,courses||S.courses),eventType,eventTitle,when,future:(days)=>future(useContext(null),days)};
 })();
