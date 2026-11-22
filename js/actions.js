@@ -26,19 +26,23 @@ function goMed(id){stopBreath(true);stopMed(true);go('respiracion');startMed(id)
 let taskFeedbackId=null;
 function toggleTask(id){
   const t=S.tasks.find(x=>x.id===id);if(!t)return;
+  const cobertura=typeof topicsOn==='function'&&topicsOn()&&typeof coverageMap==='function'?coverageMap():null;
   if(!t.done){
     if(doneToday()>=capFor(today()))return toast('Hoy ya completaste tu capacidad. Descansar también es parte del plan.');
     t.done=true;t.date=today();
     taskFeedbackId=id;
-    S.sessions.push({id:uid(),date:today(),courseId:t.courseId,minutes:t.minutes,taskId:t.id});
+    const yaPomodoro=typeof pomodoroMinutesFor==='function'?pomodoroMinutesFor(t.id):0;   // no contar dos veces lo hecho con pomodoro
+    if(t.minutes-yaPomodoro>0)S.sessions.push({id:uid(),date:today(),courseId:t.courseId,minutes:t.minutes-yaPomodoro,taskId:t.id});
     if(typeof arvisCelebrar==='function')arvisCelebrar();
   }else{
     t.done=false;delete t.feeling;delete t.realMinutes;
+    if(typeof sessionDoneId!=='undefined'&&sessionDoneId===id)sessionDoneId=null;
     if(taskFeedbackId===id)taskFeedbackId=null;
     S.sessions=S.sessions.filter(x=>x.taskId!==t.id)
   }
   save();
   if(doneToday()>=capFor(today()))replanAll();
+  if(cobertura&&t.done)topicsCelebrate(cobertura);
   render();
 }
 function setTaskFeeling(id,feeling){
@@ -268,6 +272,7 @@ function validState(j){
     if(t.why!==undefined&&!str(t.why,240))return 'tareas';
     if(t.feeling!==undefined&&['bien','medio','costo'].indexOf(t.feeling)<0)return 'tareas';
     if(t.realMinutes!==undefined&&!num(t.realMinutes,1,1440))return 'tareas';
+    if(t.pinned!==undefined&&typeof t.pinned!=='boolean')return 'tareas';
     if(t.topicIds!==undefined&&!(Array.isArray(t.topicIds)&&t.topicIds.length<=3&&t.topicIds.every(id=>RX.id.test(id))))return 'tareas';
     if(t.topicFb!==undefined&&['bien','medio','costo'].indexOf(t.topicFb)<0)return 'tareas';
   }
@@ -337,6 +342,7 @@ function cleanState(j){
     if(Number.isFinite(t.realMinutes))o.realMinutes=clamp(Math.round(t.realMinutes),1,1440);
     if(Array.isArray(t.topicIds)&&t.topicIds.length)o.topicIds=t.topicIds.filter(id=>RX.id.test(id)).slice(0,3);
     if(['bien','medio','costo'].indexOf(t.topicFb)>=0)o.topicFb=t.topicFb;
+    if(t.pinned===true)o.pinned=true;
     return o;
   });
   c.events=j.events.map(e=>{const o={id:e.id,courseId:e.courseId,title:String(e.title||'').slice(0,200),date:e.date,type:e.type};if(e.early)o.early=true;if(e.src)o.src={owner:String(e.src.owner).slice(0,40),id:String(e.src.id).slice(0,40)};if(e.origin==='udec-demo')o.origin=e.origin;if(Array.isArray(e.topicIds))o.topicIds=e.topicIds.filter(id=>RX.id.test(id)).slice(0,60);if(e.topicsManual===true)o.topicsManual=true;return o});

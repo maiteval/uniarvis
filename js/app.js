@@ -152,7 +152,9 @@ function renderCore(){
   if(sec&&sec.tabs.length&&section!=='inicio'){
     chips=`<div class="subchips-wrap"><div class="subchips" data-scroll-id="subchips">${sec.tabs.map(([k,v])=>`<button class="subchip ${k===tab?'on':''}" ${k===tab?'aria-current="page"':''} onclick="go('${k}')">${v}</button>`).join('')}</div></div>`;
   }
+  const abiertos=same?[...app.querySelectorAll('details[id]')].map(d=>[d.id,d.open]):[];   // los paneles plegables conservan su estado al redibujar
   app.innerHTML=chips+(views[tab]||viewInicio)();
+  abiertos.forEach(([id,o])=>{const d=document.getElementById(id);if(d&&d.tagName==='DETAILS')d.open=o});
   finish();
   if(typeof maybeShowTour==='function')maybeShowTour();
 }

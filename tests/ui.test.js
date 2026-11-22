@@ -143,7 +143,7 @@ const fs=require('fs');
   ok('Deshacer recupera el ramo',await p.evaluate(n=>S.courses.length===n,nCourses));
 
   // 2b. Redibujar en la misma ruta no mueve foco ni scroll ni reinicia la animación
-  await p.evaluate(()=>{window.scrollTo({top:320,behavior:'instant'})});
+  await p.evaluate(()=>{const m=document.getElementById('hoy-mas');if(m)m.open=true;window.scrollTo({top:320,behavior:'instant'})});   // el mínimo viable vive en "Más opciones"
   await p.waitForTimeout(80);
   const y0=await p.evaluate(()=>window.scrollY);
   await p.evaluate(()=>{const e=document.querySelector('#smin');e.focus();e.value='61';e.dispatchEvent(new Event('change',{bubbles:true}))});

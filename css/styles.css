@@ -626,8 +626,6 @@ body.focus-open #toast{bottom:calc(78px + env(safe-area-inset-bottom,0px));z-ind
 }
 
 /* ===================== Temario por evaluación (planificación por temas · institucional) ===================== */
-.topic-event{border-top:1px solid var(--line);padding:12px 0}
-.topic-event:first-of-type{border-top:0}
 .topic-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:6px 0}
 .topic-name{flex:1;min-width:160px;overflow-wrap:anywhere}
 .topic-mastery{display:flex;gap:4px;flex-wrap:wrap}
@@ -639,3 +637,83 @@ body.focus-open #toast{bottom:calc(78px + env(safe-area-inset-bottom,0px));z-ind
 .topic-editor textarea{width:100%;margin-top:4px}
 .week-plan ul{margin:4px 0;padding-left:18px}
 @media (max-width:640px){.topic-mastery{width:100%}.topic-mastery .chip-btn{flex:1}}
+
+/* ===================== Hoy: próxima sesión, progreso del día y sesiones legibles ===================== */
+.hero-session{border:1.5px solid rgba(var(--accent-rgb),.55);background:linear-gradient(180deg,rgba(var(--accent-rgb),.10),transparent 70%),var(--card)}
+.hero-session.done{border-color:rgba(var(--accent-rgb),.35)}
+.hero-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hero-label{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.hero-body{display:flex;gap:14px;align-items:flex-start;margin-top:6px}
+.hero-arvis{width:64px;height:64px;flex:none}
+.hero-main{flex:1;min-width:0}
+.hero-session h2{margin:2px 0 6px;font-size:clamp(20px,2.4vw,26px);line-height:1.25;overflow-wrap:anywhere}
+.hero-meta{margin:0;color:var(--mute);line-height:1.6}
+.hero-meta .dot{display:inline-block;margin-right:6px;vertical-align:middle}
+.hero-meta .tag{margin-left:4px}
+.hero-hint{margin:10px 0 4px;font-size:16px}
+.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.btn.big{font-size:17px;padding:12px 24px;min-height:48px}
+.btn.sm{padding:6px 12px;font-size:14px}
+.feel-btn,.topic-mastery .chip-btn{min-height:44px}
+@media (pointer:coarse){.btn,.chip-btn-cal,.subchips button{min-height:44px}.lnk{padding-top:10px;padding-bottom:10px}}
+.feedback-box{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.feedback-q{margin:0}
+.feedback-opts{display:flex;flex-wrap:wrap;gap:8px}
+.feel-btn{border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:10px 16px;font:inherit;font-weight:600;cursor:pointer}
+.feel-btn.on{border-color:var(--accent);background:rgba(var(--accent-rgb),.16)}
+.feel-btn:focus-visible,.chip-btn-cal:focus-visible{outline:none;box-shadow:var(--ring)}
+.feedback-real input{width:80px;margin-left:4px}
+.day-progress{margin:10px 0 6px}
+.day-bar{position:relative;height:12px;border-radius:999px;background:rgba(var(--accent-rgb),.12);overflow:visible;margin-top:8px}
+.day-fill{position:absolute;inset:0 auto 0 0;border-radius:999px;background:var(--accent);transition:width .3s ease}
+.day-min{position:absolute;top:-4px;bottom:-4px;width:3px;border-radius:2px;background:#c98a00;transform:translateX(-1px)}
+.day-legend{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;margin-top:6px}
+.session-row{align-items:flex-start}
+.session-row input[type=checkbox]{margin-top:4px;width:22px;height:22px;flex:none}
+.session-row .dot{margin-top:9px;flex:none}
+.session-body{flex:1;min-width:0}
+.task-title{margin:0;font-weight:600;overflow-wrap:anywhere}
+.task-meta{margin:2px 0 0;font-size:14px}
+.task-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.task-tags:empty{display:none}
+.task-hint{margin:6px 0 0;font-size:14px;color:var(--mute)}
+.task-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.task.done .task-actions{display:none}
+.move-form{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end;margin-top:10px;padding:10px;border:1px dashed var(--line);border-radius:12px}
+.move-form label{display:flex;flex-direction:column;gap:4px;font-size:14px}
+.move-panel{margin:0 0 12px;padding:12px;border-radius:12px;background:rgba(var(--accent-rgb),.08)}
+.chip-btn-cal{display:block;width:100%;text-align:left;font:inherit;cursor:pointer;background:var(--card);color:var(--ink);min-height:36px}
+.chip-btn-cal.on{box-shadow:var(--ring)}
+.chip-btn-cal.pinned{border-style:dashed}
+.session-link{border-color:rgba(var(--accent-rgb),.5)}
+.more-opts>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;list-style:none}
+.more-opts>summary::-webkit-details-marker{display:none}
+.more-opts>summary::before{content:"▸";transition:transform .2s ease}
+.more-opts[open]>summary::before{transform:rotate(90deg)}
+.hoy-grid{align-items:start}
+/* El botón del chat nunca tapa contenido */
+body:has(.chat-fab) main,body:has(.chat-fab) #app{padding-bottom:96px}
+@media (max-width:640px){
+  body:has(.chat-fab) main,body:has(.chat-fab) #app{padding-bottom:150px}
+  .hero-arvis{width:48px;height:48px}
+  .hero-actions .btn{flex:1 1 auto}
+  .btn.big{flex-basis:100%}
+}
+@media (prefers-reduced-motion:reduce){.day-fill,.more-opts>summary::before{transition:none}}
+
+/* Temario compacto */
+.topic-course{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+.topic-course h3{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 6px}
+.topic-count{font-size:14px;font-weight:400}
+.topic-event{border:1px solid var(--line);border-radius:12px;padding:0 12px;margin:8px 0}
+.topic-event>summary{cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;min-height:48px;padding:8px 0;list-style:none}
+.topic-event>summary::-webkit-details-marker{display:none}
+.topic-event>summary .topic-bar{grid-column:1 / -1;margin:0}
+.topic-ev-body{padding-bottom:10px}
+.topic-mastery-box>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+@media (max-width:640px){.task.session-row{flex-wrap:nowrap;align-items:flex-start}}
+
+.focus-session{max-width:560px;margin:0 auto 18px;text-align:center}
+.focus-session h3{margin:4px 0 6px;font-size:clamp(18px,2.4vw,24px)}
+.focus-session .feedback-box{align-items:center}

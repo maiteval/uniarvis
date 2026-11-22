@@ -107,7 +107,7 @@ function arvisVacioHtml(kind){
   if(!arvisOn())return '';
   const msgs={
     ramos:'Aún no hay ramos. Escribe el nombre de uno y toca Agregar para empezar.',
-    tareas:'No hay micro-tareas. Agrega ramos y fechas para que aparezca un plan liviano.',
+    tareas:'No hay sesiones. Agrega ramos y fechas para que aparezca un plan liviano.',
     amigos:'Todavía no hay amigos. Comparte tu código o invita a alguien con el suyo.'
   };
   if(!msgs[kind])return '';

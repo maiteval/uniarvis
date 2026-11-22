@@ -86,7 +86,7 @@ function addPending(){
     S.events.push({id:uid(),courseId:p.courseId,title:p.title,date:p.date,type:p.type});n++;
   });
   pending=[];sylText='';replanAll();
-  toast(`${n} fechas confirmadas y agregadas; planifiqué las micro-tareas.`);render();
+  toast(`${n} fechas confirmadas y agregadas; planifiqué las sesiones.`);render();
 }
 function setPending(i,k,v){pending[i][k]=v}
 

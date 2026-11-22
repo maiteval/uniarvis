@@ -19,7 +19,7 @@ function chatRunProposal(pid){
   if(p.kind==='addEvent'){
     if(!course(d.courseId)){chatSay({texto:'Ese ramo ya no existe, así que no agregué la fecha.'});return}
     undoable('Fecha agregada desde el chat.',()=>{S.events.push({id:uid(),courseId:d.courseId,title:d.title,date:d.date,type:d.type})},replanAll);
-    chatSay({estado:'celebrando',texto:`Listo: agregué «${d.title}» de ${cname(d.courseId)} y reorganicé tus micro-tareas.`,acciones:[{label:'Ir a Semana',go:'semana'}]});
+    chatSay({estado:'celebrando',texto:`Listo: agregué «${d.title}» de ${cname(d.courseId)} y reorganicé tus sesiones.`,acciones:[{label:'Ir a Semana',go:'semana'}]});
   }else if(p.kind==='moveEvent'){
     const e=S.events.find(x=>x.id===d.eventId);
     if(!e){chatSay({texto:'Esa fecha ya no está, así que no la moví.'});return}
@@ -32,7 +32,7 @@ function chatRunProposal(pid){
     chatSay({texto:`Quitaré «${e.title}» del plan. Si te arrepientes, puedes deshacerlo.`,acciones:[{label:'Ir a Semana',go:'semana'}]});
   }else if(p.kind==='doneTask'){
     const t=S.tasks.find(x=>x.id===d.taskId);
-    if(!t||t.done){chatSay({texto:'Esa micro-tarea ya estaba marcada.'});return}
+    if(!t||t.done){chatSay({texto:'Esa sesión ya estaba marcada.'});return}
     if(doneToday()>=capFor(today())){chatSay({texto:'Hoy ya completaste tu capacidad; no agregué más minutos.'});return}
     undoable('Micro-tarea marcada desde el chat.',()=>{
       t.done=true;t.date=today();

@@ -91,9 +91,9 @@ const {chromium}=require('playwright');
   ok('"Lo domino" recibe menos tiempo que "No lo he visto"',dom.after<dom.before,JSON.stringify(dom));
   await p.evaluate(()=>go('syllabus'));
   const tid=await p.evaluate(()=>S.events.find(e=>e.id==='e1').topicIds[0]);
-  await p.locator(`[data-focus-id="tm-e1-${tid}-1"]`).click();
+  await p.locator(`[data-focus-id="tm-c1-${tid}-1"]`).click();
   ok('el selector de dominio guarda y replanifica',await p.evaluate(id=>topicById(id).mastery===1,tid)&&
-    (await p.locator(`[data-focus-id="tm-e1-${tid}-1"]`).getAttribute('aria-pressed'))==='true');
+    (await p.locator(`[data-focus-id="tm-c1-${tid}-1"]`).getAttribute('aria-pressed'))==='true');
 
   // "¿Cómo te fue?" ajusta el dominio
   const fb=await p.evaluate(()=>{

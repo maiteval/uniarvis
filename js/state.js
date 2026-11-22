@@ -160,6 +160,7 @@ function migrate(s){
     if(t.feeling!==undefined&&['bien','medio','costo'].indexOf(t.feeling)<0)delete t.feeling;
     if(t.topicIds!==undefined)t.topicIds=Array.isArray(t.topicIds)?t.topicIds.filter(id=>/^[\w-]{1,40}$/.test(id)).slice(0,3):[];
     if(t.topicFb!==undefined&&['bien','medio','costo'].indexOf(t.topicFb)<0)delete t.topicFb;
+    if(t.pinned!==undefined&&t.pinned!==true)delete t.pinned;
     if(t.realMinutes!==undefined&&(!Number.isFinite(t.realMinutes)||t.realMinutes<1||t.realMinutes>1440))delete t.realMinutes;
   });
   delete s.settings.max;                          // la capacidad máxima ahora se calcula cada día

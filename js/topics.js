@@ -177,7 +177,7 @@ function planEventTopics(ev){
   const study=days.filter(d=>d!==eve&&d!==mockDay);
   const pool=study.length?study:days;
   const doneBy=new Map();                                         // lo ya estudiado de cada tema para esta evaluación
-  S.tasks.filter(x=>x.done&&x.eventId===ev.id&&Array.isArray(x.topicIds)).forEach(x=>x.topicIds.forEach(id=>doneBy.set(id,(doneBy.get(id)||0)+1)));
+  S.tasks.filter(x=>(x.done||x.pinned)&&x.eventId===ev.id&&Array.isArray(x.topicIds)).forEach(x=>x.topicIds.forEach(id=>doneBy.set(id,(doneBy.get(id)||0)+1)));
   // Pasadas por tema según dominio: siempre al menos 2 en días distintos
   const chunks=[];let totalMin=0;
   topics.forEach((tp,i)=>{
@@ -283,9 +283,20 @@ function weekPlanSync(){
 }
 
 /* ---------- Acciones del estudiante ---------- */
+function topicsCelebrate(beforeCov){                     // Arvis celebra cuando una evaluación queda con todo el temario cubierto
+  S.events.filter(e=>topicIsExam(e)&&e.date>=today()&&eventTopics(e).length).forEach(e=>{
+    const c=topicCoverage(e);
+    if(c.total&&c.covered===c.total&&(beforeCov[e.id]||0)<c.total&&typeof arvisCelebrar==='function'){
+      arvisCelebrar(`¡Cubriste todo el temario de «${e.title}»! Ahora toca repasar con calma.`);
+      if(typeof announce==='function')announce(`Temario completo de ${e.title}.`);
+    }
+  });
+}
+const coverageMap=()=>Object.fromEntries(S.events.filter(e=>topicIsExam(e)).map(e=>[e.id,topicCoverage(e).covered]));
 function setTopicMastery(id,m){
   const t=topicById(id);if(!t||[0,1,2].indexOf(+m)<0)return;
-  t.mastery=+m;replanAll();render();
+  const before=coverageMap();
+  t.mastery=+m;replanAll();topicsCelebrate(before);render();
 }
 function openTopicEditor(eventId){topicEditEvent=eventId;render()}
 function closeTopicEditor(){topicEditEvent=null;render()}
@@ -328,39 +339,49 @@ function skipToday(){
 }
 
 /* ---------- Vistas ---------- */
-function topicsMasteryRow(t,ev){
+function topicsMasteryRow(t){
   return `<div class="topic-row"><span class="topic-name">${esc(t.name)}${t.unit!=null?` <span class="mute">· U${t.unit}</span>`:''}</span>
     <span class="topic-mastery" role="group" aria-label="Dominio de ${esc(t.name)}">${TOPIC_MASTERY_LABEL.map((l,i)=>
-      `<button type="button" class="chip-btn ${t.mastery===i?'on':''}" aria-pressed="${t.mastery===i}" data-focus-id="tm-${ev.id}-${t.id}-${i}" onclick="setTopicMastery('${t.id}',${i})">${l}</button>`).join('')}</span></div>`;
+      `<button type="button" class="chip-btn ${t.mastery===i?'on':''}" aria-pressed="${t.mastery===i}" data-focus-id="tm-${t.courseId}-${t.id}-${i}" onclick="setTopicMastery('${t.id}',${i})">${l}</button>`).join('')}</span></div>`;
 }
 function topicsEventHtml(ev){
-  const ts=eventTopics(ev),cov=topicCoverage(ev),editing=topicEditEvent===ev.id;
+  const ts=eventTopics(ev),cov=topicCoverage(ev),editing=topicEditEvent===ev.id,open=!ts.length||editing||!!topicPlanWarnings[ev.id];
   const editor=`<div class="topic-editor"><label class="mute" for="te-${ev.id}">Temas que entran (uno por línea)</label>
     <textarea id="te-${ev.id}" rows="4" placeholder="Primera ley&#10;Entalpía&#10;Ciclos de potencia">${esc(ts.map(t=>t.name).join('\n'))}</textarea>
     <div class="row" style="margin-top:6px"><button class="btn" data-focus-id="te-save-${ev.id}" onclick="saveEventTopics('${ev.id}',document.getElementById('te-${ev.id}').value)">Guardar temas</button>
     ${ts.length?`<button class="btn sec" onclick="closeTopicEditor()">Cancelar</button>`:''}</div></div>`;
-  const head=`<div class="row" style="justify-content:space-between;gap:8px;align-items:flex-start">
-    <div><b>${esc(ev.title)}</b> · ${esc(cname(ev.courseId))} · ${dshort(ev.date)}</div>
-    ${ts.length?`<span class="tag topic-cov" title="Temas con al menos una sesión hecha o que ya dominas">Temario cubierto: ${cov.covered} de ${cov.total}</span>`:''}</div>`;
-  if(!ts.length)return `<div class="topic-event" id="topics-${ev.id}">${head}
-    <div class="banner info topic-missing">Para planificar por temas, sube el syllabus o escribe los temas.
-      <button class="lnk" onclick="go('syllabus')">Ir a Syllabus</button></div>${editor}</div>`;
-  return `<div class="topic-event" id="topics-${ev.id}">${head}
-    <div class="topic-bar" aria-hidden="true"><span style="width:${cov.pct}%"></span></div>
-    <p class="mute" style="margin:6px 0">¿Cuánto dominas cada tema? Arvis le da más tiempo a lo que no has visto.</p>
-    ${ts.map(t=>topicsMasteryRow(t,ev)).join('')}
+  const resumen=ts.length?`<span class="tag topic-cov">Temario cubierto: ${cov.covered} de ${cov.total}</span>`:'<span class="tag inst-pending">Sin temas</span>';
+  return `<details class="topic-event" id="topics-${ev.id}" ${open?'open':''}>
+    <summary><span class="topic-ev-name"><b>${esc(ev.title)}</b> <span class="mute">· ${dshort(ev.date)}</span></span>${resumen}
+      ${ts.length?`<span class="topic-bar" aria-hidden="true"><span style="width:${cov.pct}%"></span></span>`:''}</summary>
+    <div class="topic-ev-body">
+    ${ts.length?`<p class="mute" style="margin:6px 0">${ts.length} tema(s): ${esc(topicJoin(ts.map(t=>t.name)))}.</p>`:
+      `<div class="banner info topic-missing">Para planificar por temas, sube el syllabus o escribe los temas. <button class="lnk" onclick="document.getElementById('syl-file')&&document.getElementById('syl-file').scrollIntoView({block:'center'})">Subir syllabus</button></div>`}
     ${topicPlanWarnings[ev.id]?`<div class="banner soft" style="margin-top:8px">${esc(topicPlanWarnings[ev.id])}</div>`:''}
-    <div class="row" style="margin-top:6px">${editing?'':`<button class="lnk" onclick="openTopicEditor('${ev.id}')">Editar temas</button>`}
-      ${ev.topicsManual?`<button class="lnk" onclick="resetEventTopics('${ev.id}')">Usar los temas del syllabus</button>`:''}</div>
-    ${editing?editor:''}</div>`;
+    ${ts.length&&!editing?`<div class="row"><button class="lnk" onclick="openTopicEditor('${ev.id}')">Editar temas</button>
+      ${ev.topicsManual?`<button class="lnk" onclick="resetEventTopics('${ev.id}')">Usar los temas del syllabus</button>`:''}</div>`:''}
+    ${!ts.length||editing?editor:''}</div></details>`;
 }
 function topicsCardHtml(){
   if(!topicsOn())return '';
-  const t0=today(),evs=S.events.filter(e=>topicIsExam(e)&&e.date>=t0).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,8);
+  const t0=today(),evs=S.events.filter(e=>topicIsExam(e)&&e.date>=t0).sort((a,b)=>a.date.localeCompare(b.date));
   if(!evs.length)return '';
+  const cursos=[...new Set(evs.map(e=>e.courseId))].map(course).filter(Boolean);
+  const bloques=cursos.map(c=>{
+    const mine=evs.filter(e=>e.courseId===c.id).slice(0,6);
+    const ids=new Set();mine.forEach(e=>eventTopics(e).forEach(t=>ids.add(t.id)));
+    const temas=courseTopics(c.id).filter(t=>ids.has(t.id));
+    const dom=temas.filter(t=>t.mastery===2).length;
+    return `<section class="topic-course" aria-labelledby="tc-${c.id}">
+      <h3 id="tc-${c.id}"><span aria-hidden="true" class="dot" style="background:${c.color}"></span>${esc(c.name)}
+        ${temas.length?`<span class="mute topic-count">· dominas ${dom} de ${temas.length} temas</span>`:''}</h3>
+      ${mine.map(topicsEventHtml).join('')}
+      ${temas.length?`<details class="topic-mastery-box" id="tm-box-${c.id}" ${temas.some(t=>t.mastery>0)?'':'open'}><summary><b>¿Cuánto dominas cada tema?</b> <span class="mute">Arvis le da más tiempo a lo que no has visto</span></summary>
+        ${temas.map(topicsMasteryRow).join('')}</details>`:''}</section>`;
+  }).join('');
   return `<div class="card" id="topics-card"><div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px">
     <div><h2 style="margin:0">Temario por evaluación</h2><span class="mute">Arvis arma tus sesiones según los temas que entran y cuánto los dominas</span></div>
-    ${typeof aiDemoTag==='function'?aiDemoTag():''}</div>${evs.map(topicsEventHtml).join('')}</div>`;
+    ${typeof aiDemoTag==='function'?aiDemoTag():''}</div>${bloques}</div>`;
 }
 function weekPlanHtml(){
   const w=weekPlanSync();if(!w)return '';

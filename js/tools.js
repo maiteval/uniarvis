@@ -50,6 +50,7 @@ function pomFinishPhase(p,now){
   if(from==='focus'){
     p.pomodoros++;
     const logged=pomLogFocus(p),kind=pomFocusKind();
+    if(typeof pomodoroSessionCheck==='function')pomodoroSessionCheck(p);   // ¿se completó la sesión? → "¿Cómo te fue?"
     p.completed=(p.completed||0)+1;
     if(!logged)pomTrackUntargeted(p);
     if(EVIDENCE.breaks.longAfterKinds.indexOf(kind)>=0){p.kindStreak=kind;p.kindCount=(p.kindCount||0)+1}
@@ -174,7 +175,7 @@ function pomFocusOpen(){
 function pomFocusRefresh(){if(focusKind()==='pomodoro'&&typeof focusRender==='function')focusRender()}
 function pomFocusHtml(){
   const p=pomCfg();
-  return `<div class="focus-pom">
+  return `<div class="focus-pom">${typeof pomFocusSessionHtml==='function'?pomFocusSessionHtml():''}
     <b class="focus-pom-clock" data-pom-time>${pomClock(pomRemaining(p))}</b>
     <div class="focus-pom-phase" data-pom-phase>${POM_PHASES[p.phase]} · ${pomCount(p)} de ${p.longEvery}</div>
     <div class="pom-bar" data-pom-progress style="--f:0%" aria-hidden="true"></div>
@@ -190,7 +191,7 @@ function pomodoroHtml(){
   const breakText=longSug
     ?`Llevas ${p.kindCount} focos seguidos de ${esc(KIND_LABEL[p.kindStreak]||p.kindStreak)}. La pausa es para recuperar energía y bienestar, no una promesa de rendimiento: considera un descanso largo de más de ${EVIDENCE.breaks.longMinMinutes} min.`
     :'Descanso: es para recuperar energía y bienestar, no una promesa de rendimiento. Si quieres, haz el suspiro por defecto de Bienestar.';
-  return `${pomArvisHtml()}<div class="card tools-card" id="pomodoro"><h2>Pomodoro</h2>
+  return `${typeof pomodoroSessionHtml==='function'?pomodoroSessionHtml():''}${pomArvisHtml()}<div class="card tools-card" id="pomodoro"><h2>Pomodoro</h2>
     <div class="stats"><div class="stat pom-clock"><b id="pom-time">${pomClock(pomRemaining(p))}</b><span class="mute" id="pom-phase">${POM_PHASES[p.phase]} · ${pomCount(p)} de ${p.longEvery}</span>
       <div class="pom-bar" id="pom-progress" style="--f:0%" aria-hidden="true"></div></div></div>
     <div class="pom-actions">

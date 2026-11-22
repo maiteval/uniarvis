@@ -208,7 +208,7 @@ function planEvent(ev){
   if(typeof topicPlanApplies==='function'&&topicPlanApplies(ev))return planEventTopics(ev);   // institucional: plan por temas (js/topics.js)
   const t0=today(),c=course(ev.courseId),diff=c?c.difficulty:3,imp=importanceFor(ev),eve=addDays(ev.date,-1);
   const total=Math.round(BASE[ev.type]*(0.7+0.15*diff)*imp.factor*paceFactor()/15)*15;
-  const doneMin=S.tasks.filter(t=>t.eventId===ev.id&&t.done).reduce((a,t)=>a+t.minutes,0);
+  const doneMin=S.tasks.filter(t=>t.eventId===ev.id&&(t.done||t.pinned)).reduce((a,t)=>a+t.minutes,0);
   const remaining=total-doneMin;if(remaining<10)return 0;
   const lead=Math.min(35,7+3*diff+(ev.early?7:0)),s0=addDays(ev.date,-lead),start=s0>t0?s0:t0;
   let end=addDays(ev.date,(diff>=4&&ev.type==='evaluacion')?-2:-1);  // día de respiro antes de evaluaciones difíciles
@@ -241,7 +241,7 @@ function replanAll(){                                   // reprogramación sin c
   const stale=S.tasks.filter(t=>!t.done&&t.date<t0).length;
   if(stale>0)S.moved={date:t0,n:stale};
   const certKeep=S.tasks.filter(t=>t.certamen);
-  S.tasks=S.tasks.filter(t=>t.done);
+  S.tasks=S.tasks.filter(t=>t.done||(t.pinned&&t.date>=t0));      // las sesiones fijadas por el estudiante se respetan
   learnPace();
   if(S.skipDay&&S.skipDay!==t0)S.skipDay=null;
   if(typeof topicsSync==='function'){topicPlanWarnings={};topicsSync()}
@@ -379,8 +379,8 @@ function certShare(date,plan,plans){
 }
 const CERT_KIND={teoria:'recuperar',ejercicios:'ejercicios',ensayo:'simulacro',errores:'repaso_ligero',repaso:'repaso_ligero'};
 function buildCertamenTasks(t0,previous){
-  S.tasks=S.tasks.filter(t=>!t.certamen||t.done);
-  const done=new Set((previous||[]).filter(t=>t.certamen&&t.done).map(t=>t.eventId+'|'+(t.topicId||'')+'|'+t.phase));
+  S.tasks=S.tasks.filter(t=>!t.certamen||t.done||t.pinned);
+  const done=new Set((previous||[]).filter(t=>t.certamen&&(t.done||t.pinned)).map(t=>t.eventId+'|'+(t.topicId||'')+'|'+t.phase));
   const plans=certPlans().filter(p=>p.date>t0&&S.events.some(e=>e.id===p.eventId));
   const blocks=[],firstTheory=new Set();
   plans.forEach(p=>{

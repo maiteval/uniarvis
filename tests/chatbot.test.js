@@ -63,7 +63,7 @@ const fs=require('fs');
   ok('responde al saludo',(await last()).includes('¡Hola, Ana!'));
 
   const hoy=await say('¿Qué tengo hoy?');
-  ok('responde qué hay para hoy con micro-tareas y capacidad',/micro-tarea/.test(hoy)&&/Capacidad ~/.test(hoy));
+  ok('responde qué hay para hoy con micro-tareas y capacidad',/sesi[oó]n/.test(hoy)&&/Capacidad ~/.test(hoy));
   ok('no lee bienestar sin consentimiento',hoy.includes('No usé datos de bienestar')&&!hoy.includes('SECRETO_DIARIO'));
   ok('lista próximas evaluaciones',(await say('próximas evaluaciones')).includes('Certamen 1'));
   ok('calcula cómo vas en notas',(await say('¿Cómo voy en mis notas?')).includes('4,5'));
@@ -149,7 +149,7 @@ const fs=require('fs');
   await p.evaluate(()=>{if(typeof focusClose==='function')focusClose()});
 
   const ahora=await say('¿qué hago ahora?');
-  ok('sugiere una sola tarea y no lee bienestar',/una sola cosa|una sola micro-tarea/.test(ahora)&&ahora.includes('No usé datos de bienestar'));
+  ok('sugiere una sola tarea y no lee bienestar',/una sola cosa|una sola sesi[oó]n/.test(ahora)&&ahora.includes('No usé datos de bienestar'));
 
   const chipFalta=await say('agrega una prueba');
   ok('ofrece chips para completar datos que faltan',chipFalta.includes('Me falta el ramo y la fecha')&&await p.locator('.chat-msg.arvis').last().locator('.chat-chip').count()>0);

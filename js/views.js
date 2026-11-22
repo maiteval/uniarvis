@@ -276,7 +276,7 @@ function weeklyCardHtml(){
     <div class="row" style="gap:6px">${aiDemoTag()}<span class="tag">${esc(res.estado==='celebrando'?'Semana liviana':res.estado==='preocupado'?'Semana exigente':'Semana estable')}</span></div></div>
     ${weeklyText(res)}
     <div class="row" style="justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
-      <div style="flex:1;min-width:240px"><b>Prioridades</b>${weeklyLista(res.prioridades.slice(0,3))}</div>
+      <div style="flex:1;min-width:240px"><b>Prioridades</b>${weeklyLista(res.prioridades.slice(0,3))||'<p class="mute" style="margin:4px 0">Sin evaluaciones en los próximos 7 días.</p>'}</div>
       <div style="flex:1;min-width:240px"><b>Alertas suaves</b>${res.alertas.length?weeklyLista(res.alertas):'<p class="mute" style="margin:4px 0">Sin choques por ahora.</p>'}</div></div>
     ${typeof weekPlanHtml==='function'?weekPlanHtml():''}
     <div class="row" style="margin-top:10px"><button class="btn sec" onclick="chatAskWeek()">Pregúntale a Arvis sobre tu semana</button>
@@ -413,20 +413,23 @@ function energyBoxes(cap,min,done){
 const evDate=t=>{const e=S.events.find(x=>x.id===t.eventId);return e?e.date:'9999'};
 function taskRow(t,locked){
   const deck=t.kind==='recuperar'&&(S.tools&&S.tools.flashcards&&S.tools.flashcards.decks||[]).find(d=>d.courseId===t.courseId);
-  const fcBtn=deck?`<button class="btn sec" data-focus-id="fc-task-${t.id}" onclick="openCourseFlashcards('${t.courseId}')">Repasar flashcards de este ramo</button>`:'';
+  const fcBtn=deck?`<button class="btn sec sm" data-focus-id="fc-task-${t.id}" onclick="openCourseFlashcards('${t.courseId}')">Repasar flashcards de este ramo</button>`:'';
   const kind=t.kind?`<span class="tag">${esc(KIND_LABEL[t.kind]||t.kind)}</span>`:'';
   const slot=t.slotStart&&t.slotEnd?`${t.slotStart}–${t.slotEnd}`:'Cuando puedas';
-  const chrono=t.chrono?`<br><span class="mute">${esc(t.chrono)}</span>`:'';
-  const hint=t.hint?`<br><span class="mute">${esc(t.hint)}</span>`:(needsInterleave(t)?`<br><span class="mute">${esc(EVIDENCE.plan.interleaveHint)}</span>`:'');
+  const chrono=t.chrono?` · ${esc(t.chrono)}`:'';
+  const hint=t.hint?`<p class="task-hint">${esc(t.hint)}</p>`:(needsInterleave(t)?`<p class="task-hint">${esc(EVIDENCE.plan.interleaveHint)}</p>`:'');
   const why=t.why?`<details><summary>Por qué esta sesión</summary><span class="mute">${esc(t.why)}</span></details>`:'';
-  const pom=t.done?'':`<button class="btn sec" data-focus-id="pom-task-${t.id}" onclick="startTaskPomodoro('${t.id}')">Pomodoro</button>`;
-  const fb=t.done&&taskFeedbackId===t.id?`<div class="row" style="flex-wrap:wrap;margin-top:6px;gap:6px"><span class="mute">¿Cómo te fue?</span>
-    ${[['bien','Bien'],['medio','Más o menos'],['costo','Me costó']].map(([v,l])=>`<button class="btn sec" aria-pressed="${t.feeling===v}" data-focus-id="feel-${t.id}-${v}" onclick="setTaskFeeling('${t.id}','${v}')">${l}</button>`).join('')}
-    <label class="mute">¿Cuánto estudiaste realmente? <input type="number" min="1" max="600" step="5" style="width:80px" value="${Number(t.realMinutes)||t.minutes}" onchange="setTaskReal('${t.id}',this.value)"> min</label>
-    <button class="lnk" onclick="closeTaskFeedback()">Listo</button></div>`:'';
-  return `<div class="task ${t.done?'done':''}"><input type="checkbox" aria-label="${t.done?'Marcar como pendiente':'Marcar como hecha'}: ${esc(t.title)}" data-focus-id="task-${t.id}" ${t.done?'checked':''} ${locked&&!t.done?'disabled':''} onchange="toggleTask('${t.id}')">
+  const pom=t.done?'':`<button class="btn sec sm" data-focus-id="pom-task-${t.id}" onclick="startTaskPomodoro('${t.id}')">▶ Pomodoro</button>`;
+  const mover=t.done?'':`<button class="btn sec sm" data-focus-id="move-${t.id}" aria-expanded="${typeof taskMoveId!=='undefined'&&taskMoveId===t.id}" onclick="openMoveTask('${t.id}')">Mover</button>`;
+  const fb='';                                           // "¿Cómo te fue?" se muestra arriba, en la tarjeta de la sesión
+  const form=!t.done&&typeof taskMoveId!=='undefined'&&taskMoveId===t.id&&typeof moveFormHtml==='function'?moveFormHtml(t):'';
+  return `<div class="task session-row ${t.done?'done':''}"><input type="checkbox" aria-label="${t.done?'Marcar como pendiente':'Marcar como hecha'}: ${esc(t.title)}" data-focus-id="task-${t.id}" ${t.done?'checked':''} ${locked&&!t.done?'disabled':''} onchange="toggleTask('${t.id}')">
     <span aria-hidden="true" class="dot" style="background:${ccolor(t.courseId)}"></span>
-    <span class="t" style="min-width:0">${esc(t.title)}<br><span class="mute">${esc(cname(t.courseId))} · ${esc(slot)}${chrono}${hint}</span>${why}${fb}</span>${kind}<span class="tag">${t.minutes} min</span>${pom}${fcBtn}</div>`;
+    <div class="t session-body"><p class="task-title">${esc(t.title)}</p>
+      <p class="task-meta mute">${esc(cname(t.courseId))} · ${esc(slot)} · ${t.minutes} min${chrono}</p>
+      <div class="task-tags">${kind}${t.pinned?'<span class="tag">Fijada por ti</span>':''}</div>
+      ${hint}${why}${fb}
+      ${pom||mover||fcBtn?`<div class="task-actions">${pom}${mover}${fcBtn}</div>`:''}${form}</div></div>`;
 }
 function agendaItems(date){
   const items=[],wd=(parse(date).getDay()+6)%7;
@@ -437,7 +440,7 @@ function agendaItems(date){
   S.tasks.filter(t=>t.date===date).forEach(t=>{
     const slot=t.slotStart&&t.slotEnd?`${t.slotStart}–${t.slotEnd}`:'Cuando puedas';
     items.push({time:t.slotStart||'',order:2,done:t.done,
-      html:`<b>${esc(t.title)}</b><br><span class="mute">${esc(slot)} · ${esc(cname(t.courseId))}${t.kind?` · ${esc(KIND_LABEL[t.kind]||t.kind)}`:''} · ${t.minutes} min${t.hint?`<br>${esc(t.hint)}`:''}</span>`});
+      html:`<b>${esc(t.title)}</b><br><span class="mute">${esc(slot)} · ${t.minutes} min</span>`});
   });
   if(typeof socialAgendaItems==='function')socialAgendaItems(date).forEach(x=>items.push(x));
   return items.sort((a,b)=>String(a.time||'99:99').localeCompare(String(b.time||'99:99'))||a.order-b.order);
@@ -450,7 +453,7 @@ function agendaHtml(date,title){
 function certamenOffersHtml(){
   const cs=certCandidates();if(!cs.length)return '';
   return `<div class="card" id="certamen-offers"><h3>Preparar en modo certamen</h3>
-    <p class="mute" style="margin-top:0">Faltan 7 días o menos. Puedes cambiar las micro-tareas por un plan por fases; no se activa solo.</p>
+    <p class="mute" style="margin-top:0">Faltan 7 días o menos. Puedes cambiar las sesiones por un plan por fases; no se activa solo.</p>
     ${cs.map(e=>`<div class="task"><span aria-hidden="true" class="dot" style="background:${ccolor(e.courseId)}"></span>
       <span style="flex:1"><b>${esc(e.title)}</b><br><span class="mute">${esc(cname(e.courseId))} · ${dshort(e.date)} · ${diffDays(today(),e.date)} día(s)</span></span>
       <button class="btn sec" data-focus-id="cert-open-${e.id}" onclick="openCertamen('${e.id}')">Preparar en modo certamen</button></div>`).join('')}</div>`;
@@ -506,7 +509,7 @@ function certamenActiveHtml(){
 }
 function viewHoy(){
   const t0=today(),info=capInfo(t0),cap=info.val,min=minFor(t0),done=doneToday(),locked=done>=cap,met=done>=min,low=lowMode(t0);
-  const todays=S.tasks.filter(t=>t.date===t0).sort((a,b)=>a.done-b.done||evDate(a).localeCompare(evDate(b)));
+  const todays=S.tasks.filter(t=>t.date===t0).sort((a,b)=>a.done-b.done||String(a.slotStart||'99:99').localeCompare(String(b.slotStart||'99:99'))||evDate(a).localeCompare(evDate(b)));
   const pend=todays.filter(t=>!t.done);
   const nxt=S.tasks.filter(t=>!t.done&&t.date>t0).sort((a,b)=>a.date.localeCompare(b.date))[0];
   let banner;
@@ -523,50 +526,53 @@ function viewHoy(){
   let rows='',acc=0;
   todays.forEach((t,i)=>{
     rows+=taskRow(t,locked);
-    if(!t.done){acc+=t.minutes;if(acc>=50&&todays.slice(i+1).some(x=>!x.done)){rows+=`<div class="pause">🌿 <span style="flex:1">Pausa de 5 min: estírate o haz 1 minuto de respiración.</span><button class="btn sec" onclick="goBreath('larga')">Respirar</button></div>`;acc=0}}
+    if(!t.done){acc+=t.minutes;if(acc>=50&&todays.slice(i+1).some(x=>!x.done)){rows+=`<div class="pause">🌿 <span style="flex:1">Pausa de 5 min entre sesiones: estírate o haz 1 minuto de respiración.</span><button class="btn sec" onclick="goBreath('larga')">Respirar</button></div>`;acc=0}}
   });
   const opts=S.courses.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  const conTemas=typeof topicsOn==='function'&&topicsOn()&&todays.some(t=>Array.isArray(t.topicIds)&&t.topicIds.length);
   return `${screenHelp('hoy')}
   ${arvisMomentoHtml()}${arvisEstudiandoHtml()}${arvisAlertaHtml()}
   ${!S.courses.length?arvisVacioHtml('ramos'):''}
   ${!S.courses.length?'<div class="card empty">Aún no tienes ramos. Agrégalos en "Ramos" o <button class="btn" onclick="go(\'ejemplos\')">carga datos de ejemplo</button></div>':''}
+  ${typeof nextSessionHtml==='function'?nextSessionHtml():''}
   ${warnHtml()}${criticalHtml()}
   ${certamenOffersHtml()}${certamenDraftHtml()}${certamenActiveHtml()}
   ${S.soft&&softOn(t0)?`<div class="banner soft">Modo suave activo hasta el ${dshort(S.soft.until)}: tu carga está al 75%. <button class="lnk" onclick="endSoft()">Desactivar</button></div>`:''}
   ${notes.map(n=>`<div class="banner info">${n}</div>`).join('')}
   ${socialTodayHtml()}
   ${backupHtml()}
-  ${agendaHtml(t0,'Agenda de hoy')}
-  <div class="card"><h2>Hoy</h2>
-    <div class="stats">
-      <div class="stat"><b>${done}'</b><span class="mute">estudiados hoy</span></div>
-      <div class="stat"><b>${min}'</b><span class="mute">mínimo de hoy</span></div>
-      <div class="stat"><b>${cap}'</b><span class="mute">capacidad de hoy</span></div>
-    </div>
-    ${banner}${energyBoxes(cap,min,done)}
-    <details><summary>¿Cómo se calculó mi capacidad de hoy?</summary><ul>${capExplain(info).map(x=>`<li>${x}</li>`).join('')}</ul></details>
-  </div>
-  <div class="grid2">
-    <div class="card"><div class="row" style="justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0">Plan de hoy</h3>
-      ${typeof topicsOn==='function'&&topicsOn()&&todays.some(t=>Array.isArray(t.topicIds)&&t.topicIds.length)?aiDemoTag():''}</div>
+  <div class="grid2 hoy-grid">
+    <section class="card" aria-labelledby="plan-hoy-title"><div class="row" style="justify-content:space-between;align-items:center;gap:8px"><h2 id="plan-hoy-title" style="margin:0">Plan de hoy</h2>
+      ${conTemas?aiDemoTag():''}</div>
+      <p class="mute" style="margin:4px 0 10px">${pend.length?`${pend.length} sesión(es) pendiente(s) · ${pend.reduce((a,t)=>a+t.minutes,0)} min`:'Nada pendiente para hoy.'}</p>
       ${rows||`${arvisVacioHtml('tareas')}<div class="empty">No hay sesiones para hoy. Agrega ramos y fechas en <b>Académico &gt; Fechas</b> para generar tu plan, o registra estudio libre.</div>`}
+      <div class="row" style="margin-top:8px">
       ${locked?'<p class="mute">No se adelanta ni se asigna más materia hoy.</p>':
         (low?'<p class="mute">Hoy no hace falta adelantar nada.</p>':(!pend.length&&nxt?`<button class="btn sec" onclick="pullNext()">Adelantar la siguiente sesión (${nxt.minutes} min)</button>`:''))}
-      ${typeof topicsOn==='function'&&topicsOn()&&pend.length?`<button class="btn sec" data-focus-id="skip-today" onclick="skipToday()">Hoy no puedo</button>`:''}
-    </div>
-    <div>
-      ${pauseCard()}
-      <div class="card"><h3>Registrar estudio libre</h3>
-        <div class="row"><select id="fc">${opts}</select><input id="fm" type="number" min="5" step="5" value="25" style="width:80px"> min
-        <button class="btn" ${locked||!S.courses.length?'disabled':''} onclick="logFree()">Registrar</button></div>
+      ${typeof topicsOn==='function'&&topicsOn()&&pend.length?`<button class="btn sec" data-focus-id="skip-today" onclick="skipToday()">Hoy no puedo</button>`:''}</div>
+    </section>
+    <section class="card" aria-labelledby="dia-title"><h2 id="dia-title" style="margin-top:0">Tu día</h2>
+      <div class="stats">
+        <div class="stat"><b>${done}'</b><span class="mute">estudiados hoy</span></div>
+        <div class="stat"><b>${min}'</b><span class="mute">mínimo de hoy</span></div>
+        <div class="stat"><b>${cap}'</b><span class="mute">capacidad de hoy</span></div>
       </div>
-      <div class="card"><h3>Mi mínimo viable (día normal)</h3>
-        <div class="row"><input id="smin" type="number" value="${S.settings.min}" style="width:80px"> min
+      ${banner}${typeof dayProgressHtml==='function'?dayProgressHtml(cap,min,done):energyBoxes(cap,min,done)}
+      <details><summary>¿Cómo se calculó mi capacidad de hoy?</summary><ul>${capExplain(info).map(x=>`<li>${x}</li>`).join('')}</ul></details>
+    </section>
+  </div>
+  ${agendaHtml(t0,'Agenda de hoy')}
+  ${pauseCard()}
+  <details class="card more-opts" id="hoy-mas"><summary><b>Más opciones</b> <span class="mute">· registrar estudio libre y mínimo viable</span></summary>
+    <div class="grid2" style="margin-top:10px">
+      <div><h3>Registrar estudio libre</h3>
+        <div class="row"><label class="sr-only" for="fc">Ramo</label><select id="fc">${opts}</select><label class="sr-only" for="fm">Minutos</label><input id="fm" type="number" min="5" step="5" value="45" style="width:80px"> min
+        <button class="btn" ${locked||!S.courses.length?'disabled':''} onclick="logFree()">Registrar</button></div></div>
+      <div><h3>Mi mínimo viable (día normal)</h3>
+        <div class="row"><label class="sr-only" for="smin">Minutos mínimos</label><input id="smin" type="number" value="${S.settings.min}" style="width:80px"> min
         <button class="btn sec" data-focus-id="set-min" onclick="setMin()">Guardar</button></div>
-        <p class="mute" style="margin-bottom:0">La capacidad máxima ya no es un número fijo: se calcula cada día.</p>
-      </div>
-    </div>
-  </div>`;
+        <p class="mute" style="margin-bottom:0">La capacidad máxima ya no es un número fijo: se calcula cada día.</p></div>
+    </div></details>`;
 }
 function viewSemana(){
   const days=[...Array(7)].map((_,i)=>addDays(weekStart,i)),t0=today(),H0=7,H1=22,HH=44;
@@ -576,13 +582,17 @@ function viewSemana(){
     <div class="row"><button class="btn sec" aria-label="Semana anterior" onclick="weekStart=addDays(weekStart,-7);render()">←</button>
     <button class="btn sec" onclick="weekStart=mondayOf(today());render()">Hoy</button>
     <button class="btn sec" aria-label="Semana siguiente" onclick="weekStart=addDays(weekStart,7);render()">→</button></div></div>
-    <div class="mute" style="margin-bottom:8px">Subrayado ámbar = tramo exigente (3 fechas importantes en 5 días).</div>
+    ${typeof semanaMoveHtml==='function'?semanaMoveHtml():''}
+    <div class="row" style="justify-content:space-between;margin-bottom:8px;gap:8px"><span class="mute">Subrayado ámbar = tramo exigente (3 fechas importantes en 5 días). Toca una sesión para moverla.</span>
+      <button class="btn sec sm" data-focus-id="export-sessions" onclick="exportSessionsICS()">Exportar sesiones (.ics)</button></div>
     <div class="calwrap"><div class="cal">`;
   h+='<div class="hd"></div>'+days.map((d,i)=>{const im=institutionDayMark(d);return `<div class="hd ${d===t0?'today':''} ${isCrit(d)?'crit':''} ${im?'inst-day '+im.cls:''}" ${im?'title="'+esc(im.mark+' '+im.cls)+'"':''}>${DAYS[i]} ${parse(d).getDate()}${im?' '+im.mark:''}</div>`}).join('');
   h+='<div class="lbl">Fechas</div>'+days.map(d=>`<div>${S.events.filter(e=>e.date===d).map(e=>
     `<div class="chip" style="border-color:${ccolor(e.courseId)}" title="${esc(e.title)}"><b>${TYPE_LABEL[e.type]}</b> ${esc(cname(e.courseId))}<br>${esc(e.title)}</div>`).join('')}</div>`).join('');
-  h+='<div class="lbl">Plan</div>'+days.map(d=>`<div>${S.tasks.filter(t=>t.date===d).map(t=>
-    `<div class="chip ${t.done?'done':''}" style="border-color:${ccolor(t.courseId)}" title="${esc(t.slotStart&&t.slotEnd?`${t.slotStart}–${t.slotEnd}`:'Cuando puedas')}">${t.slotStart&&t.slotEnd?`${t.slotStart}–${t.slotEnd} · `:''}${t.minutes}' ${esc(cname(t.courseId))}</div>`).join('')}<div class="mute">${dayLoad(d)||capFor(d)?dayLoad(d)+' / '+capFor(d)+' min':''}</div></div>`).join('');
+  h+='<div class="lbl">Plan</div>'+days.map(d=>`<div>${S.tasks.filter(t=>t.date===d).map(t=>{
+    const txt=`${t.slotStart&&t.slotEnd?`${t.slotStart}–${t.slotEnd} · `:''}${t.minutes}' ${esc(cname(t.courseId))}`;
+    return t.done?`<div class="chip done" style="border-color:${ccolor(t.courseId)}">${txt}</div>`
+      :`<button type="button" class="chip chip-btn-cal ${t.pinned?'pinned':''} ${taskMoveId===t.id?'on':''}" style="border-color:${ccolor(t.courseId)}" data-focus-id="cal-${t.id}" aria-label="${esc(t.title)}, ${esc(t.slotStart?t.slotStart:'sin hora')}, ${t.minutes} minutos. Mover sesión" onclick="openMoveTask('${t.id}')">${txt}${t.pinned?' 📌':''}</button>`}).join('')}<div class="mute">${dayLoad(d)||capFor(d)?dayLoad(d)+' / '+capFor(d)+' min':''}</div></div>`).join('');
   h+=`<div class="lbl" style="padding:0;position:relative;height:${(H1-H0)*HH}px">${[...Array(H1-H0)].map((_,i)=>`<div style="position:absolute;top:${i*HH}px;font-size:12px;padding-left:4px">${pad(H0+i)}:00</div>`).join('')}</div>`;
   h+=days.map((d,i)=>`<div class="col ${d===t0?'today':''}" style="height:${(H1-H0)*HH}px">${S.classes.filter(k=>k.day===i).map(k=>{
     const top=(toMin(k.start)-H0*60)/60*HH,ht=(toMin(k.end)-toMin(k.start))/60*HH;

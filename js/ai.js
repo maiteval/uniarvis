@@ -119,10 +119,11 @@ const ArvisIA=(()=>{
     const baja=ctx.energiaReciente.filter(e=>e<=2).length,modoSuave=ctx.energia!=null&&baja>=2;
     if(modoSuave)alertas.push('Notas varios días con energía baja. Si te hace bien, puedo activar el modo suave por 3 días.');
     const total=fechas.filter(isExam).length;
-    const p1=pick([
-      `En los próximos 7 días tienes ${total} evaluaciones y ${tareas.length} micro-tareas pendientes. La carga va de ${Math.min.apply(null,dias.map(d=>d.carga))} a ${Math.max.apply(null,dias.map(d=>d.carga))} min por día.`,
-      `Para esta semana veo ${total} evaluaciones y ${tareas.length} micro-tareas. El plan se reparte con un límite diario de ${dias[0]?dias[0].capacidad:180} min.`,
-      `La semana trae ${total} evaluaciones y ${tareas.length} micro-tareas. Hay espacio para avanzar sin llenar todos los días.`
+    const nEv=total===0?'ninguna evaluación':total===1?'1 evaluación':`${total} evaluaciones`,nSes=tareas.length===1?'1 sesión':`${tareas.length} sesiones`;
+    const p1=total===0?`Esta semana no tienes evaluaciones y hay ${nSes} planificada${tareas.length===1?'':'s'}. Buen momento para avanzar sin apuro.`:pick([
+      `En los próximos 7 días tienes ${nEv} y ${nSes} pendiente${tareas.length===1?'':'s'}. La carga va de ${Math.min.apply(null,dias.map(d=>d.carga))} a ${Math.max.apply(null,dias.map(d=>d.carga))} min por día.`,
+      `Para esta semana veo ${nEv} y ${nSes}. El plan se reparte con un límite diario de ${dias[0]?dias[0].capacidad:180} min.`,
+      `La semana trae ${nEv} y ${nSes}. Hay espacio para avanzar sin llenar todos los días.`
     ]);
     const p2=pick([
       `El día más pesado es ${DAYS[(parse(pesado.fecha).getDay()+6)%7].toLowerCase()} ${dshort(pesado.fecha)}, con ${pesado.carga} de ${pesado.capacidad} min previstos.`,
@@ -164,7 +165,7 @@ const ArvisIA=(()=>{
     }
     if(missing==='tarea'){
       const ts=(S.tasks||[]).filter(t=>t.date===today()&&!t.done).slice(0,8);
-      return pregunta('tarea','¿Cuál micro-tarea marcamos?',ts.map(t=>({label:`${cname(t.courseId)} · ${t.title||'Estudio'} (${t.minutes} min)`,value:t.title||'Estudio'})));
+      return pregunta('tarea','¿Cuál sesión marcamos?',ts.map(t=>({label:`${cname(t.courseId)} · ${t.title||'Estudio'} (${t.minutes} min)`,value:t.title||'Estudio'})));
     }
     return pregunta('texto','¿Me das ese dato?',[]);
   };
@@ -237,7 +238,7 @@ const ArvisIA=(()=>{
     }
     if(fecha<today())return {texto:'Esa fecha ya pasó. ¿Me das una de hoy en adelante?',pregunta:askFalta('addEvent',{courseId:c.id,titulo,type},mem,['fecha'])};
     if((S.events||[]).some(e=>e.courseId===c.id&&e.date===fecha&&tx(e.title)===tx(titulo)))return {texto:`Ya tienes «${titulo}» de ${c.name} ese día. No la dupliqué.`};
-    return {texto:pick([`Agrego «${titulo}» de ${c.name} para el ${when(fecha)} y después reordeno tus micro-tareas.`,`Agrego «${titulo}» de ${c.name} el ${when(fecha)}. ¿Confirmas?`]),
+    return {texto:pick([`Agrego «${titulo}» de ${c.name} para el ${when(fecha)} y después reordeno tus sesiones.`,`Agrego «${titulo}» de ${c.name} el ${when(fecha)}. ¿Confirmas?`]),
       propuesta:{label:'Sí, agregar',kind:'addEvent',data:{courseId:c.id,title:titulo,date:fecha,type}},estado:'normal'};
   };
   const intencionMove=(t,mem,d)=>{
@@ -261,11 +262,11 @@ const ArvisIA=(()=>{
   };
   const intencionDone=(t,mem,d)=>{
     const ts=(S.tasks||[]).filter(x=>x.date===today()&&!x.done);
-    if(!ts.length)return {texto:'Hoy no quedan micro-tareas por marcar. Si quieres, seguimos con otra cosa.'};
+    if(!ts.length)return {texto:'Hoy no quedan sesiones por marcar. Si quieres, seguimos con otra cosa.'};
     const c=d&&d.courseId?S.courses.find(x=>x.id===d.courseId):findCourse(t,S.courses||[]);
     const q=tx((d&&d.eleccion)||t),cands=c?ts.filter(x=>x.courseId===c.id):ts;
     const task=(d&&d.eventId&&cands.find(x=>x.id===d.eventId))||cands.find(x=>q.includes(tx(x.title)))||cands[0];
-    if(!task)return {texto:'¿Cuál micro-tarea marcamos?',pregunta:askFalta('doneTask',{},mem,['tarea'])};
+    if(!task)return {texto:'¿Cuál sesión marcamos?',pregunta:askFalta('doneTask',{},mem,['tarea'])};
     return {texto:`Marco como hecha «${task.title||'Estudio'}» de ${cname(task.courseId)} (${task.minutes} min).`,
       propuesta:{label:'Sí, marcar',kind:'doneTask',data:{taskId:task.id}},estado:'celebrando'};
   };
@@ -323,7 +324,7 @@ const ArvisIA=(()=>{
     }
     if(/\b(que hago ahora|que toca ahora|ahora que hago|por donde empiezo|que hago hoy)\b/.test(t)){
       const ts=(S.tasks||[]).filter(x=>x.date===today()&&!x.done);
-      if(!ts.length)return {texto:pick(['No quedan micro-tareas pendientes hoy. Puedes descansar tranquila/o o revisar lo que viene.','Hoy el plan está al día. Si quieres, podemos mirar la semana sin presión.']),estado:'celebrando',acciones:[goAction('hoy')]};
+      if(!ts.length)return {texto:pick(['No quedan sesiones pendientes hoy. Puedes descansar tranquila/o o revisar lo que viene.','Hoy el plan está al día. Si quieres, podemos mirar la semana sin presión.']),estado:'celebrando',acciones:[goAction('hoy')]};
       const ctx=useContext(),energia=ctx.energia;
       const orden=ts.slice().sort((a,b)=>{
         const ea=(S.events||[]).find(e=>e.id===a.eventId),eb=(S.events||[]).find(e=>e.id===b.eventId);
@@ -333,7 +334,7 @@ const ArvisIA=(()=>{
       });
       const one=orden[0];
       const notaEnergia=energia!=null&&energia<=2?' Con tu check-in de hoy, elijo la opción más ligera.':energia!=null?' Tu check-in de hoy ajusta la sugerencia.':' No usé datos de bienestar: no hay check-in con consentimiento.';
-      return {texto:pick([`Empieza por una sola cosa: ${one.title||'Estudio'} de ${cname(one.courseId)} (${one.minutes} min).`,`Te sugiero una sola micro-tarea ahora: ${one.title||'Estudio'} de ${cname(one.courseId)}, ${one.minutes} min.`])+notaEnergia,
+      return {texto:pick([`Empieza por una sola cosa: ${one.title||'Estudio'} de ${cname(one.courseId)} (${one.minutes} min).`,`Te sugiero una sola sesión ahora: ${one.title||'Estudio'} de ${cname(one.courseId)}, ${one.minutes} min.`])+notaEnergia,
         lista:[`${cname(one.courseId)} · ${one.title||'Estudio'} (${one.minutes} min)`],acciones:[goAction('hoy')],
         propuesta:{label:'Ya la hice',kind:'doneTask',data:{taskId:one.id}},estado:'normal'};
     }
@@ -361,7 +362,7 @@ const ArvisIA=(()=>{
     if(/\b(mueve|mover|cambia|cambiar|corre|correr|pasa|pasar|traslada)\b/.test(t)&&IA_EVAL.test(t))return intencionMove(t,mem,null);
     if(/\b(agrega|agregar|anota|anotar|anade|registra|registrar|pon|ponme|crea|crear)\b/.test(t)&&IA_EVAL.test(t))return intencionAdd(t,mem,null);
     if(/\b(elimina|eliminar|borra|borrar|quita|quitar|saca|sacar)\b/.test(t)&&IA_EVAL.test(t))return intencionDel(t,mem,null);
-    if(/\b(marca|marcar|ya hice|complete|completé|termine|terminé)\b/.test(t)&&/micro.?tarea|tarea/.test(t))return intencionDone(t,mem,null);
+    if(/\b(marca|marcar|ya hice|complete|completé|termine|terminé)\b/.test(t)&&/micro.?tarea|tarea|sesion/.test(t))return intencionDone(t,mem,null);
     if(/\b(saque|saqué|obtuve|registra nota|registrar nota|anota nota|me fue|calificacion|calificación)\b/.test(t)&&/\b(nota|saque|saqué|obtuve|calificacion|calificación)\b/.test(t))return intencionNota(t,mem,null);
     if(/\b(estudiar|estudio|bloque de estudio|agendar estudio)\b/.test(t))return intencionStudy(t,mem,null);
     if(/\b(reorganiza|replanifica|reprograma|reordena)\b|modo suave|baja(r)? la carga|estoy (muy )?(cansad|agotad|colapsad)|no alcanzo|me atrase/.test(t)){
@@ -374,8 +375,8 @@ const ArvisIA=(()=>{
       const ts=(S.tasks||[]).filter(x=>x.date===today()&&!x.done),cap=capFor(today()),hecho=doneToday();
       const check=typeof ci==='function'?ci(today()):null;
       const privacidad=check?'Tu check-in de hoy ajusta la capacidad.':'No usé datos de bienestar: no hay check-in con consentimiento.';
-      if(!ts.length)return {estado:hecho?'celebrando':'normal',texto:pick([hecho?`Hoy ya sumaste ${hecho} min y no quedan micro-tareas. Puedes descansar tranquila/o. ${privacidad}`:`No tienes micro-tareas para hoy. Si agregas fechas, armo un plan liviano. ${privacidad}`,`Hoy está despejado. Podemos dejarlo así. ${privacidad}`]),acciones:[goAction('hoy')]};
-      return {texto:`Para hoy tienes ${ts.length} micro-tarea(s). Capacidad ~${cap} min · ${hecho} min registrados. ${privacidad}`,
+      if(!ts.length)return {estado:hecho?'celebrando':'normal',texto:pick([hecho?`Hoy ya sumaste ${hecho} min y no quedan sesiones. Puedes descansar tranquila/o. ${privacidad}`:`No tienes sesiones para hoy. Si agregas fechas, armo un plan liviano. ${privacidad}`,`Hoy está despejado. Podemos dejarlo así. ${privacidad}`]),acciones:[goAction('hoy')]};
+      return {texto:`Para hoy tienes ${ts.length} sesión(es). Capacidad ~${cap} min · ${hecho} min registrados. ${privacidad}`,
         lista:ts.slice(0,6).map(x=>`${cname(x.courseId)} · ${x.title||'Estudio'} (${x.minutes} min)`),acciones:[goAction('hoy')]};
     }
     if(/\b(proxim|evaluacion|certamen|prueba|control|entrega|examen|fecha)/.test(t)&&/\b(que|cuando|cuales|tengo|vienen|hay|proxim)/.test(t)){
