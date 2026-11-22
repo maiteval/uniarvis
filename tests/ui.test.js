@@ -290,6 +290,7 @@ const fs=require('fs');
   await onboard();
   await acceptConsent();
   await open('Ajustes','Datos de ejemplo');await p.click('text=Cargar datos de ejemplo');
+  if(await p.locator('#confirm-ok').isVisible().catch(()=>false))await p.click('#confirm-ok');   // ya había ramos: confirma el reemplazo
   await onboard();
   const screens=[['inicio','Inicio'],['hoy','Planificación','Hoy'],['semana','Planificación','Semana'],
     ['ramos','Académico','Ramos'],['syllabus','Académico','Fechas'],['notas','Académico','Notas'],
@@ -313,11 +314,12 @@ const fs=require('fs');
   ok('móvil muestra barra de navegación inferior',await p.locator('#mobile-nav .mobile-nav, .mobile-nav').first().isVisible());
   ok('móvil muestra subpestañas como chips',await p.locator('.subchips').isVisible());
   const head=await p.evaluate(()=>{
-    const h=document.querySelector('header').getBoundingClientRect(),b=document.getElementById('help-btn'),wrap=document.querySelector('.subchips-wrap');
-    const r=b&&b.getBoundingClientRect(),w=wrap&&wrap.getBoundingClientRect();
-    return {ancho:Math.round(h.width),alto:Math.round(h.height),ayuda:!!(r&&w&&r.top>=w.top-4&&r.bottom<=w.bottom+4&&r.right<=w.right+1)};
+    const h=document.querySelector('header').getBoundingClientRect(),b=document.getElementById('help-btn');
+    const r=b&&b.getBoundingClientRect();
+    const tapa=r&&[...document.querySelectorAll('.subchip')].some(c=>{const k=c.getBoundingClientRect();return k.left<r.right&&k.right>r.left&&k.top<r.bottom&&k.bottom>r.top});
+    return {ancho:Math.round(h.width),alto:Math.round(h.height),ayuda:!!(r&&r.top>=h.top&&r.bottom<=h.bottom&&!tapa)};
   });
-  ok('header móvil compacto, a ancho completo y ? alineado con las subpestañas',head.ancho===390&&head.alto<=60&&head.ayuda,JSON.stringify(head));
+  ok('header móvil compacto, a ancho completo y ? en el header sin tapar subpestañas',head.ancho===390&&head.alto<=60&&head.ayuda,JSON.stringify(head));
   await p.screenshot({path:shots+'/mobile-hoy.png',fullPage:false});
   await open('Planificación','Semana');
   ok('Semana móvil usa agenda vertical',await p.locator('.agenda-movil').isVisible()&&!await p.locator('.calwrap').isVisible());

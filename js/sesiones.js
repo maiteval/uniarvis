@@ -52,8 +52,9 @@ function nextSessionHtml(){
     <div class="hero-body">
       ${typeof arvisOn==='function'&&arvisOn()?`<img class="hero-arvis" src="icons/arvis/arvis-${n.today?'estudiando':'normal'}.svg" alt="">`:''}
       <div class="hero-main">
-        <h2 id="hero-title">${esc(t.title)}</h2>
-        <p class="hero-meta"><span aria-hidden="true" class="dot" style="background:${ccolor(t.courseId)}"></span>${esc(cname(t.courseId))} · ${esc(when)} · ${t.minutes} min ${kind}${t.pinned?' <span class="tag">Fijada por ti</span>':''}</p>
+        <h2 id="hero-title">${esc(typeof sessionHead==='function'?sessionHead(t).main:t.title)}</h2>
+        <p class="hero-tech">${esc(t.title)}</p>
+        <p class="hero-meta"><span aria-hidden="true" class="dot" style="background:${ccolor(t.courseId)}"></span>${esc(when)} · ${t.minutes} min ${kind}${t.pinned?' <span class="tag">Fijada por ti</span>':''}</p>
         ${t.hint?`<p class="hero-hint">${esc(t.hint)}</p>`:''}
         ${t.why?`<details><summary>Por qué esta sesión</summary><p class="mute">${esc(t.why)}</p></details>`:''}
       </div></div>

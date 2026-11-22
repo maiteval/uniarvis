@@ -345,7 +345,7 @@ function topicsMasteryRow(t){
       `<button type="button" class="chip-btn ${t.mastery===i?'on':''}" aria-pressed="${t.mastery===i}" data-focus-id="tm-${t.courseId}-${t.id}-${i}" onclick="setTopicMastery('${t.id}',${i})">${l}</button>`).join('')}</span></div>`;
 }
 function topicsEventHtml(ev){
-  const ts=eventTopics(ev),cov=topicCoverage(ev),editing=topicEditEvent===ev.id,open=!ts.length||editing||!!topicPlanWarnings[ev.id];
+  const ts=eventTopics(ev),cov=topicCoverage(ev),editing=topicEditEvent===ev.id,open=editing||!!topicPlanWarnings[ev.id];   // cerrada por defecto: la vista Fechas no se alarga con un editor por evaluación
   const editor=`<div class="topic-editor"><label class="mute" for="te-${ev.id}">Temas que entran (uno por línea)</label>
     <textarea id="te-${ev.id}" rows="4" placeholder="Primera ley&#10;Entalpía&#10;Ciclos de potencia">${esc(ts.map(t=>t.name).join('\n'))}</textarea>
     <div class="row" style="margin-top:6px"><button class="btn" data-focus-id="te-save-${ev.id}" onclick="saveEventTopics('${ev.id}',document.getElementById('te-${ev.id}').value)">Guardar temas</button>

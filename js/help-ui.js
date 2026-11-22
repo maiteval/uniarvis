@@ -12,8 +12,8 @@ function placeHelpButton(key){
     btn.title='Ayuda';btn.setAttribute('aria-label','Ayuda');btn.textContent='?';
     btn.onclick=()=>openHelp(helpBtnKey);
   }
-  const mobile=window.matchMedia&&window.matchMedia('(max-width:640px)').matches;
-  const target=(mobile&&document.querySelector('.subchips-wrap'))||document.querySelector('.hwrap');
+  // Siempre en el header: así nunca tapa las subpestañas en el celular.
+  const target=document.querySelector('.hwrap');
   if(target&&btn.parentNode!==target)target.appendChild(btn);
 }
 

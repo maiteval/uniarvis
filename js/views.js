@@ -171,6 +171,12 @@ function institutionPreviewHtml(){
       <button class="btn sec" data-focus-id="inst-import-later" onclick="cancelInstitutionImport()">Ahora no</button></div>
   </div></div>`;
 }
+function homeCritInfo(){
+  const t0=today(),crit=criticalClusters().filter(g=>diffDays(t0,g.start)<=28)[0];
+  if(!crit)return null;
+  const n=crit.events.filter(e=>!e.institution).length;
+  return {title:`Semana exigente del ${dshort(crit.start)} al ${dshort(crit.end)}.`,text:!n?'Semana de certámenes de la UdeC.':`${n===1?'1 fecha importante':n+' fechas importantes'} juntas.`};
+}
 function homeNotice(){
   const t0=today();
   const crit=criticalClusters().filter(g=>diffDays(t0,g.start)<=28)[0];
@@ -203,9 +209,9 @@ function icsPendingHtml(){
 function institutionDoneNotice(){
   if(!instImportNotice||!S.courses.some(c=>importedCourse(c)&&!hasSyllabus(c.id)))return '';
   return `<div class="banner inst-done" id="inst-import-done"><b>Listo. Lo único que falta es el syllabus de cada ramo.</b><br>
-    Sube los syllabus para afinar las fechas y el plan. <button class="lnk" onclick="go('syllabus')">Ir a Académico → Fechas</button>
-    <button class="lnk" onclick="dismissInstitutionDone()">Entendido</button>
-    <span class="tag inst-example">Datos de ejemplo</span></div>`;
+    Sube los syllabus para afinar las fechas y el plan.
+    <div class="row" style="margin-top:8px"><button class="btn sec sm" onclick="go('syllabus')">Ir a Académico → Fechas</button>
+    <button class="btn sec sm" onclick="dismissInstitutionDone()">Entendido</button></div></div>`;
 }
 const aiDemoTag=()=>`<span class="tag inst-example ai-demo-tag" title="Respuestas generadas en tu dispositivo, sin IA real" aria-label="Respuestas generadas en tu dispositivo, sin IA real">IA · demo</span>`;
 const aiSyllabusOn=()=>typeof isInstitutional==='function'&&isInstitutional()&&typeof ArvisIA!=='undefined';
@@ -258,12 +264,13 @@ function weeklyLista(items){
   if(!items||!items.length)return '';
   return `<ul>${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
 }
-function weeklyInicioHtml(){
+function weeklyInicioHtml(extra){
   const res=weeklyResumen(),semana=mondayOf(today());
   if(!res||S.weeklySummary&&S.weeklySummary.dismissedWeek===semana)return '';
+  const crit=extra?`<p class="weekly-crit"><b>${esc(extra.title)}</b> ${esc(extra.text)}</p>`:'';
   return `<div class="card" id="weekly-inicio"><div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px">
     <div><h3 style="margin:0">${esc(res.titulo)}</h3><span class="mute">Un vistazo corto a los próximos 7 días</span></div>${aiDemoTag()}</div>
-    <p>${esc(res.parrafos[0]||'')}</p>
+    <p>${esc(res.parrafos[0]||'')}</p>${crit}
     ${res.prioridades.length?`<p class="mute" style="margin:6px 0"><b>Prioridad:</b> ${esc(res.prioridades[0])}</p>`:''}
     <div class="row" style="margin-top:8px"><button class="btn sec" onclick="go('semana')">Ver resumen</button>
       <button class="lnk" onclick="dismissWeeklySummary()">Ahora no</button></div></div>`;
@@ -302,20 +309,26 @@ function viewInicio(){
   ${isInstitutional()?`<div class="inst-inicio"><span class="inst-identity"><b>${esc(currentInstitution().name)}</b></span><span class="tag inst-example">Prototipo</span></div>`:''}
   <div class="home-head"><div><h2>Hola, ${name}</h2><p class="mute" style="margin-bottom:0">Elige por dónde empezar hoy.</p></div></div>
   ${arvisInicioHtml()}
-  ${weeklyInicioHtml()}
-  ${institutionDoneNotice()}
-  ${homeNotice()}
-  ${arvisAlertaHtml()}
+  ${inicioDestacadoHtml()}
   <div class="home-menu">${cards}</div>`;
+}
+/* Inicio muestra a lo más UNA tarjeta destacada (además de Arvis), para que las 5 secciones se vean sin scroll largo.
+   Prioridad: evaluación cercana sin plan > aviso post-importación > resumen semanal (con la semana exigente dentro) > aviso suelto. */
+function inicioDestacadoHtml(){
+  const alerta=arvisAlertaHtml();if(alerta)return alerta;
+  const done=institutionDoneNotice();if(done)return done;
+  const weekly=weeklyInicioHtml(homeCritInfo());if(weekly)return weekly;
+  return homeNotice();
 }
 function viewPerfil(){
   const p=S.profile||{},inst=typeof isInstitutional==='function'&&isInstitutional()?currentInstitution():null;
   const u=inst?inst.name:(p.university||'');
-  const readonlyField=(id,label,value,max)=>`<label>${label}<input id="${id}" type="text" maxlength="${max}" value="${esc(value||'')}" readonly aria-readonly="true"></label>`;
+  // En modo institucional estos datos vienen de la cuenta UdeC: se muestran como texto, no como campos editables.
+  const readonlyField=(id,label,value)=>`<div class="ro-field"><span class="mute">${label}</span><b>${esc(value||'—')}</b><input id="${id}" type="hidden" readonly value="${esc(value||'')}"></div>`;
   const identityFields=inst
     ?`${readonlyField('pf-name','Nombre',p.name,60)}${readonlyField('pf-career','Carrera / Programa',p.career,80)}
       ${readonlyField('pf-university','Universidad',u,80)}
-      <p class="mute" style="margin:0">Vienen de tu cuenta UdeC. <span class="tag inst-example">Prototipo</span> Datos de ejemplo: en la versión real vienen de tu cuenta UdeC.</p>`
+      <p class="mute" style="margin:0">Vienen de tu cuenta UdeC. <span class="tag inst-example">Prototipo</span></p>`
     :`<label>Nombre<input id="pf-name" type="text" maxlength="60" value="${esc(p.name||'')}"></label>
       <label>Carrera / Programa<input id="pf-career" type="text" maxlength="80" value="${esc(p.career||'')}"></label>
       <label>Universidad<select id="pf-university" data-focus-id="pf-university">
@@ -346,9 +359,8 @@ function viewCuenta(){
   return `${screenHelp('cuenta')}<div class="card"><h2>Cuenta</h2>
     <p class="mute" style="margin-top:0">Cambiar de modo no borra ningún dato: solo cambia la apariencia, los contactos precargados y el calendario institucional.</p>
     <div class="account-status"><span class="tag">Modo: <b>${modo}</b></span>
-      ${i?`<span class="inst-identity"><b>${esc(i.name)}</b></span>`:'<span class="mute">Sin universidad vinculada</span>'}</div>
-    ${i?`<p class="mute">Correo: ${esc(a.email||'—')} · Vinculada el ${a.linkedAt?dshort(a.linkedAt):'—'}</p>
-      <p>${esc(i.name)} <span class="tag inst-example">Prototipo</span></p>`:''}
+      ${i?`<span class="inst-identity"><b>${esc(i.name)}</b></span> <span class="tag inst-example">Prototipo</span>`:'<span class="mute">Sin universidad vinculada</span>'}</div>
+    ${i?`<p class="mute">Correo: ${esc(a.email||'—')} · Vinculada el ${a.linkedAt?dshort(a.linkedAt):'—'}</p>`:''}
     <div class="row">
       ${i?'<button class="btn del" onclick="disconnectInstitution()">Desconectar de mi universidad</button>'
         :'<button class="btn" data-focus-id="connect-institution" onclick="startInstitutionalFlow(\'cuenta\')">Conectar con mi universidad</button>'}
@@ -411,7 +423,14 @@ function energyBoxes(cap,min,done){
   return h+'</div><div class="mute">Cada caja = 25 min. Borde ámbar = tu mínimo de hoy. Última caja = tu capacidad de hoy.</div>';
 }
 const evDate=t=>{const e=S.events.find(x=>x.id===t.eventId);return e?e.date:'9999'};
-function taskRow(t,locked){
+/* Encabezado de una sesión: primero el ramo y el tema (lo que la distingue), luego la técnica. */
+function sessionHead(t){
+  const tn=typeof topicNames==='function'?topicNames(t.topicIds):[];
+  const ev=t.eventId&&S.events.find(e=>e.id===t.eventId);
+  const what=tn.length?tn.slice(0,2).join(', ')+(tn.length>2?'…':''):(ev?`Preparar ${ev.title}`:'');
+  return {main:cname(t.courseId)+(what?' · '+what:''),sub:t.title||''};
+}
+function taskRow(t,locked,isNext){
   const deck=t.kind==='recuperar'&&(S.tools&&S.tools.flashcards&&S.tools.flashcards.decks||[]).find(d=>d.courseId===t.courseId);
   const fcBtn=deck?`<button class="btn sec sm" data-focus-id="fc-task-${t.id}" onclick="openCourseFlashcards('${t.courseId}')">Repasar flashcards de este ramo</button>`:'';
   const kind=t.kind?`<span class="tag">${esc(KIND_LABEL[t.kind]||t.kind)}</span>`:'';
@@ -423,12 +442,13 @@ function taskRow(t,locked){
   const mover=t.done?'':`<button class="btn sec sm" data-focus-id="move-${t.id}" aria-expanded="${typeof taskMoveId!=='undefined'&&taskMoveId===t.id}" onclick="openMoveTask('${t.id}')">Mover</button>`;
   const fb='';                                           // "¿Cómo te fue?" se muestra arriba, en la tarjeta de la sesión
   const form=!t.done&&typeof taskMoveId!=='undefined'&&taskMoveId===t.id&&typeof moveFormHtml==='function'?moveFormHtml(t):'';
-  return `<div class="task session-row ${t.done?'done':''}"><input type="checkbox" aria-label="${t.done?'Marcar como pendiente':'Marcar como hecha'}: ${esc(t.title)}" data-focus-id="task-${t.id}" ${t.done?'checked':''} ${locked&&!t.done?'disabled':''} onchange="toggleTask('${t.id}')">
+  const head=sessionHead(t);
+  return `<div class="task session-row ${t.done?'done':''} ${isNext?'is-next':''}"><input type="checkbox" aria-label="${t.done?'Marcar como pendiente':'Marcar como hecha'}: ${esc(head.main)}" data-focus-id="task-${t.id}" ${t.done?'checked':''} ${locked&&!t.done?'disabled':''} onchange="toggleTask('${t.id}')">
     <span aria-hidden="true" class="dot" style="background:${ccolor(t.courseId)}"></span>
-    <div class="t session-body"><p class="task-title">${esc(t.title)}</p>
-      <p class="task-meta mute">${esc(cname(t.courseId))} · ${esc(slot)} · ${t.minutes} min${chrono}</p>
-      <div class="task-tags">${kind}${t.pinned?'<span class="tag">Fijada por ti</span>':''}</div>
-      ${hint}${why}${fb}
+    <div class="t session-body"><p class="task-title">${esc(head.main)}</p>
+      <p class="task-meta mute">${esc(head.sub)}<br>${esc(slot)} · ${t.minutes} min${chrono}</p>
+      <div class="task-tags">${isNext?'<span class="tag next-tag">Siguiente · arriba</span>':''}${kind}${t.pinned?'<span class="tag">Fijada por ti</span>':''}</div>
+      ${isNext?'':hint+why}${fb}
       ${pom||mover||fcBtn?`<div class="task-actions">${pom}${mover}${fcBtn}</div>`:''}${form}</div></div>`;
 }
 function agendaItems(date){
@@ -440,7 +460,7 @@ function agendaItems(date){
   S.tasks.filter(t=>t.date===date).forEach(t=>{
     const slot=t.slotStart&&t.slotEnd?`${t.slotStart}–${t.slotEnd}`:'Cuando puedas';
     items.push({time:t.slotStart||'',order:2,done:t.done,
-      html:`<b>${esc(t.title)}</b><br><span class="mute">${esc(slot)} · ${t.minutes} min</span>`});
+      html:`<b>${esc(sessionHead(t).main)}</b><br><span class="mute">${esc(t.title)}<br>${esc(slot)} · ${t.minutes} min</span>`});
   });
   if(typeof socialAgendaItems==='function')socialAgendaItems(date).forEach(x=>items.push(x));
   return items.sort((a,b)=>String(a.time||'99:99').localeCompare(String(b.time||'99:99'))||a.order-b.order);
@@ -454,9 +474,14 @@ function certamenOffersHtml(){
   const cs=certCandidates();if(!cs.length)return '';
   return `<div class="card" id="certamen-offers"><h3>Preparar en modo certamen</h3>
     <p class="mute" style="margin-top:0">Faltan 7 días o menos. Puedes cambiar las sesiones por un plan por fases; no se activa solo.</p>
-    ${cs.map(e=>`<div class="task"><span aria-hidden="true" class="dot" style="background:${ccolor(e.courseId)}"></span>
-      <span style="flex:1"><b>${esc(e.title)}</b><br><span class="mute">${esc(cname(e.courseId))} · ${dshort(e.date)} · ${diffDays(today(),e.date)} día(s)</span></span>
-      <button class="btn sec" data-focus-id="cert-open-${e.id}" onclick="openCertamen('${e.id}')">Preparar en modo certamen</button></div>`).join('')}</div>`;
+    ${certOfferRow(cs[0])}
+    ${cs.length>1?`<details class="cert-more" id="cert-more"><summary>Ver los otros ${cs.length-1}</summary>${cs.slice(1).map(certOfferRow).join('')}</details>`:''}</div>`;
+}
+function certOfferRow(e){
+  const d=diffDays(today(),e.date);
+  return `<div class="task cert-offer"><span aria-hidden="true" class="dot" style="background:${ccolor(e.courseId)}"></span>
+      <span style="flex:1;min-width:0"><b>${esc(e.title)}</b><br><span class="mute">${esc(cname(e.courseId))} · ${dshort(e.date)} · ${d===1?'1 día':d+' días'}</span></span>
+      <button class="btn sec" data-focus-id="cert-open-${e.id}" onclick="openCertamen('${e.id}')">Preparar</button></div>`;
 }
 function certamenDraftHtml(){
   if(!certDraft)return '';
@@ -524,8 +549,9 @@ function viewHoy(){
   }
   if(S.moved&&S.moved.date===t0)notes.push(`Reacomodé ${S.moved.n} sesión(es) que quedaron de días anteriores. Ya están repartidas en los próximos días; no se acumula nada.`);
   let rows='',acc=0;
+  const heroId=typeof nextSessionTask==='function'&&!(typeof sessionDoneId!=='undefined'&&sessionDoneId)?((nextSessionTask()||{}).task||{}).id:null;
   todays.forEach((t,i)=>{
-    rows+=taskRow(t,locked);
+    rows+=taskRow(t,locked,!t.done&&t.id===heroId);
     if(!t.done){acc+=t.minutes;if(acc>=50&&todays.slice(i+1).some(x=>!x.done)){rows+=`<div class="pause">🌿 <span style="flex:1">Pausa de 5 min entre sesiones: estírate o haz 1 minuto de respiración.</span><button class="btn sec" onclick="goBreath('larga')">Respirar</button></div>`;acc=0}}
   });
   const opts=S.courses.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
@@ -601,26 +627,29 @@ function viewSemana(){
   h+='<div class="agenda-movil">'+days.map((d,i)=>agendaHtml(d,`${DAYS[i]} ${parse(d).getDate()}${d===t0?' · hoy':''}`)).join('')+'</div>';
   return h+institutionCalendarHtml(days)+criticalHtml();
 }
+const hasScore=g=>!!g&&g.score!==undefined&&g.score!==null&&g.score!==''&&isFinite(+g.score);
 const gradeTxt=v=>Number(v).toFixed(1).replace('.',',');
 const roundedAvg=(v,on)=>v==null||!isFinite(v)?null:(on?Math.round((v+1e-9)*10)/10:Math.round(v*100)/100);
 function nextCourseEvent(cid){
   return S.events.filter(e=>e.courseId===cid&&e.date>=today()).sort((a,b)=>a.date.localeCompare(b.date)||a.title.localeCompare(b.title))[0]||null;
 }
 function gradeSummary(grades,c){
-  const gs=grades||[];let wsum=0,ws=0;gs.forEach(g=>{const w=+g.weight||0,s=+g.score||0;if(w>0){wsum+=w;ws+=s*w}});
+  const gs=grades||[];let wsum=0,ws=0;gs.forEach(g=>{const w=+g.weight||0;if(w>0&&hasScore(g)){wsum+=w;ws+=(+g.score)*w}}); // las evaluaciones sin nota (futuras) suman al restante
+  const tw=gs.reduce((a,g)=>a+(+g.weight>0?+g.weight:0),0);
   const avg=wsum?ws/wsum:null,pass=c&&Number.isFinite(c.passGrade)?c.passGrade:4,round=!c||c.roundFinal!==false;
   const rem=100-wsum;
-  return {avg,wsum:Math.round(wsum*100)/100,rem:Math.round(rem*100)/100,pass,round,shown:roundedAvg(avg,round),need:rem>0?(pass*100-ws)/rem:null};
+  return {avg,tw:Math.round(tw*100)/100,wsum:Math.round(wsum*100)/100,rem:Math.round(rem*100)/100,pass,round,shown:roundedAvg(avg,round),need:rem>0?(pass*100-ws)/rem:null};
 }
-function gradesCard(c){
+function gradesCard(c,abierto){
   const gs=c.grades||[],sum=gradeSummary(gs,c);
-  const rows=gs.map(g=>`<tr><td><input data-focus-id="grade-${c.id}-${g.id}-name" value="${esc(g.name)}" onchange="setGrade('${c.id}','${g.id}','name',this.value)"></td>
-    <td><input data-focus-id="grade-${c.id}-${g.id}-score" type="text" inputmode="decimal" style="width:90px" value="${comma(g.score)}" onchange="setGrade('${c.id}','${g.id}','score',this.value)"></td>
-    <td><input data-focus-id="grade-${c.id}-${g.id}-weight" type="text" inputmode="decimal" style="width:80px" value="${comma(g.weight)}" onchange="setGrade('${c.id}','${g.id}','weight',this.value)">%</td>
-    <td><button class="btn del" data-focus-id="del-grade-${g.id}" onclick="delGrade('${c.id}','${g.id}')">Quitar</button></td></tr>`).join('');
-  const weightNote=Math.abs(sum.rem)>0.001?`<div class="banner info" style="margin:10px 0 0">${sum.rem>0
-    ?`Faltan ${comma(String(sum.rem))} % de ponderación por registrar. Puedes completarlo cuando tengas las notas.`
-    :`La ponderación registrada supera el 100 % en ${comma(String(Math.abs(sum.rem)))} %. Vale la pena revisarla, sin apuro.`}</div>`:'';
+  const rows=gs.map(g=>`<tr class="grade-row ${hasScore(g)?'':'pending'}"><td class="g-name"><input data-focus-id="grade-${c.id}-${g.id}-name" aria-label="Evaluación" value="${esc(g.name)}" onchange="setGrade('${c.id}','${g.id}','name',this.value)"></td>
+    <td class="g-score"><input data-focus-id="grade-${c.id}-${g.id}-score" type="text" inputmode="decimal" aria-label="Nota de ${esc(g.name)}" placeholder="${hasScore(g)?'Nota':'Pendiente'}" value="${hasScore(g)?comma(g.score):''}" onchange="setGrade('${c.id}','${g.id}','score',this.value)"></td>
+    <td class="g-weight"><span class="pct-field"><input data-focus-id="grade-${c.id}-${g.id}-weight" type="text" inputmode="decimal" aria-label="Ponderación de ${esc(g.name)}" value="${comma(g.weight)}" onchange="setGrade('${c.id}','${g.id}','weight',this.value)"><span aria-hidden="true">%</span></span></td>
+    <td class="g-del"><button class="btn del" data-focus-id="del-grade-${g.id}" onclick="delGrade('${c.id}','${g.id}')">Quitar</button></td></tr>`).join('');
+  const twRem=Math.round((100-sum.tw)*100)/100;  // incluye evaluaciones pendientes (sin nota)
+  const weightNote=Math.abs(twRem)>0.001?`<div class="banner info" style="margin:10px 0 0">${twRem>0
+    ?`Faltan ${comma(String(twRem))} % de ponderación por registrar. Puedes completarlo cuando tengas las notas.`
+    :`La ponderación registrada supera el 100 % en ${comma(String(Math.abs(twRem)))} %. Vale la pena revisarla, sin apuro.`}</div>`:'';
   let needMsg='';
   if(!gs.length)needMsg='<div class="mute" style="margin-top:6px">Registra una nota para ver cuánto necesitas en lo que queda.</div>';
   else if(sum.need==null)needMsg=sum.avg!=null&&sum.avg>=sum.pass
@@ -633,10 +662,13 @@ function gradesCard(c){
   const nextTxt=gs.length?`<div class="mute" style="margin-top:6px">${next
     ?`Próxima evaluación por fecha: <b>${esc(next.title)}</b> (${dshort(next.date)} · ${TYPE_LABEL[next.type]}) — nota necesaria en ella: <b>${needShown}</b>.`
     :'Aún no registraste una fecha próxima para este ramo; la misma nota aplica a lo que falte.'}</div>`:'';
-  return `<div class="card grades-card"><div class="row" style="justify-content:space-between;align-items:flex-start">
-      <div><h3 style="margin:0"><span aria-hidden="true" class="dot" style="background:${c.color};display:inline-block;margin-right:6px"></span>${esc(c.name)}</h3>
-      ${importedCourse(c)&&!hasSyllabus(c.id)?'<div class="course-tags"><span class="tag inst-pending">Syllabus pendiente</span></div>':''}
-      <div class="mute">Promedio actual (ponderado): <b class="hud-num">${sum.shown!=null?comma(sum.shown.toFixed(sum.round?1:2)):'—'}</b> · Ponderado: ${comma(String(sum.wsum))}% · Restante: ${comma(String(Math.max(0,sum.rem)))}%</div>
+  const prom=sum.shown!=null?comma(sum.shown.toFixed(sum.round?1:2)):'—';
+  return `<details class="card grades-card" id="grades-${c.id}" ${abierto?'open':''}>
+    <summary class="grades-sum"><span class="grades-sum-name"><span aria-hidden="true" class="dot" style="background:${c.color}"></span><b>${esc(c.name)}</b></span>
+      <span class="grades-sum-avg"><b class="hud-num">${prom}</b> <span class="mute">· ${comma(String(sum.wsum))}% rendido</span></span></summary>
+    <div class="grades-body"><div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div>${importedCourse(c)&&!hasSyllabus(c.id)?'<div class="course-tags"><span class="tag inst-pending">Syllabus pendiente</span></div>':''}
+      <div class="mute">Promedio actual (ponderado): <b class="hud-num">${prom}</b> · Ponderado: ${comma(String(sum.wsum))}% · Restante: ${comma(String(Math.max(0,sum.rem)))}%</div>
       <div class="row" style="margin-top:8px"><label class="mute">Nota de aprobación <input id="gp-${c.id}" type="text" inputmode="decimal" style="width:70px" value="${gradeTxt(sum.pass)}" onchange="setGradeOption('${c.id}','passGrade',this.value)"></label>
         <label class="mute"><input type="checkbox" ${sum.round?'checked':''} onchange="setGradeOption('${c.id}','roundFinal',this.checked)"> Redondear promedio a 1 decimal</label></div></div></div>
       ${weightNote}
@@ -646,7 +678,7 @@ function gradesCard(c){
       <input id="gn-${c.id}" placeholder="Evaluación (ej. Certamen 1)">
       <input id="gs-${c.id}" type="text" inputmode="decimal" placeholder="Nota" style="width:90px">
       <input id="gw-${c.id}" type="text" inputmode="decimal" placeholder="%" style="width:80px">
-      <button class="btn sec" data-focus-id="add-grade-${c.id}" onclick="addGrade('${c.id}')">Agregar nota</button></div></div>`;
+      <button class="btn sec" data-focus-id="add-grade-${c.id}" onclick="addGrade('${c.id}')">Agregar nota</button></div></div></details>`;
 }
 function demoCardHtml(){
   return `<div class="card"><h3>Datos de ejemplo</h3>
@@ -687,10 +719,14 @@ function viewRamos(){
 }
 function viewSyllabus(){
   const opts=S.courses.map(c=>`<option value="${c.id}" ${c.id===sylCourse?'selected':''}>${esc(c.name)}</option>`).join('');
-  const sorted=[...S.events].sort((a,b)=>a.date.localeCompare(b.date));
+  const sorted=[...S.events].sort((a,b)=>a.date.localeCompare(b.date)),t0=today();
+  const proximas=sorted.filter(e=>e.date>=t0),pasadas=sorted.filter(e=>e.date<t0);
+  const eventRow=e=>`<div class="task"><span aria-hidden="true" class="dot" style="background:${ccolor(e.courseId)}"></span>
+      <span style="flex:1;min-width:0">${dshort(e.date)} · <b>${TYPE_LABEL[e.type]}</b> · ${esc(cname(e.courseId))} — ${esc(e.title)}${e.early?' <span class="tag">margen extra</span>':''}</span>
+      <button class="btn del" onclick="delEvent('${e.id}')">Quitar</button></div>`;
   return `${screenHelp('syllabus')}
   ${S.courses.filter(c=>importedCourse(c)&&!hasSyllabus(c.id)).length?`<div class="banner info inst-syllabus-pending"><b>Syllabus pendiente</b><br>
-    ${S.courses.filter(c=>importedCourse(c)&&!hasSyllabus(c.id)).map(c=>esc(c.name)).join(', ')}. Sube el syllabus de cada ramo para afinar las fechas. <span class="tag inst-example">Datos de ejemplo</span></div>`:''}
+    ${S.courses.filter(c=>importedCourse(c)&&!hasSyllabus(c.id)).map(c=>esc(c.name)).join(', ')}. Sube el syllabus de cada ramo para afinar las fechas.</div>`:''}
   ${certamenOffersHtml()}${certamenDraftHtml()}${certamenActiveHtml()}
   ${aiSyllabusOn()?aiSyllabusHtml():''}
   ${typeof topicsCardHtml==='function'?topicsCardHtml():''}
@@ -716,16 +752,16 @@ function viewSyllabus(){
       <select id="ey">${Object.entries(TYPE_LABEL).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
       <button class="btn" data-focus-id="add-event" onclick="addEvent()">Agregar manualmente</button>
       <button class="btn sec" onclick="exportICS()" ${S.events.length?'':'disabled'}>Exportar a calendario (.ics)</button></div>
-    ${sorted.map(e=>`<div class="task"><span aria-hidden="true" class="dot" style="background:${ccolor(e.courseId)}"></span>
-      <span style="flex:1">${dshort(e.date)} · <b>${TYPE_LABEL[e.type]}</b> · ${esc(cname(e.courseId))} — ${esc(e.title)}${e.early?' <span class="tag">margen extra</span>':''}</span>
-      <button class="btn del" onclick="delEvent('${e.id}')">Quitar</button></div>`).join('')||'<div class="empty">Aún no hay fechas registradas. Analiza un syllabus o usa el formulario y toca <b>Agregar manualmente</b>.</div>'}
+    ${sorted.length?`${proximas.map(eventRow).join('')||'<div class="empty">No quedan fechas próximas.</div>'}
+      ${pasadas.length?`<details class="past-events" id="past-events"><summary>Fechas pasadas (${pasadas.length})</summary>${pasadas.slice().reverse().map(eventRow).join('')}</details>`:''}`
+      :'<div class="empty">Aún no hay fechas registradas. Analiza un syllabus o usa el formulario y toca <b>Agregar manualmente</b>.</div>'}
    </div>
    ${demoCardHtml()}`;
 }
 function viewNotas(){
   return `${screenHelp('notas')}<div class="card"><h2>Notas</h2>
     <p class="mute" style="margin-top:0">Registra evaluaciones por ramo con su nota y ponderación (%). Puedes escribir 5,5 o 5.5: siempre mostramos coma decimal. Por ramo puedes ajustar la nota de aprobación (4,0 por defecto) y el redondeo del promedio a un decimal.</p>
-    ${S.courses.length?S.courses.map(gradesCard).join(''):'<div class="empty">Aún no tienes ramos. Ve a <b>Académico &gt; Ramos</b> y toca <b>Agregar</b> para crear uno.</div>'}
+    ${S.courses.length?S.courses.map((c,i)=>gradesCard(c,i===0)).join(''):'<div class="empty">Aún no tienes ramos. Ve a <b>Académico &gt; Ramos</b> y toca <b>Agregar</b> para crear uno.</div>'}
   </div>`;
 }
 function viewDatosEjemplo(){
@@ -813,23 +849,22 @@ function viewPausas(){
   ${pauseCard()}`;
 }
 function viewApoyo(){
-  const sp=S.support;
+  const sp=S.support,inst=isInstitutional();
   return `${screenHelp('apoyo')}
   <div class="card"><h2>Apoyo</h2>
     <p style="margin-top:0">Esta app te ayuda a organizarte y a cuidarte, pero <b>no reemplaza a un profesional de la salud</b>. Si algo de lo que sientes te pesa o dura varios días, hablarlo con alguien es una buena decisión, no una señal de debilidad.</p>
     <p class="mute" style="margin-bottom:0">Conviene buscar apoyo si hace semanas te cuesta dormir, comer o concentrarte, si te sientes sin ganas de nada o sobrepasado/a, o si estudiar se volvió fuente constante de angustia.</p></div>
   <div class="grid2">
     <div class="card"><h3>Apoyo en tu universidad</h3>
-      <p class="mute">Muchas universidades tienen atención psicológica o de bienestar estudiantil gratuita para sus alumnos. Revisa el contacto vigente en el sitio oficial de la tuya y guárdalo aquí para tenerlo a mano.</p>
-      ${isInstitutional()?institutionSupportHtml():''}
+      ${inst?institutionSupportHtml():`<p class="mute">Muchas universidades tienen atención psicológica o de bienestar estudiantil gratuita para sus alumnos. Revisa el contacto vigente en el sitio oficial de la tuya y guárdalo aquí para tenerlo a mano.</p>
       <div class="row" style="flex-direction:column;align-items:stretch">
         <input id="sn" placeholder="Nombre del servicio (ej. Bienestar estudiantil)" value="${esc(sp.name)}">
         <input id="sc" placeholder="Teléfono, correo o enlace" value="${esc(sp.contact)}">
-        <button class="btn" data-focus-id="save-support" onclick="saveSupport()">Guardar</button></div>
-      ${isInstitutional()?`<div class="inst-contact"><p class="mute">Si quieres que te contacten, se avisará al servicio de apoyo de ${esc(currentInstitution().short)}. El correo se prepara solo con tu nombre y tu correo institucional: <b>no se incluye ningún dato de bienestar</b> y no se hace ninguna petición de red.</p>
+        <button class="btn" data-focus-id="save-support" onclick="saveSupport()">Guardar</button></div>`}
+      ${inst?`<div class="inst-contact"><p class="mute">Si quieres que te contacten, se avisará al servicio de apoyo de ${esc(currentInstitution().short)}. El correo se prepara solo con tu nombre y tu correo institucional: <b>no se incluye ningún dato de bienestar</b> y no se hace ninguna petición de red.</p>
         <a class="btn" id="inst-contact-mailto" data-focus-id="inst-contact" href="${esc(institutionContactHref())}">Quiero que me contacten</a></div>`:''}
-      ${sp.name||sp.contact?'':`<div class="banner info" style="margin:10px 0 0">¿Estudias en la Universidad de Concepción? La DISE (Dirección de Servicios Estudiantiles) publica su contacto de Bienestar Estudiantil en bienestar@udec.cl y dise.udec.cl; pregunta ahí por apoyo en salud mental. <button class="lnk" onclick="fillUdeC()">Guardar estos datos</button></div>`}
-      ${sp.name||sp.contact?`<div class="banner lock" style="margin:10px 0 0"><b>${esc(sp.name||'Mi servicio de apoyo')}</b><br>${esc(sp.contact)}</div>`:''}
+      ${inst||sp.name||sp.contact?'':`<div class="banner info" style="margin:10px 0 0">¿Estudias en la Universidad de Concepción? La DISE (Dirección de Servicios Estudiantiles) publica su contacto de Bienestar Estudiantil en bienestar@udec.cl y dise.udec.cl; pregunta ahí por apoyo en salud mental. <button class="lnk" onclick="fillUdeC()">Guardar estos datos</button></div>`}
+      ${!inst&&(sp.name||sp.contact)?`<div class="banner lock" style="margin:10px 0 0"><b>${esc(sp.name||'Mi servicio de apoyo')}</b><br>${esc(sp.contact)}</div>`:''}
     </div>
     <div class="card"><h3>Líneas de ayuda en Chile</h3>
       <div class="task"><span style="flex:1"><b>Línea de Prevención del Suicidio</b><br><span class="mute">Marca *4141 desde un celular. Gratuita y de atención permanente.</span></span></div>
@@ -891,8 +926,8 @@ function viewSalud(){
     const nextEv=S.events.filter(e=>e.courseId===c.id&&e.type!=='control'&&e.date>=t0).sort((a,b)=>a.date.localeCompare(b.date))[0];
     const days2=nextEv?diffDays(t0,nextEv.date):null;
     let status='En equilibrio',col='var(--ok)';
-    if(a7<0.5){status='Poca atención';col='var(--warn)'}
-    else if(a7<0.85){status='Atención algo baja';col='var(--warn)'}
+    if(a7<0.5){status='Poca atención';col='var(--warn-text,var(--warn))'}
+    else if(a7<0.85){status='Atención algo baja';col='var(--warn-text,var(--warn))'}
     else if(a7>1.3){status='Mucha atención';col='var(--soft)'}
     return {c,target:tg(t0),vals,a7,status,col,nextEv,days2,risk:nextEv&&days2<=10&&a7<0.6};
   });

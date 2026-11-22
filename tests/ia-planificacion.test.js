@@ -111,6 +111,7 @@ const {chromium}=require('playwright');
 
   // Sin syllabus: escribir temas genera el plan
   await p.evaluate(()=>go('syllabus'));
+  await p.evaluate(()=>{const d=document.getElementById('topics-e4');if(d)d.open=true});
   ok('sin temas aparece el aviso para escribirlos',(await p.locator('#topics-e4').innerText()).includes('Para planificar por temas, sube el syllabus o escribe los temas'));
   await p.locator('#te-e4').fill('Cinemática\nDinámica\nTrabajo y energía');
   await p.locator('[data-focus-id="te-save-e4"]').click();

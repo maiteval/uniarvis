@@ -31,6 +31,16 @@ const path=require('path');
   ok('nota necesaria: caso normal',Math.abs(normal.need-11/3)<0.01&&normal.wsum===70&&normal.rem===30,JSON.stringify(normal.need));
   ok('nota necesaria y próxima evaluación en pantalla',normal.text.includes('3,7')&&normal.text.includes('Certamen 2')&&normal.text.includes('nota necesaria en ella'));
 
+  // Evaluaciones futuras (sin nota) no cuentan como rendidas ni muestran "undefined"
+  const pendiente=await p.evaluate(()=>{
+    const c=S.courses[0];
+    c.grades=[{id:'gp1',name:'C1',score:5,weight:20},{id:'gp2',name:'C2',score:3,weight:20},{id:'gp3',name:'Certamen final',weight:60}];save();render();
+    const s=gradeSummary(c.grades,c),card=document.querySelector('.grades-card');
+    return {avg:s.avg,wsum:s.wsum,rem:s.rem,html:card.innerHTML,falta:card.textContent.includes('Faltan')};
+  });
+  ok('evaluación sin nota: promedio solo con lo rendido',Math.abs(pendiente.avg-4)<0.001&&pendiente.wsum===40&&pendiente.rem===60,JSON.stringify({avg:pendiente.avg,wsum:pendiente.wsum,rem:pendiente.rem}));
+  ok('evaluación sin nota: no muestra "undefined" ni pide ponderación que ya está',!pendiente.html.includes('undefined')&&!pendiente.falta);
+
   const aprobado=await p.evaluate(()=>{
     const c=S.courses[0];c.grades=[{id:'g3',name:'C1',score:6,weight:99}];save();render();
     return document.querySelector('.grades-card').textContent;

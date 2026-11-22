@@ -280,7 +280,7 @@ const fs=require('fs');
     grades:S.courses.filter(c=>c.origin==='udec-demo').map(c=>gradeSummary(c.grades,c).need),diary:S.wellbeing.diary[0].note,
     old:S.courses.filter(c=>c.name==='Cálculo Numérico'&&!c.origin).length,notice:instImportNotice}));
   ok('no se duplica el ramo previo del mismo nombre',imported.c===5&&imported.udec===4&&imported.old===1,JSON.stringify(imported));
-  ok('se importan horario, fechas y notas sin tocar bienestar',imported.k===data.keepK&&imported.e===data.keepE&&imported.diary==='SECRETO_IMPORT'&&imported.grades.some(n=>n>0)&&imported.grades.some(n=>n===null),JSON.stringify(imported));
+  ok('se importan horario, fechas y notas sin tocar bienestar',imported.k===data.keepK&&imported.e===data.keepE&&imported.diary==='SECRETO_IMPORT'&&imported.grades.some(n=>n>0)&&imported.grades.every(n=>n!==null),JSON.stringify(imported));
   ok('se importan notas con su ponderación y nota necesaria calculada',await p.evaluate(()=>S.courses.filter(c=>c.origin==='udec-demo').some(c=>c.grades.some(g=>g.weight>0&&g.score!=null)&&gradeSummary(c.grades,c).need>2)));
   ok('Arvis avisa que falta el syllabus con enlace',imported.notice.includes('Listo. Lo único que falta es el syllabus')&&doneHtml.includes("go('syllabus')"),JSON.stringify({notice:imported.notice,done:doneHtml.slice(0,200)}));
   await p.evaluate(()=>go('syllabus'));
