@@ -256,6 +256,7 @@ function validState(j){
     if(!(k&&RX.id.test(k.id)&&RX.id.test(k.courseId)&&int(k.day,0,6)&&RX.time.test(k.start)&&RX.time.test(k.end)))return 'horario';
     if(k.origin!==undefined&&k.origin!=='udec-demo')return 'horario';
   }
+  if(j.personal!==undefined&&!(Array.isArray(j.personal)&&j.personal.length<=PERSONAL_MAX&&j.personal.every(validPersonal)))return 'mi horario';
   for(const e of j.events){
     if(!(e&&RX.id.test(e.id)&&RX.id.test(e.courseId)&&str(e.title,200)&&RX.date.test(e.date)&&Object.prototype.hasOwnProperty.call(TYPE_LABEL,e.type)))return 'fechas';
     if(e.src!==undefined&&!(e.src&&typeof e.src==='object'&&!Array.isArray(e.src)&&RX.id.test(e.src.owner)&&RX.id.test(e.src.id)))return 'fechas';
@@ -349,6 +350,7 @@ function validState(j){
 function cleanState(j){
   const c=fresh();
   c.classes=j.classes.map(k=>({...k}));
+  c.personal=cleanPersonal(j.personal);
   c.tasks=j.tasks.map(t=>{
     const o={id:t.id,eventId:t.eventId,courseId:t.courseId,title:String(t.title||'').slice(0,300),date:t.date,minutes:+t.minutes,done:t.done===true};
     if(typeof t.kind==='string')o.kind=t.kind.slice(0,40);

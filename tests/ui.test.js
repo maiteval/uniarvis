@@ -277,7 +277,7 @@ const fs=require('fs');
   await open('Ajustes','Datos de ejemplo');await p.click('text=Cargar datos de ejemplo');
   if(await p.locator('#confirm-ok').isVisible().catch(()=>false))await p.click('#confirm-ok');   // ya había ramos: confirma el reemplazo
   await onboard();
-  const screens=[['inicio','Inicio'],['hoy','Planificación','Hoy'],['semana','Planificación','Semana'],
+  const screens=[['inicio','Inicio'],['hoy','Planificación','Hoy'],['semana','Planificación','Semana'],['horario','Planificación','Mi horario'],
     ['ramos','Académico','Ramos'],['syllabus','Académico','Fechas'],['notas','Académico','Notas'],
     ['herramientas','Herramientas'],
     ['checkin','Bienestar','Check-in'],['apoyo','Bienestar','Apoyo'],

@@ -142,7 +142,7 @@ function cleanTopics(list){
     unit:t.unit??null,week:t.week??null,mastery:t.mastery,lastStudied:t.lastStudied??null,
     history:(t.history||[]).map(h=>({date:h.date,feeling:h.feeling,...(h.taskId?{taskId:h.taskId}:{})})),source:t.source==='manual'?'manual':'syllabus'}));
 }
-const fresh=()=>({courses:[],classes:[],events:[],tasks:[],sessions:[],settings:{min:60,sessionMin:60,maxSessions:2,paceFactor:1,theme:'cian',themeTouched:false,mode:'light',style:'calma',arvis:cleanArvisConfig(null),chronotype:'no_se'},lastPlan:null,
+const fresh=()=>({courses:[],classes:[],personal:[],events:[],tasks:[],sessions:[],settings:{min:60,sessionMin:60,maxSessions:2,paceFactor:1,theme:'cian',themeTouched:false,mode:'light',style:'calma',arvis:cleanArvisConfig(null),chronotype:'no_se'},lastPlan:null,
   wellbeing:{diary:[]},createdAt:today(),lastBackup:null,backupSnooze:null,consent:null,soft:null,adapt:null,moved:null,dismissed:{},weeklySummary:{dismissedWeek:null},topics:[],skipDay:null,support:{name:'',contact:''},profile:{name:'',career:'',university:'',nickname:''},certamen:{plans:[],topicsByCourse:{}},tools:freshTools(),
   account:typeof accountBlank==='function'?accountBlank():{type:null,institutionId:'',email:'',linkedAt:null,auth:null,studentId:''},institutionConsentAt:null});
 function migrate(s){
@@ -216,6 +216,7 @@ function migrate(s){
     else c.syllabusNotes=c.syllabusNotes.slice(0,2000);
   });
   s.tools=migrateTools(s.tools);
+  s.personal=typeof cleanPersonal==='function'?cleanPersonal(s.personal):[];
   return s;
 }
 let S=fresh();                    // se carga en boot() (ver app.js)

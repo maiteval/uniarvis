@@ -455,6 +455,8 @@ function agendaItems(date){
   const items=[],wd=(parse(date).getDay()+6)%7;
   S.classes.filter(k=>k.day===wd).forEach(k=>items.push({time:k.start,order:0,
     html:`<b>${esc(cname(k.courseId))}</b><br><span class="mute">Clase ${k.start}–${k.end}</span>`}));
+  if(typeof personalOn==='function')personalOn(date).forEach(a=>items.push({time:a.start,order:0,
+    html:`<b>${esc(personalLabel(a))}</b><br><span class="mute">${PERSONAL_KINDS[a.kind].label} ${a.start}–${a.end}</span>`}));
   S.events.filter(e=>e.date===date).forEach(e=>items.push({time:e.type==='evaluacion'?('9:00'):'',order:1,
     html:`<b>${TYPE_LABEL[e.type]} · ${esc(cname(e.courseId))}</b><br><span class="mute">${esc(e.title)}</span>`}));
   S.tasks.filter(t=>t.date===date).forEach(t=>{
@@ -600,6 +602,12 @@ function viewHoy(){
         <p class="mute" style="margin-bottom:0">La capacidad máxima ya no es un número fijo: se calcula cada día.</p></div>
     </div></details>`;
 }
+function personalWeekBlocks(d,H0,HH){
+  if(typeof personalOn!=='function')return '';
+  return personalOn(d).map(a=>{
+    const top=Math.max(0,(toMin(a.start)-H0*60)/60*HH),ht=(toMin(a.end)-toMin(a.start))/60*HH;
+    return `<div class="blk blk-personal" style="top:${top}px;height:${ht}px;border-left-color:${personalColor(a)}" title="${esc(personalLabel(a))} ${a.start}–${a.end}">${esc(personalLabel(a))}<br>${a.start}–${a.end}</div>`}).join('');
+}
 function viewSemana(){
   const days=[...Array(7)].map((_,i)=>addDays(weekStart,i)),t0=today(),H0=7,H1=22,HH=44;
   const crit=criticalClusters(),isCrit=d=>crit.some(g=>d>=g.start&&d<=g.end);
@@ -622,7 +630,7 @@ function viewSemana(){
   h+=`<div class="lbl" style="padding:0;position:relative;height:${(H1-H0)*HH}px">${[...Array(H1-H0)].map((_,i)=>`<div style="position:absolute;top:${i*HH}px;font-size:12px;padding-left:4px">${pad(H0+i)}:00</div>`).join('')}</div>`;
   h+=days.map((d,i)=>`<div class="col ${d===t0?'today':''}" style="height:${(H1-H0)*HH}px">${S.classes.filter(k=>k.day===i).map(k=>{
     const top=(toMin(k.start)-H0*60)/60*HH,ht=(toMin(k.end)-toMin(k.start))/60*HH;
-    return `<div class="blk" style="top:${top}px;height:${ht}px;background:${ccolor(k.courseId)}">${esc(cname(k.courseId))}<br>${k.start}–${k.end}</div>`}).join('')}${socialWeekBlocks(d,i)}</div>`).join('');
+    return `<div class="blk" style="top:${top}px;height:${ht}px;background:${ccolor(k.courseId)}">${esc(cname(k.courseId))}<br>${k.start}–${k.end}</div>`}).join('')}${personalWeekBlocks(d,H0,HH)}${socialWeekBlocks(d,i)}</div>`).join('');
   h+='</div></div></div>';
   h+='<div class="agenda-movil">'+days.map((d,i)=>agendaHtml(d,`${DAYS[i]} ${parse(d).getDate()}${d===t0?' · hoy':''}`)).join('')+'</div>';
   return h+institutionCalendarHtml(days)+criticalHtml();

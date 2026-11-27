@@ -800,3 +800,12 @@ details.grades-card[open] .grades-sum-name::before{transform:rotate(90deg)}
   .logro-aviso{left:12px;right:12px;bottom:calc(86px + env(safe-area-inset-bottom,0px))}
   .logro-aviso .arvis-figura{width:56px;height:67.2px}
 }
+
+/* Mi horario: actividades personales */
+.blk.blk-personal{background:var(--bg-subtle,#eef1f6);color:var(--ink,#1d2330);border:1px dashed var(--line,#c9ced8);border-left:4px solid #7a7f8c;box-shadow:none}
+[data-style="calma"] .blk.blk-personal{color:var(--ink,#1d2330)}
+.pa-days{display:flex;flex-wrap:wrap;gap:6px}
+.pa-day{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--line,#c9ced8);border-radius:999px;cursor:pointer;font-size:14px}
+.pa-day:has(input:checked){border-color:var(--accent,#3b6df0);background:color-mix(in srgb,var(--accent,#3b6df0) 14%,transparent)}
+.pa-repeat{gap:16px}
+.pa-repeat label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}

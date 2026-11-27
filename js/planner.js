@@ -119,10 +119,11 @@ function classWindows(date){
   return S.classes.filter(k=>k.day===dow&&toMin(k.end)>toMin(k.start))
     .map(k=>({a:toMin(k.start),b:toMin(k.end)})).sort((a,b)=>a.a-b.a);
 }
-function busyWindows(date){                              // clases + sesiones ya ubicadas ese día (para no superponerlas)
+function busyWindows(date){                              // clases + actividades personales + sesiones ya ubicadas ese día (para no superponerlas)
   const ses=S.tasks.filter(t=>t.date===date&&t.slotStart&&t.slotEnd&&toMin(t.slotEnd)>toMin(t.slotStart))
     .map(t=>({a:toMin(t.slotStart),b:toMin(t.slotEnd)}));
-  return classWindows(date).concat(ses).sort((a,b)=>a.a-b.a);
+  const per=typeof personalWindows==='function'?personalWindows(date):[];
+  return classWindows(date).concat(per,ses).sort((a,b)=>a.a-b.a);
 }
 function freeWindows(date,minutes){
   let cursor=SLOT_DAY_START;const out=[];

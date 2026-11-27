@@ -58,6 +58,15 @@ const AYUDA={
       'Marca las sesiones realizadas, cuéntanos cómo te fue y registra estudio libre si corresponde.'
     ]
   },
+  horario:{
+    title:'Mi horario',
+    desc:'Tus actividades fuera de la universidad: deporte, trabajo, horas médicas u otras. El plan no pone sesiones de estudio en esos horarios.',
+    steps:[
+      'Elige el tipo de actividad y, si quieres, un nombre (en Salud no se guarda detalle).',
+      'Indica si se repite todas las semanas (marca los días) o si es una sola fecha.',
+      'Define el horario y agrégala: Hoy y Semana la mostrarán y el plan se ajusta solo.'
+    ]
+  },
   semana:{
     title:'Semana',
     desc:'Calendario semanal con tu horario de clases, fechas importantes y tus sesiones de estudio planificadas.',

@@ -55,12 +55,12 @@ function factorFor(date){
 }
 function capInfo(date){
   const key='c'+date;if(C[key])return C[key];
-  const cm=classMinutes(date);
-  let base=clamp((E.dayMinutes-cm-E.personalMinutes)*E.studyShare,E.minBase,E.maxBase);
+  const cm=classMinutes(date),pm=typeof personalMinutesOn==='function'?personalMinutesOn(date):0;
+  let base=clamp((E.dayMinutes-cm-pm-E.personalMinutes)*E.studyShare,E.minBase,E.maxBase);
   const hist=histPeak(date);
   if(hist)base=Math.max(E.minBase,Math.min(base*E.historyMaxGain,(1-E.historyMix)*base+E.historyMix*hist*E.historyBoost));
   const f=factorFor(date),debt=sleepDebtInfo(date),cal=calibrationInfo(date),sf=softOn(date)?E.soft:1;
-  return C[key]={cm,base:Math.round(base),hist,f,debt,cal,sf,val:Math.max(30,Math.round(base*f*sf/E.round)*E.round)};
+  return C[key]={cm,pm,base:Math.round(base),hist,f,debt,cal,sf,val:Math.max(30,Math.round(base*f*sf/E.round)*E.round)};
 }
 const capFor=d=>capInfo(d).val;
 function minFor(d){const m=Math.max(15,Math.round(S.settings.min*Math.min(1,factorFor(d))*(softOn(d)?E.soft:1)/E.round)*E.round);return Math.min(m,capFor(d))}
@@ -69,6 +69,7 @@ const planCap=d=>(d===today()&&lowMode(d))?minFor(d):capFor(d);   // con energí
 function capExplain(i){
   const L=[];
   L.push(i.cm?`Clases hoy: ${(i.cm/60).toFixed(1)} h → base de estudio ≈ ${i.base} min.`:`Sin clases hoy → base de estudio ≈ ${i.base} min.`);
+  if(i.pm)L.push(`Actividades personales hoy: ${(i.pm/60).toFixed(1)} h, descontadas de esa base.`);
   L.push(i.hist?`Tu ritmo reciente (tus días de más estudio ≈ ${Math.round(i.hist)} min) ajusta esa base.`:'Aún no hay suficiente historial (se usa tras ~5 días con estudio registrado).');
   L.push(ci(today())?`Tu check-in de hoy la deja en ${Math.round(i.f*100)}%.`:'Sin check-in hoy: uso la capacidad estándar.');
   if(i.debt&&i.debt.hours>0)L.push(`Deuda de sueño reciente (${i.debt.n} registros): −${Math.round((1-i.debt.factor)*100)}%. No se compensa con energía alta.`);

@@ -2,7 +2,7 @@
 /* ===================== Render ===================== */
 const SECTIONS=[
   {key:'inicio',label:'Inicio',tabs:[]},
-  {key:'planificacion',label:'Planificación',tabs:[['hoy','Hoy'],['semana','Semana']]},
+  {key:'planificacion',label:'Planificación',tabs:[['hoy','Hoy'],['semana','Semana'],['horario','Mi horario']]},
   {key:'academico',label:'Académico',tabs:[['ramos','Ramos'],['syllabus','Fechas'],['notas','Notas']]},
   {key:'herramientas',label:'Herramientas',tabs:[['herramientas','Pomodoro y flashcards']]},
   {key:'bienestar',label:'Bienestar',tabs:[['checkin','Check-in'],['apoyo','Apoyo']]},
@@ -12,7 +12,7 @@ const SECTIONS=[
 ];
 const ROUTE={
   inicio:{section:'inicio',tab:'inicio'},
-  hoy:{section:'planificacion',tab:'hoy'},semana:{section:'planificacion',tab:'semana'},
+  hoy:{section:'planificacion',tab:'hoy'},semana:{section:'planificacion',tab:'semana'},horario:{section:'planificacion',tab:'horario'},
   ramos:{section:'academico',tab:'ramos'},syllabus:{section:'academico',tab:'syllabus'},notas:{section:'academico',tab:'notas'},
   herramientas:{section:'herramientas',tab:'herramientas'},
   checkin:{section:'bienestar',tab:'checkin'},bienestar:{section:'bienestar',tab:'checkin'},
@@ -146,7 +146,7 @@ function renderCore(){
     if(!mob){mob=document.createElement('div');mob.id='mobile-nav';document.body.appendChild(mob)}
     mob.innerHTML=mobileNavHtml();
   }
-  const views={inicio:viewInicio,hoy:viewHoy,semana:viewSemana,ramos:viewRamos,syllabus:viewSyllabus,notas:viewNotas,herramientas:viewTools,
+  const views={inicio:viewInicio,hoy:viewHoy,semana:viewSemana,horario:viewHorario,ramos:viewRamos,syllabus:viewSyllabus,notas:viewNotas,herramientas:viewTools,
     checkin:viewCheckin,bienestar:viewBienestar,apoyo:viewApoyo,
     amigos:viewAmigos,perfil:viewPerfil,cuenta:viewCuenta,tema:viewTema,arvis:viewArvis,privacidad:viewPrivacidad,ejemplos:viewDatosEjemplo};
   const sec=SECTIONS.find(s=>s.key===section);
