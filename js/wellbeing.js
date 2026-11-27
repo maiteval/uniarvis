@@ -77,8 +77,7 @@ function pauseItems(){
 }
 function pauseCard(){
   const p=pauseItems();if(!p.length)return '';
-  return `<div class="card"><h3>Pausas para hoy</h3>${p.map(x=>`<div class="pause"><span style="flex:1"><b>${esc(x.t)}</b><br>${x.x}</span>
-    <button class="btn sec" onclick="${x.tech?`goBreath('${x.tech}')`:`goMed('${x.med}')`}">${x.l}</button></div>`).join('')}</div>`;
+  return `<div class="card"><h3>Pausas para hoy</h3>${p.map(x=>`<div class="pause"><span style="flex:1"><b>${esc(x.t)}</b><br>${x.x}</span></div>`).join('')}</div>`;
 }
 
 /* ===================== Respiración y meditación ===================== */

@@ -199,7 +199,7 @@ function pomodoroHtml(){
       <button class="btn sec" data-focus-id="pom-reset" onclick="pomReset()">Reiniciar</button>
       <button class="btn sec" data-focus-id="pom-skip" onclick="pomSkip()">Saltar fase</button></div>
     ${p.running?`<div class="pom-full-row"><button class="btn sec" data-focus-id="pom-full" onclick="pomFocusOpen()">Pantalla completa</button></div>`:''}
-    ${breath?`<div class="pom-breath"><span>${breakText}</span><button class="btn sec" onclick="goBreath('suspiro')">Respirar</button></div>`:''}
+    ${breath?`<div class="pom-breath"><span>${breakText}</span></div>`:''}
     <details class="pom-settings"><summary><span class="pom-chevron" aria-hidden="true">▸</span>Configuración y registro</summary>
       <div class="pom-config-grid">
         <label class="mute"><span>Foco (min)</span><input id="pom-focus" type="number" min="1" max="180" value="${p.focusMin}" onchange="pomSetConfig('focusMin',this.value)"></label>

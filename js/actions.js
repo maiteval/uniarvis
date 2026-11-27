@@ -21,8 +21,6 @@ function go(t,fromRoute){
   }
   if(tab==='amigos'&&typeof socialOpenTab==='function')socialOpenTab();
 }
-function goBreath(k){stopBreath(true);stopMed(true);bsel=k;go('respiracion');startBreath()}
-function goMed(id){stopBreath(true);stopMed(true);go('respiracion');startMed(id)}
 function toggleTask(id){
   const t=S.tasks.find(x=>x.id===id);if(!t)return;
   if(!t.done){

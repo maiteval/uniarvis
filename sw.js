@@ -1,6 +1,6 @@
 /* Service worker: permite instalar la app y usarla sin internet.
    Estrategia: red primero (siempre la última versión) y, si no hay conexión, lo guardado. */
-const CACHE = 'entrenador-academico-v11';
+const CACHE = 'entrenador-academico-v12';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
   'js/util.js', 'js/focus.js', 'js/ics.js', 'js/crypto.js', 'js/state.js', 'js/institutions.js', 'js/institution-data.js', 'js/evidence.js', 'js/capacity.js', 'js/planner.js', 'js/wellbeing.js', 'js/arvis.js', 'js/logros.js',
