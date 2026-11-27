@@ -54,7 +54,7 @@ const fs=require('fs');
   ok('tras el perfil la app se muestra sin pedir consentimiento',!t.includes('Antes de empezar')&&t.includes('Elige por dónde empezar hoy'));
   ok('no hay introducción de 3 pasos',await p.locator('#onboarding').count()===0&&!t.includes('1/3'));
   const orden=await p.evaluate(()=>[...document.querySelectorAll('.home-card .home-copy b')].map(x=>x.textContent));
-  ok('inicio ordena Bienestar, Académico, Planificación, Social y Ajustes',orden.join(',')==='Bienestar,Académico,Planificación,Social,Ajustes',orden.join(','));
+  ok('inicio ordena Bienestar, Académico, Herramientas, Planificación, Social y Ajustes',orden.join(',')==='Bienestar,Académico,Herramientas,Planificación,Social,Ajustes',orden.join(','));
   await open('Bienestar','Check-in');
   ok('el consentimiento aparece al abrir el check-in en Bienestar',(await p.textContent('#app')).includes('Antes de empezar'));
   await acceptConsent();
@@ -224,21 +224,6 @@ const fs=require('fs');
   const pi=await p.evaluate(()=>pauseItems().map(x=>x.t));
   ok('pausas antes/después de pruebas',pi.some(x=>x.includes('Hoy'))&&pi.some(x=>x.includes('Mañana')),pi.join(' | '));
 
-  // 10. Respiración: una sola técnica visible por defecto y las pausas abren la correcta
-  await p.evaluate(()=>{stopBreath(true);stopMed(true);bsel='suspiro';go('respiracion')});
-  const def=await p.evaluate(()=>{
-    const mas=[...document.querySelectorAll('details')].find(d=>d.querySelector('summary')&&d.querySelector('summary').textContent==='Más opciones');
-    return {texto:[...document.querySelectorAll('#app .card')][1].textContent,abierto:!!mas&&mas.open};
-  });
-  ok('solo el suspiro cíclico visible por defecto',def.texto.includes('Respiración guiada')&&def.texto.includes('Suspiro cíclico')&&!def.abierto,JSON.stringify(def.texto.slice(0,80)));
-  ok('otras técnicas y meditaciones ocultas',!await p.locator('button:has-text("4-7-8")').isVisible()&&!await p.locator('summary:has-text("Escaneo corporal")').isVisible());
-  await p.click('summary:has-text("Más opciones")');
-  ok('Más opciones revela técnicas y meditaciones',await p.locator('button:has-text("4-7-8")').isVisible()&&await p.locator('summary:has-text("Escaneo corporal")').isVisible());
-  await p.evaluate(()=>goBreath('caja'));await p.waitForTimeout(1400);
-  const bl=await p.textContent('#blabel');ok('respiración guiada en marcha',bl.length>2&&bl!=='Listo cuando quieras',bl);
-  ok('la pausa abre la técnica correcta',await p.evaluate(()=>bsel==='caja')&&bl==='Inhala',bl+' / '+await p.evaluate(()=>bsel));
-  await p.evaluate(()=>stopBreath());
-
   // 11. Consentimiento: al revocar, el check-in deja de influir en la capacidad
   const capWith=await p.evaluate(()=>capFor(today()));
   await p.evaluate(()=>{S.consent={health:false,at:today()};save()});
@@ -294,8 +279,8 @@ const fs=require('fs');
   await onboard();
   const screens=[['inicio','Inicio'],['hoy','Planificación','Hoy'],['semana','Planificación','Semana'],
     ['ramos','Académico','Ramos'],['syllabus','Académico','Fechas'],['notas','Académico','Notas'],
-    ['herramientas','Académico','Herramientas'],['salud','Académico','Carga por semana'],
-    ['checkin','Bienestar','Check-in'],['respiracion','Bienestar','Respiración'],['pausas','Bienestar','Pausas rápidas'],['apoyo','Bienestar','Apoyo'],
+    ['herramientas','Herramientas'],
+    ['checkin','Bienestar','Check-in'],['apoyo','Bienestar','Apoyo'],
     ['amigos','Social'],['perfil','Ajustes','Perfil'],['tema','Ajustes','Apariencia'],['privacidad','Ajustes','Privacidad'],['ejemplos','Ajustes','Datos de ejemplo']];
   for(const [k,sec,sub] of screens){
     await open(sec,sub);

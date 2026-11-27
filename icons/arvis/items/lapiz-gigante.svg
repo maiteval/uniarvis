@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-label="Lápiz gigante para Arvis">
+  <g stroke="#152234" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" transform="rotate(28 165 168)">
+    <rect x="154" y="146" width="22" height="50" rx="3" fill="#ffd166"/>
+    <path d="M154 196 L165 214 L176 196 Z" fill="#f1c27d"/>
+    <path d="M161 207 L165 214 L169 207 Z" fill="#152234"/>
+    <rect x="154" y="136" width="22" height="12" rx="4" fill="#ef476f"/>
+  </g>
+</svg>

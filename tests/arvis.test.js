@@ -52,10 +52,10 @@ const path=require('path');
   await p.locator('.home-card').filter({hasText:'Ajustes'}).click();
   await p.click('nav >> text="Apariencia"');
   const toggle=p.locator('input[onchange="setArvis(this.checked)"]');
-  ok('Ajustes incluye el interruptor "Mostrar a Arvis" activado',await toggle.count()===1&&await toggle.isChecked()&&await p.evaluate(()=>S.settings.arvis===true));
+  ok('Ajustes incluye el interruptor "Mostrar a Arvis" activado',await toggle.count()===1&&await toggle.isChecked()&&await p.evaluate(()=>S.settings.arvis.enabled===true));
   await toggle.uncheck();
   await p.evaluate(()=>go('inicio'));
-  ok('al apagarlo Arvis desaparece y la app sigue igual',await p.locator('.arvis-card').count()===0&&await p.locator('.home-card').count()===5&&await p.evaluate(()=>S.settings.arvis===false));
+  ok('al apagarlo Arvis desaparece y la app sigue igual',await p.locator('.arvis-card').count()===0&&await p.locator('.home-card').count()===6&&await p.evaluate(()=>S.settings.arvis.enabled===false));
   await p.evaluate(()=>go('tema'));
   await p.locator('input[onchange="setArvis(this.checked)"]').check();
 
@@ -106,7 +106,7 @@ const path=require('path');
   ok('la ayuda usa arvis-normal.svg como avatar',avatar==='icons/arvis/arvis-normal.svg',String(avatar));
   await p.click('.icon-btn[aria-label="Cerrar"]');
 
-  const bk=await p.evaluate(()=>({err:validState(S),on:cleanState(S).settings.arvis,json:JSON.stringify(S)}));
+  const bk=await p.evaluate(()=>({err:validState(S),on:cleanState(S).settings.arvis.enabled,json:JSON.stringify(S)}));
   ok('el ajuste de Arvis se guarda y restaura',bk.err===null&&bk.on===true&&bk.json.includes('"arvis"'),JSON.stringify(bk));
   ok('sin errores de JavaScript',errs.length===0,errs.join(' || '));
   console.log(res.join('\n'));

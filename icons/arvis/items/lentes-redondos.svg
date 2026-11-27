@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-label="Lentes redondos de colores para Arvis">
+  <g stroke="#152234" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" fill="none">
+    <circle cx="78" cy="98" r="22"/>
+    <circle cx="122" cy="98" r="22"/>
+    <circle cx="78" cy="98" r="18" stroke="#e11d48"/>
+    <circle cx="122" cy="98" r="18" stroke="#2563eb"/>
+    <path d="M100 94 Q100 88 100 94"/>
+    <path d="M56 96 L42 92 M144 96 L158 92"/>
+  </g>
+</svg>

@@ -29,6 +29,7 @@ function saveCheckin(){
   save();replanAll();
   const after=S.tasks.filter(t=>t.date===t0&&!t.done).length,moved=Math.max(0,before-after),low=lowMode(t0);
   S.adapt={date:t0,n:moved,low};save();ciEdit=false;
+  if(typeof logrosRevisar==='function')logrosRevisar('checkin');
   toast(low?`Hoy vamos livianos: dejé solo lo esencial y moví ${moved} sesión(es) a otros días.`:`Check-in guardado. Capacidad de hoy: ${capFor(t0)} min.`);
   render();
 }
@@ -76,8 +77,7 @@ function pauseItems(){
 }
 function pauseCard(){
   const p=pauseItems();if(!p.length)return '';
-  return `<div class="card"><h3>Pausas para hoy</h3>${p.map(x=>`<div class="pause"><span style="flex:1"><b>${esc(x.t)}</b><br>${x.x}</span>
-    <button class="btn sec" onclick="${x.tech?`goBreath('${x.tech}')`:`goMed('${x.med}')`}">${x.l}</button></div>`).join('')}</div>`;
+  return `<div class="card"><h3>Pausas para hoy</h3>${p.map(x=>`<div class="pause"><span style="flex:1"><b>${esc(x.t)}</b><br>${x.x}</span></div>`).join('')}</div>`;
 }
 
 /* ===================== Respiración y meditación ===================== */

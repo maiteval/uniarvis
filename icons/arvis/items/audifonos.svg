@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-label="Audífonos colgando de la mano de Arvis">
+  <g stroke="#152234" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M150 170 Q150 146 165 146 Q180 146 180 170" fill="none"/>
+    <path d="M165 146 Q174 148 174 158" fill="none"/>
+    <rect x="146" y="166" width="16" height="26" rx="8" fill="#3a86ff"/>
+    <rect x="178" y="166" width="16" height="26" rx="8" fill="#3a86ff"/>
+  </g>
+</svg>

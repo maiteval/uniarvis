@@ -3,24 +3,25 @@
 const SECTIONS=[
   {key:'inicio',label:'Inicio',tabs:[]},
   {key:'planificacion',label:'Planificación',tabs:[['hoy','Hoy'],['semana','Semana']]},
-  {key:'academico',label:'Académico',tabs:[['ramos','Ramos'],['syllabus','Fechas'],['notas','Notas'],['herramientas','Herramientas'],['salud','Carga por semana']]},
-  {key:'bienestar',label:'Bienestar',tabs:[['checkin','Check-in'],['respiracion','Respiración'],['pausas','Pausas rápidas'],['apoyo','Apoyo']]},
+  {key:'academico',label:'Académico',tabs:[['ramos','Ramos'],['syllabus','Fechas'],['notas','Notas']]},
+  {key:'herramientas',label:'Herramientas',tabs:[['herramientas','Pomodoro y flashcards']]},
+  {key:'bienestar',label:'Bienestar',tabs:[['checkin','Check-in'],['apoyo','Apoyo']]},
   {key:'social',label:'Social',tabs:[['amigos','Amigos']]},
-  {key:'ajustes',label:'Ajustes',tabs:[['perfil','Perfil'],['cuenta','Cuenta'],['tema','Apariencia'],['privacidad','Privacidad'],['ejemplos','Datos de ejemplo']]}
+  {key:'ajustes',label:'Ajustes',tabs:[['perfil','Perfil'],['cuenta','Cuenta'],['tema','Apariencia'],['arvis','Arvis'],['privacidad','Privacidad'],['ejemplos','Datos de ejemplo']]}
 
 ];
 const ROUTE={
   inicio:{section:'inicio',tab:'inicio'},
   hoy:{section:'planificacion',tab:'hoy'},semana:{section:'planificacion',tab:'semana'},
-  ramos:{section:'academico',tab:'ramos'},syllabus:{section:'academico',tab:'syllabus'},notas:{section:'academico',tab:'notas'},herramientas:{section:'academico',tab:'herramientas'},
-  salud:{section:'academico',tab:'salud'},calor:{section:'academico',tab:'salud'},
-  checkin:{section:'bienestar',tab:'checkin'},bienestar:{section:'bienestar',tab:'checkin'},respiracion:{section:'bienestar',tab:'respiracion'},
-  pausas:{section:'bienestar',tab:'pausas'},apoyo:{section:'bienestar',tab:'apoyo'},
+  ramos:{section:'academico',tab:'ramos'},syllabus:{section:'academico',tab:'syllabus'},notas:{section:'academico',tab:'notas'},
+  herramientas:{section:'herramientas',tab:'herramientas'},
+  checkin:{section:'bienestar',tab:'checkin'},bienestar:{section:'bienestar',tab:'checkin'},
+  apoyo:{section:'bienestar',tab:'apoyo'},
   amigos:{section:'social',tab:'amigos'},
-  perfil:{section:'ajustes',tab:'perfil'},cuenta:{section:'ajustes',tab:'cuenta'},tema:{section:'ajustes',tab:'tema'},apariencia:{section:'ajustes',tab:'tema'},
+  perfil:{section:'ajustes',tab:'perfil'},cuenta:{section:'ajustes',tab:'cuenta'},tema:{section:'ajustes',tab:'tema'},apariencia:{section:'ajustes',tab:'tema'},arvis:{section:'ajustes',tab:'arvis'},
   privacidad:{section:'ajustes',tab:'privacidad'},ejemplos:{section:'ajustes',tab:'ejemplos'}
 };
-const FIRST={inicio:'inicio',planificacion:'hoy',academico:'ramos',bienestar:'checkin',social:'amigos',ajustes:'perfil'};
+const FIRST={inicio:'inicio',planificacion:'hoy',academico:'ramos',herramientas:'herramientas',bienestar:'checkin',social:'amigos',ajustes:'perfil'};
 const ROUTE_BY_PATH={};
 Object.keys(ROUTE).forEach(k=>{const r=ROUTE[k],p=r.section+'/'+r.tab;if(!ROUTE_BY_PATH[p])ROUTE_BY_PATH[p]=r});
 function routeFor(t){const k=String(t||'');return ROUTE[k]||(FIRST[k]?ROUTE[FIRST[k]]:ROUTE.inicio)}
@@ -44,6 +45,7 @@ function renderTarget(desc){
 const HOME_ICONS=[
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M8 3.5v3M16 3.5v3M3.5 9.5h17M8 13h3M13 13h3M8 16h3"/></svg>',
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.5 19.5h6.5a2 2 0 0 1 2 2v-13a3 3 0 0 0-3-3H4.5z"/><path d="M19.5 19.5H13a2 2 0 0 0-2 2v-13a3 3 0 0 1 3-3h5.5z"/></svg>',
+  '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L4 16.7a1.9 1.9 0 0 0 2.7 2.7l5.3-5.3a4 4 0 0 0 5.1-5.4l-2.5 2.5-2.4-.4-.4-2.4z"/></svg>',
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20s-7-4.35-7-9.2A4.3 4.3 0 0 1 9.3 6.5c1.2 0 2.2.5 2.7 1.4.5-.9 1.5-1.4 2.7-1.4A4.3 4.3 0 0 1 19 10.8C19 15.65 12 20 12 20z"/></svg>',
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M3.5 18.5a5.5 5.5 0 0 1 11 0"/><path d="M14.5 18.5c0-1.8.9-3.4 2.3-4.3a4.2 4.2 0 0 1 5.7 3.8"/></svg>',
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"/><path d="M12 4.5v2.2M12 17.3v2.2M4.5 12h2.2M17.3 12h2.2M6.7 6.7l1.6 1.6M15.7 15.7l1.6 1.6M17.3 6.7l-1.6 1.6M8.3 15.7l-1.6 1.6"/></svg>'
@@ -144,9 +146,9 @@ function renderCore(){
     if(!mob){mob=document.createElement('div');mob.id='mobile-nav';document.body.appendChild(mob)}
     mob.innerHTML=mobileNavHtml();
   }
-  const views={inicio:viewInicio,hoy:viewHoy,semana:viewSemana,ramos:viewRamos,syllabus:viewSyllabus,notas:viewNotas,herramientas:viewTools,salud:viewSalud,
-    checkin:viewCheckin,bienestar:viewBienestar,respiracion:viewRespiracion,pausas:viewPausas,apoyo:viewApoyo,
-    amigos:viewAmigos,perfil:viewPerfil,cuenta:viewCuenta,tema:viewTema,privacidad:viewPrivacidad,ejemplos:viewDatosEjemplo};
+  const views={inicio:viewInicio,hoy:viewHoy,semana:viewSemana,ramos:viewRamos,syllabus:viewSyllabus,notas:viewNotas,herramientas:viewTools,
+    checkin:viewCheckin,bienestar:viewBienestar,apoyo:viewApoyo,
+    amigos:viewAmigos,perfil:viewPerfil,cuenta:viewCuenta,tema:viewTema,arvis:viewArvis,privacidad:viewPrivacidad,ejemplos:viewDatosEjemplo};
   const sec=SECTIONS.find(s=>s.key===section);
   let chips='';
   if(sec&&sec.tabs.length&&section!=='inicio'){
@@ -172,6 +174,7 @@ function checkNewDay(previous){
 }
 function start(){
   loadDraft();
+  if(typeof logrosRevisar==='function')logrosRevisar(true);
   if(typeof pomResume==='function')pomResume();
   lastPlanDay=today();
   if(S.lastPlan!==today()&&S.courses.length)replanAll();

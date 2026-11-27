@@ -90,6 +90,7 @@ function pomAdvance(now=Date.now(),natural=true,quiet=false){
     if(last&&natural)pomAlert(last,p.phase);
     if(last==='focus'&&natural&&typeof metricsTrack==='function')metricsTrack('pomodoro_completado');
     if(last==='focus'&&natural&&!quiet&&typeof arvisCelebrar==='function')arvisCelebrar('¡Ciclo terminado! Buen trabajo.','pomodoro');
+    if(last==='focus'&&natural&&typeof logrosRevisar==='function')logrosRevisar('pomodoro');
     save();
     if(!quiet&&(typeof tab==='undefined'||tab==='herramientas')&&typeof render==='function')render();
     pomFocusRefresh();
@@ -200,7 +201,7 @@ function pomodoroHtml(){
       <button class="btn sec" data-focus-id="pom-reset" onclick="pomReset()">Reiniciar</button>
       <button class="btn sec" data-focus-id="pom-skip" onclick="pomSkip()">Saltar fase</button></div>
     ${p.running?`<div class="pom-full-row"><button class="btn sec" data-focus-id="pom-full" onclick="pomFocusOpen()">Pantalla completa</button></div>`:''}
-    ${breath?`<div class="pom-breath"><span>${breakText}</span><button class="btn sec" onclick="goBreath('suspiro')">Respirar</button></div>`:''}
+    ${breath?`<div class="pom-breath"><span>${breakText}</span></div>`:''}
     <details class="pom-settings"><summary><span class="pom-chevron" aria-hidden="true">▸</span>Configuración y registro</summary>
       <div class="pom-config-grid">
         <label class="mute"><span>Foco (min)</span><input id="pom-focus" type="number" min="1" max="180" value="${p.focusMin}" onchange="pomSetConfig('focusMin',this.value)"></label>
@@ -400,6 +401,7 @@ function flashcardAnswerNow(knew){
   if(knew){
     fcStreak++;fcSession.correct=(fcSession.correct||0)+1;
     S.tools.flashcards.correct=(S.tools.flashcards.correct||0)+1;fcMomento=null;
+    if(typeof logrosRevisar==='function')logrosRevisar('flashcards');
     if(fcStreak===3)arvisCelebrar('Tres seguidas. ¡Vas muy bien!','flashcards');
     else if(fcStreak===5)arvisCelebrar('Cinco seguidas. ¡Excelente!','flashcards');
   }else{

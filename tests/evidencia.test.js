@@ -82,8 +82,6 @@ const path=require('path');
 
   await p.evaluate(()=>{S.wellbeing.diary=[];S.tasks=[];S.sessions=[];inval();replanAll();go('bienestar')});
   ok('la sección ¿En qué se basa? explica fuentes y estimaciones',(await p.textContent('#app')).includes('¿En qué se basa?')&&(await p.textContent('#app')).includes('Van Dongen')&&(await p.textContent('#app')).includes('Estimaciones de diseño'));
-  await p.evaluate(()=>go('respiracion'));
-  ok('el suspiro cíclico es la respiración por defecto',(await p.textContent('#app')).includes('Suspiro cíclico')&&!(await p.locator('button:has-text("4-7-8")').isVisible()));
 
   const pom=await p.evaluate(()=>{
     const t={id:'pom-evidencia',courseId:'c1',date:today(),minutes:25,kind:'simulacro',title:'Simulacro',done:false};

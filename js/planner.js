@@ -359,6 +359,8 @@ function activateCertamen(){
   S.certamen.plans.push({eventId:ev.id,courseId:ev.courseId,title:ev.title,date:ev.date,mockMin:certDraft.mockMin||90,topics:topics,leftOut:[]});
   certDraft=null;replanAll();
   if(typeof metricsTrack==='function')metricsTrack('certamen_activado');
+  if(typeof logrosMarcoUso==='function')logrosMarcoUso('certamen');
+  if(typeof logrosRevisar==='function')logrosRevisar('certamen');
   render();
   toast('Modo certamen activo: reemplacé las sesiones sueltas por un plan por fases.');
 }

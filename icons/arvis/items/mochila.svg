@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-label="Mochila para Arvis">
+  <g stroke="#152234" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M32 110 Q32 76 100 76 Q168 76 168 110" fill="none"/>
+    <rect x="14" y="98" width="42" height="104" rx="18" fill="#f97316"/>
+    <rect x="144" y="98" width="42" height="104" rx="18" fill="#f97316"/>
+    <rect x="20" y="150" width="30" height="18" rx="6" fill="#ffd166"/>
+    <rect x="150" y="150" width="30" height="18" rx="6" fill="#ffd166"/>
+  </g>
+</svg>

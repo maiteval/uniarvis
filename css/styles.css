@@ -378,6 +378,8 @@ filter:blur(10px);opacity:.9;animation:hudPulse 8s ease-in-out infinite alternat
   .mob-nav-btn{flex:1 1 0;min-width:0;border:0;background:transparent;color:var(--mute);border-radius:10px;padding:6px 4px;cursor:pointer;font:inherit;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;line-height:1.2}
   .mob-nav-btn.on{color:var(--accent-strong);background:var(--accent-soft)}
   .mob-nav-icon{width:22px;height:22px;display:grid;place-items:center}
+  .mobile-nav .mob-nav-btn{flex:1 1 auto;padding:6px 2px}
+  .mob-nav-btn>span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10.5px;letter-spacing:-.01em}
   .mob-nav-icon svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   #toast{bottom:calc(150px + env(safe-area-inset-bottom,0px))}   /* sobre la barra inferior y el botón de Arvis */
   [data-style="calma"] .mobile-nav{box-shadow:0 -2px 10px rgba(0,0,0,.06)}
@@ -754,3 +756,47 @@ details.grades-card[open] .grades-sum-name::before{transform:rotate(90deg)}
 /* ===== Perfil institucional de solo lectura ===== */
 .ro-field{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-bottom:1px solid var(--line)}
 .ro-field b{font-weight:600}
+
+/* Arvis: figura apilada, acceso desde el inicio y personalización */
+.arvis-tocable{position:relative;display:inline-block;padding:0;border:0;background:none;line-height:0;cursor:pointer;transition:transform .18s ease}
+.arvis-tocable:hover{transform:scale(1.04)}
+.arvis-nuevo{position:absolute;top:0;right:0;width:9px;height:9px;border-radius:50%;background:var(--bad);box-shadow:0 0 0 2px var(--card)}
+@media (prefers-reduced-motion:reduce){.arvis-tocable{transition:none}.arvis-tocable:hover{transform:none}}
+.arvis-figura{position:relative;display:inline-block;width:var(--arvis-size,96px);height:calc(var(--arvis-size,96px)*1.2);line-height:0;flex:0 0 auto;vertical-align:middle}
+.arvis-figura img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain}
+.arvis-figura .arvis-back{z-index:0}
+.arvis-figura .arvis-base{z-index:1}
+.arvis-figura .arvis-item:not(.arvis-back){z-index:2}
+.arvis-card .arvis-figura{width:96px;height:115.2px}
+.arvis-card.arvis-md .arvis-figura{width:120px;height:144px}
+.arvis-card.arvis-sm .arvis-figura{width:56px;height:67.2px}
+.arvis-card .arvis-figura img{width:100%;height:100%;flex:none}
+.arvis-tocable:focus-visible,.logro-item:focus-visible,.btn:focus-visible,.icon-btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.arvis-preview{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.arvis-preview .arvis-figura{width:200px;height:240px}
+.logro-grupo{margin-top:18px}
+.logro-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.logro-item{display:flex;gap:10px;align-items:flex-start;text-align:left;background:var(--bg-subtle);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px;color:var(--ink);cursor:pointer}
+.logro-item.on{background:var(--card);border-color:rgba(var(--accent-rgb),.45)}
+.logro-item.eq{border-color:var(--accent);box-shadow:var(--ring)}
+.logro-item:disabled{cursor:default;opacity:1}
+.logro-item-img{flex:0 0 64px;height:78px;display:grid;place-items:center;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.logro-item:disabled .logro-item-img .arvis-figura{filter:grayscale(1);opacity:.45}
+.logro-item-copy{display:grid;gap:2px;min-width:0;font-size:13px;line-height:1.4}
+.logro-estado{color:var(--mute)}
+.logro-bar{height:6px;border-radius:99px;background:var(--bg);border:1px solid var(--line);overflow:hidden;margin-top:4px}
+.logro-bar span{display:block;height:100%;background:var(--accent)}
+.logro-lista{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.logro-fila{display:flex;gap:10px;background:var(--bg-subtle);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px}
+.logro-fila.on{border-color:rgba(var(--accent-rgb),.45)}
+.logro-fila>span:last-child{display:grid;gap:2px;min-width:0}
+.logro-marcador{color:var(--accent-strong);font-weight:700}
+.logro-aviso{position:fixed;right:20px;bottom:20px;z-index:15;display:flex;gap:12px;align-items:center;max-width:min(440px,calc(100vw - 40px));background:var(--card);border:1px solid var(--accent);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow-md)}
+.logro-aviso-copy b{color:var(--ink)}
+.logro-aviso-copy p{margin:4px 0 8px}
+@media (max-width:640px){
+  .hwrap{padding:10px 16px}
+  .arvis-preview .arvis-figura{width:140px;height:168px}
+  .logro-aviso{left:12px;right:12px;bottom:calc(86px + env(safe-area-inset-bottom,0px))}
+  .logro-aviso .arvis-figura{width:56px;height:67.2px}
+}

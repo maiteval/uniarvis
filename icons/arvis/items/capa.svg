@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-label="Capa para Arvis">
+  <g stroke="#152234" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M55 58 Q100 42 145 58 L188 214 Q100 236 12 214 L55 58 Z" fill="#6d28d9"/>
+    <path d="M55 58 L100 92 L145 58" fill="none"/>
+    <circle cx="100" cy="94" r="6" fill="#ffd166"/>
+  </g>
+</svg>

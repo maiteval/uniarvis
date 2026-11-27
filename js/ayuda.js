@@ -10,7 +10,12 @@ const TOUR_STEPS=[
   {
     icon:'📚',
     title:'Académico',
-    text:'Gestiona tus ramos, carga tu syllabus, registra fechas y notas, y revisa tu mapa de calor.'
+    text:'Gestiona tus ramos, carga tu syllabus y registra fechas y notas.'
+  },
+  {
+    icon:'⏱️',
+    title:'Herramientas',
+    text:'Estudia con Pomodoro y repasa con flashcards de repaso espaciado.'
   },
   {
     icon:'🗓️',
@@ -20,7 +25,7 @@ const TOUR_STEPS=[
   {
     icon:'🌿',
     title:'Bienestar',
-    text:'Haz tu check-in diario, usa la respiración guiada, toma pausas rápidas y encuentra opciones de apoyo cuando lo necesites.'
+    text:'Haz tu check-in diario y encuentra opciones de apoyo cuando lo necesites.'
   },
   {
     icon:'🤝',
@@ -39,7 +44,7 @@ const AYUDA={
     title:'Inicio',
     desc:'Punto de entrada para acceder rápidamente a las secciones principales de Uarvis y ver avisos importantes.',
     steps:[
-      'Elige una sección (Bienestar, Académico, Planificación, Social o Ajustes).',
+      'Elige una sección (Bienestar, Académico, Herramientas, Planificación, Social o Ajustes).',
       'Revisa los avisos o recordatorios que aparezcan en la parte superior.',
       'Usa esta pantalla para orientarte y decidir por dónde empezar hoy.'
     ]
@@ -98,15 +103,6 @@ const AYUDA={
       'Crea mazos, importa tarjetas desde texto y repasa solo lo que toca hoy con las 5 cajas Leitner.'
     ]
   },
-  salud:{
-    title:'Mapa de calor',
-    desc:'Visualiza cómo has distribuido tu estudio por ramo y detecta posibles desequilibrios frente a próximas fechas.',
-    steps:[
-      'Revisa el nivel de atención de cada ramo en los últimos días.',
-      'Atiende las alertas si un ramo tiene poca atención y una fecha cercana.',
-      'Úsalo como guía para reequilibrar tu estudio, no como una nota.'
-    ]
-  },
   checkin:{
     title:'Check-in',
     desc:'Registra tu energía, ánimo y sueño para ajustar tu plan y ver patrones de bienestar en el tiempo.',
@@ -114,24 +110,6 @@ const AYUDA={
       'Marca tu energía, ánimo y sueño del día (y etiquetas o nota si quieres).',
       'Guarda el check-in para que la app ajuste tu capacidad y plan.',
       'Revisa patrones e historial para entender cómo te has sentido.'
-    ]
-  },
-  respiracion:{
-    title:'Respiración',
-    desc:'Herramientas breves de respiración guiada y meditaciones con temporizador para hacer una pausa consciente.',
-    steps:[
-      'Comienza con el suspiro cíclico (2-1-6), que es la técnica visible por defecto; 4-7-8 está en "Más opciones" y tiene menos evidencia formal.',
-      'Sigue las indicaciones del círculo y los tiempos en pantalla.',
-      'Abre "Más opciones" para otras respiraciones o para iniciar una meditación breve.'
-    ]
-  },
-  pausas:{
-    title:'Pausas rápidas',
-    desc:'Sugerencias simples para descansar, moverte y cuidar tu energía durante el estudio.',
-    steps:[
-      'Revisa las tarjetas con ideas de pausas breves.',
-      'Usa las pausas sugeridas según tu día o tus evaluaciones.',
-      'Toma descansos cortos para sostener tu concentración y bienestar.'
     ]
   },
   apoyo:{

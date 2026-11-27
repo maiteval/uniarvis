@@ -2,8 +2,8 @@ const ARVIS_IA_MODE='simulada';
 const ArvisIA=(()=>{
   const IA_MONTHS={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12};
   const IA_WEEKDAYS={lunes:0,martes:1,miercoles:2,jueves:3,viernes:4,sabado:5,domingo:6};
-  const IA_TAB_LABEL={hoy:'Hoy',semana:'Semana',ramos:'Ramos',syllabus:'Fechas',notas:'Notas',herramientas:'Herramientas',salud:'Carga por semana',checkin:'Check-in',respiracion:'Respiración',pausas:'Pausas',apoyo:'Apoyo',amigos:'Amigos',perfil:'Perfil',tema:'Apariencia',privacidad:'Privacidad',inicio:'Inicio',cuenta:'Cuenta'};
-  const IA_HELP_KEYS=[[/check.?in|como me siento|energia/,'checkin'],[/pomodoro|flashcard|tarjeta|herramienta/,'herramientas'],[/syllabus|programa del ramo/,'syllabus'],[/nota|ponderac|promedio/,'notas'],[/horario|ramo|clase/,'ramos'],[/respira|medita/,'respiracion'],[/pausa/,'pausas'],[/amig|social/,'amigos'],[/semana|calendario/,'semana'],[/\bhoy\b|plan del dia|micro.?tarea/,'hoy'],[/carga|calor/,'salud'],[/privacidad|datos personales|respaldo/,'privacidad'],[/tema|apariencia|modo oscuro|color/,'tema'],[/perfil/,'perfil'],[/apoyo|ayuda profesional|psicolog/,'apoyo'],[/inicio/,'inicio']];
+  const IA_TAB_LABEL={hoy:'Hoy',semana:'Semana',ramos:'Ramos',syllabus:'Fechas',notas:'Notas',herramientas:'Herramientas',checkin:'Check-in',apoyo:'Apoyo',amigos:'Amigos',perfil:'Perfil',tema:'Apariencia',privacidad:'Privacidad',inicio:'Inicio',cuenta:'Cuenta'};
+  const IA_HELP_KEYS=[[/check.?in|como me siento|energia/,'checkin'],[/pomodoro|flashcard|tarjeta|herramienta/,'herramientas'],[/syllabus|programa del ramo/,'syllabus'],[/nota|ponderac|promedio/,'notas'],[/horario|ramo|clase/,'ramos'],[/amig|social/,'amigos'],[/semana|calendario/,'semana'],[/\bhoy\b|plan del dia|micro.?tarea/,'hoy'],[/privacidad|datos personales|respaldo/,'privacidad'],[/tema|apariencia|modo oscuro|color/,'tema'],[/perfil/,'perfil'],[/apoyo|ayuda profesional|psicolog/,'apoyo'],[/inicio/,'inicio']];
   const IA_CRISIS=/suicid|matarme|quitarme la vida|no quiero vivir|hacerme dano|autolesion|cortarme|desaparecer para siempre|no vale la pena vivir/;
   const IA_EVAL=/certamen|prueba|examen|evaluacion|control|entrega|informe|laboratorio|proyecto|solemne|parcial/;
   let pendiente=null;
@@ -404,8 +404,8 @@ const ArvisIA=(()=>{
       return {texto:`Calendario de ${inst.short} (datos de ejemplo):`,lista:items,acciones:[goAction('semana')]};
     }
     if(/\b(psicolog|dise|bienestar estudiantil|hablar con alguien|apoyo|ansiedad|angustia|triste|estres|estresad)/.test(t)&&inst)
-      return {estado:'preocupado',texto:`Siento que estés pasando por esto. En ${inst.short} puedes contactar a ${inst.support.service} (${inst.support.email} · ${inst.support.phone}, ${inst.support.hours}; dato de ejemplo). También puedes probar una respiración corta.`,
-        acciones:[goAction('apoyo'),goAction('respiracion')]};
+      return {estado:'preocupado',texto:`Siento que estés pasando por esto. En ${inst.short} puedes contactar a ${inst.support.service} (${inst.support.email} · ${inst.support.phone}, ${inst.support.hours}; dato de ejemplo).`,
+        acciones:[goAction('apoyo')]};
     const k=helpKey(t);
     if(k&&typeof AYUDA!=='undefined'&&AYUDA[k]){
       const h=AYUDA[k];

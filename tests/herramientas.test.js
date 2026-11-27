@@ -22,9 +22,8 @@ const path=require('path');
     S.tasks=[{id:'t1',eventId:'e1',courseId:'c1',title:'Repasar derivadas',date:today(),minutes:25,done:false}];
     S.lastPlan=today();save();go('inicio');
   });
-  await p.locator('.home-card').filter({hasText:'Académico'}).click();
-  await p.click('nav >> text="Herramientas"');
-  ok('Herramientas es subsección de Académico',p.url().endsWith('#/academico/herramientas')&&(await p.textContent('#app')).includes('Pomodoro')&&(await p.textContent('#app')).includes('Flashcards'));
+  await p.locator('.home-card').filter({hasText:'Herramientas'}).click();
+  ok('Herramientas es sección principal',p.url().endsWith('#/herramientas/herramientas')&&(await p.textContent('#app')).includes('Pomodoro')&&(await p.textContent('#app')).includes('Flashcards'));
 
   const resume=await p.evaluate(()=>{
     S.tools.pomodoro={...freshPomodoro(),running:true,endsAt:Date.now()-1000,leftMs:1500000,target:'course:c1'};

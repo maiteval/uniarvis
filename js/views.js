@@ -296,9 +296,9 @@ function dismissWeeklySummary(){
 }
 function viewInicio(){
   const name=esc(typeof displayName==='function'?displayName():'');
-  const descs={planificacion:'Tu día y tu semana, sin sobrecargas.',academico:'Ramos, fechas, notas y carga.',bienestar:'Check-in, pausas y apoyo.',social:'Coordina sesiones con amigos.',ajustes:'Perfil, tema y privacidad.'};
+  const descs={planificacion:'Tu día y tu semana, sin sobrecargas.',academico:'Ramos, fechas y notas.',herramientas:'Pomodoro y flashcards para estudiar.',bienestar:'Check-in y apoyo.',social:'Coordina sesiones con amigos.',ajustes:'Perfil, tema y privacidad.'};
   const icons=(typeof HOME_ICONS!=='undefined')?HOME_ICONS:[];
-  const order=['bienestar','academico','planificacion','social','ajustes'];
+  const order=['bienestar','academico','herramientas','planificacion','social','ajustes'];
   const cards=order.map(k=>SECTIONS.find(s=>s.key===k)).filter(Boolean).map(s=>{
     const i=SECTIONS.indexOf(s)-1;
     return `<button class="home-card" onclick="go('${s.tabs[0][0]}')">
@@ -526,9 +526,9 @@ function certamenActiveHtml(){
       <p class="mute">Recordar sin mirar: escribe lo que sabes y luego revisa. Repetir en días distintos ayuda a retener.</p>
       ${rows}
       ${hint}
-      <div class="row" style="margin-top:10px">${deckBtn}${pomBtn}<button class="btn sec" onclick="goBreath('s478')">Pausa nocturna 4-7-8 (opcional)</button></div>
+      <div class="row" style="margin-top:10px">${deckBtn}${pomBtn}</div>
       ${left}
-      <p class="mute" style="margin-bottom:0">La noche anterior solo hay repaso ligero y la pausa que ya está en Pausas: nada de contenido nuevo.</p>
+      <p class="mute" style="margin-bottom:0">La noche anterior solo hay repaso ligero y descanso: nada de contenido nuevo.</p>
     </div>`;
   }).join('');
 }
@@ -552,7 +552,7 @@ function viewHoy(){
   const heroId=typeof nextSessionTask==='function'&&!(typeof sessionDoneId!=='undefined'&&sessionDoneId)?((nextSessionTask()||{}).task||{}).id:null;
   todays.forEach((t,i)=>{
     rows+=taskRow(t,locked,!t.done&&t.id===heroId);
-    if(!t.done){acc+=t.minutes;if(acc>=50&&todays.slice(i+1).some(x=>!x.done)){rows+=`<div class="pause">🌿 <span style="flex:1">Pausa de 5 min entre sesiones: estírate o haz 1 minuto de respiración.</span><button class="btn sec" onclick="goBreath('larga')">Respirar</button></div>`;acc=0}}
+    if(!t.done){acc+=t.minutes;if(acc>=50&&todays.slice(i+1).some(x=>!x.done)){rows+=`<div class="pause">🌿 <span style="flex:1">Pausa de 5 min: estírate, toma agua o mira lejos un momento.</span></div>`;acc=0}}
   });
   const opts=S.courses.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
   const conTemas=typeof topicsOn==='function'&&topicsOn()&&todays.some(t=>Array.isArray(t.topicIds)&&t.topicIds.length);
@@ -811,43 +811,6 @@ function viewCheckin(){
   ${evidenceHtml()}`;
 }
 function viewBienestar(){return viewCheckin()}
-function viewRespiracion(){
-  const T=TECH[bsel];
-  const other=Object.entries(TECH).filter(([k])=>k!=='suspiro');
-  return `${screenHelp('respiracion')}
-  <div class="card"><h2>Respiración</h2>
-    <div class="mute">Herramientas breves para bajar la activación. No son un tratamiento: solo te ayudan a hacer una pausa consciente.</div></div>
-  <div class="grid2">
-    <div class="card"><h3>Respiración guiada</h3>
-      <p class="mute"><b>${T.name}</b> · ${T.desc}</p>
-      <div class="bwrap"><div id="bcircle"></div></div>
-      <div class="bnum"><div id="blabel">${bt?'':'Listo cuando quieras'}</div><div id="bcount" class="mute"></div><div id="bcycles" class="mute"></div></div>
-      <div class="row" style="justify-content:center;margin-top:8px">
-        ${bt?'<button class="btn" onclick="stopBreath()">Detener</button>':'<button class="btn" onclick="startBreath()">Comenzar</button>'}</div>
-    </div>
-    <div class="card"><details><summary>Más opciones</summary>
-      <p class="mute">Otras respiraciones y meditaciones breves.</p>
-      <div class="row">${other.map(([k,v])=>`<button class="btn sec" onclick="goBreath('${k}')">${v.name}</button>`).join('')}</div>
-      <h3>Meditaciones breves</h3>
-      ${mt?`<div class="banner lock row" style="justify-content:space-between"><span>En curso: <b>${esc(mt.name)}</b> — <b id="mtime">${mfmt(mt.left)}</b></span><button class="btn" onclick="stopMed()">Detener</button></div>`:''}
-      ${MEDS.map(m=>`<details><summary>${m.name} · ${m.min} min</summary>
-        <p class="mute">${m.desc}</p><ol>${m.steps.map(s=>`<li>${s}</li>`).join('')}</ol>
-        <button class="btn sec" ${mt||bt?'disabled':''} onclick="startMed('${m.id}')">Iniciar temporizador (${m.min} min)</button></details>`).join('')}
-    </details></div>
-  </div>`;
-}
-function viewPausas(){
-  return `${screenHelp('pausas')}
-  <div class="card"><h2>Pausas rápidas</h2>
-    <div class="pgrid">
-      <div class="pcard"><b>Muévete 5 minutos</b><br>Camina o estira cuello, hombros y espalda tras cada bloque de estudio.</div>
-      <div class="pcard"><b>Agua y luz natural</b><br>Toma agua y mira por la ventana unos minutos, lejos de las pantallas.</div>
-      <div class="pcard"><b>Mira lejos 20 segundos</b><br>Cada 20 minutos de pantalla, enfoca algo lejano para descansar la vista.</div>
-      <div class="pcard"><b>Cuida el sueño</b><br>Dormir bien rinde más que una hora extra de estudio a medianoche.</div>
-      <div class="pcard"><b>Habla con alguien</b><br>Un mensaje a un compañero o amigo también es una pausa válida.</div>
-    </div></div>
-  ${pauseCard()}`;
-}
 function viewApoyo(){
   const sp=S.support,inst=isInstitutional();
   return `${screenHelp('apoyo')}
@@ -915,42 +878,6 @@ function viewPrivacidad(){
     <p class="mute" style="margin-bottom:0">No incluyas datos de bienestar ni información personal en el mensaje: el comentario no se liga a tu cuenta.</p>
   </div>`;
 }
-function viewSalud(){
-  if(!S.courses.length)return screenHelp('salud')+'<div class="card empty">Aún no tienes ramos. Ve a <b>Académico &gt; Ramos</b> y toca <b>Agregar</b> para ver tu carga por semana.</div>';
-  const t0=today(),N=14,sumD=S.courses.reduce((a,c)=>a+c.difficulty,0);
-  const dates=[...Array(N)].map((_,i)=>addDays(t0,i-N+1));
-  const rows=S.courses.map(c=>{
-    const tg=d=>Math.max(1,capFor(d)*0.7*c.difficulty/sumD);          // cuota recomendada del ramo ese día
-    const vals=dates.map(d=>S.sessions.filter(s=>s.date===d&&s.courseId===c.id).reduce((a,s)=>a+s.minutes,0)/tg(d));
-    const a7=avg(vals.slice(-7));
-    const nextEv=S.events.filter(e=>e.courseId===c.id&&e.type!=='control'&&e.date>=t0).sort((a,b)=>a.date.localeCompare(b.date))[0];
-    const days2=nextEv?diffDays(t0,nextEv.date):null;
-    let status='En equilibrio',col='var(--ok)';
-    if(a7<0.5){status='Poca atención';col='var(--warn-text,var(--warn))'}
-    else if(a7<0.85){status='Atención algo baja';col='var(--warn-text,var(--warn))'}
-    else if(a7>1.3){status='Mucha atención';col='var(--soft)'}
-    return {c,target:tg(t0),vals,a7,status,col,nextEv,days2,risk:nextEv&&days2<=10&&a7<0.6};
-  });
-  const cls=v=>v===0?'h0':v<0.5?'h1':v<0.9?'h2':v<=1.3?'h3':'h4';
-  const alerts=rows.filter(r=>r.risk);
-  return `${screenHelp('salud')}
-  <div class="card"><h2>Carga por semana</h2>
-    ${alerts.length?alerts.map(r=>`<div class="banner go"><b>${esc(r.c.name)}</b>: tienes "${esc(r.nextEv.title)}" en ${r.days2} día(s) y esta semana le diste poca atención (${Math.round(r.a7*100)}% de lo recomendado). Quizá convenga reequilibrar un poco.</div>`).join('')
-      :'<div class="banner min">Sin desequilibrios importantes frente a tus próximas evaluaciones.</div>'}
-    <div class="legend mute">Atención vs. cuota recomendada del ramo (según dificultad y tu capacidad de cada día):
-      <span class="h0"></span>sin estudio<span class="h1"></span>&lt;50%<span class="h2"></span>50–90%<span class="h3"></span>90–130%<span class="h4"></span>&gt;130%</div>
-    <div style="margin-top:12px;overflow-x:auto">
-    ${rows.map(r=>`<div style="margin-bottom:12px">
-      <div class="row" style="justify-content:space-between"><span><span aria-hidden="true" class="dot" style="background:${r.c.color};display:inline-block"></span> <b>${esc(r.c.name)}</b>
-        <span class="mute"> · cuota hoy ~${Math.round(r.target)} min</span></span>
-        <span style="color:${r.col};font-weight:600">${r.status}</span></div>
-      <div class="heat" style="grid-template-columns:repeat(${N},1fr);margin-top:4px;min-width:420px">
-        ${r.vals.map((v,i)=>`<div class="cell ${cls(v)}" title="${dshort(dates[i])}: ${Math.round(v*Math.max(1,capFor(dates[i])*0.7*r.c.difficulty/sumD))} min"></div>`).join('')}</div>
-      <div class="mute" style="margin-top:2px">${r.nextEv?`Próxima fecha: ${dshort(r.nextEv.date)} (${esc(r.nextEv.title)})`:'Sin evaluaciones próximas'}</div></div>`).join('')}
-    </div>
-    <div class="mute">Cada columna es un día (hoy a la derecha).</div>
-  </div>`;
-}
 function viewTema(){
   const th=themeOk(S.settings&&S.settings.theme)?S.settings.theme:'cian';
   const md=modeOk(S.settings&&S.settings.mode)?S.settings.mode:'light';
@@ -970,8 +897,9 @@ function viewTema(){
     <p class="mute" style="margin-bottom:0">El modo claro suaviza los fondos y mantiene el contraste para leer; el oscuro cuida la vista con poca luz.</p>
   </div>
   <div class="card"><h3>Arvis</h3>
-    <label class="mute"><input type="checkbox" ${S.settings.arvis!==false?'checked':''} onchange="setArvis(this.checked)"> Mostrar a Arvis</label>
+    <label class="mute"><input type="checkbox" ${arvisOn()?'checked':''} onchange="setArvis(this.checked)"> Mostrar a Arvis</label>
     <p class="mute" style="margin:6px 0 0">Aparece en el inicio y en algunos momentos clave. Si lo apagas, la app sigue igual que antes.</p>
+    <button class="btn sec" type="button" style="margin-top:10px" onclick="go('arvis')">Personalizar a Arvis</button>
   </div>
   <div class="card"><h3>Vista previa</h3>
     <div class="preview">
