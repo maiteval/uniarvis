@@ -55,7 +55,7 @@ const path=require('path');
   ok('Ajustes incluye el interruptor "Mostrar a Arvis" activado',await toggle.count()===1&&await toggle.isChecked()&&await p.evaluate(()=>S.settings.arvis.enabled===true));
   await toggle.uncheck();
   await p.evaluate(()=>go('inicio'));
-  ok('al apagarlo Arvis desaparece y la app sigue igual',await p.locator('.arvis-card').count()===0&&await p.locator('.home-card').count()===5&&await p.evaluate(()=>S.settings.arvis.enabled===false));
+  ok('al apagarlo Arvis desaparece y la app sigue igual',await p.locator('.arvis-card').count()===0&&await p.locator('.home-card').count()===6&&await p.evaluate(()=>S.settings.arvis.enabled===false));
   await p.evaluate(()=>go('tema'));
   await p.locator('input[onchange="setArvis(this.checked)"]').check();
 
