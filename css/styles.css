@@ -809,3 +809,28 @@ details.grades-card[open] .grades-sum-name::before{transform:rotate(90deg)}
 .pa-day:has(input:checked){border-color:var(--accent,#3b6df0);background:color-mix(in srgb,var(--accent,#3b6df0) 14%,transparent)}
 .pa-repeat{gap:16px}
 .pa-repeat label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+
+/* Arvis pregunta: trivia */
+.qz-card{max-width:760px}
+.qz-top{justify-content:space-between;gap:10px;flex-wrap:wrap}
+.qz-score{font-weight:700;color:var(--accent-strong,var(--accent))}
+.qz-timer{height:8px;border-radius:999px;background:var(--bg-subtle);overflow:hidden;margin-top:12px}
+.qz-timer>div{height:100%;background:var(--accent);border-radius:999px;transition:width .25s linear}
+.qz-secs{margin:4px 0 0;font-size:13px;text-align:right}
+.qz-kind{margin:14px 0 4px;font-size:13px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.qz-q{font-size:20px;line-height:1.35;margin:0 0 14px}
+.qz-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qz-opts.qz-two{grid-template-columns:1fr 1fr}
+.qz-opt{display:flex;align-items:flex-start;gap:10px;text-align:left;padding:14px;border-radius:14px;border:1px solid var(--line-strong,var(--line));background:var(--field-bg,var(--card));color:var(--ink);font:inherit;font-size:15px;line-height:1.35;cursor:pointer;min-height:56px}
+.qz-opt:hover:not([disabled]){border-color:var(--accent)}
+.qz-opt[disabled]{cursor:default;opacity:.75}
+.qz-opt.qz-ok{opacity:1;border:2px solid #2e9e6a;background:color-mix(in srgb,#2e9e6a 16%,transparent)}
+.qz-opt.qz-bad{opacity:1;border:2px solid #d0577a;background:color-mix(in srgb,#d0577a 14%,transparent)}
+.qz-letter{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:13px;background:var(--bg-subtle)}
+.qz-feedback{margin:14px 0 8px;padding:10px 12px;border-radius:12px}
+.qz-feedback.ok{background:color-mix(in srgb,#2e9e6a 14%,transparent)}
+.qz-feedback.bad{background:color-mix(in srgb,#d0577a 12%,transparent)}
+.qz-final{font-size:18px}
+.qz-wrong{padding-left:18px}
+.qz-wrong li{margin-bottom:10px}
+@media (max-width:640px){.qz-opts{grid-template-columns:1fr}.qz-q{font-size:18px}}

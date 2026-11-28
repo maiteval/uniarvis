@@ -15,7 +15,7 @@ const TOUR_STEPS=[
   {
     icon:'⏱️',
     title:'Herramientas',
-    text:'Estudia con Pomodoro y repasa con flashcards de repaso espaciado.'
+    text:'Estudia con Pomodoro, repasa con flashcards y juega Arvis pregunta con tus diapositivas.'
   },
   {
     icon:'🗓️',
@@ -56,6 +56,15 @@ const AYUDA={
       'Revisa la capacidad del día, que puedes ajustar con el check-in en Bienestar.',
       'Cada sesión trae una instrucción concreta, una franja sugerida y el motivo por el que aparece; la hora es solo una sugerencia.',
       'Marca las sesiones realizadas, cuéntanos cómo te fue y registra estudio libre si corresponde.'
+    ]
+  },
+  pregunta:{
+    title:'Arvis pregunta',
+    desc:'Una trivia armada con el texto de tus diapositivas (.pptx o PDF). El archivo se lee en tu dispositivo y no se sube a ningún servidor.',
+    steps:[
+      'Elige la presentación, el ramo (opcional) y cuántas preguntas quieres.',
+      'Pulsa «Crear trivia»: cada pregunta tiene tiempo límite y suma puntos extra por rapidez y por racha.',
+      'Al final revisa las que fallaste y pásalas a tus flashcards para repasarlas con repaso espaciado.'
     ]
   },
   horario:{

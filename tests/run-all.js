@@ -34,6 +34,7 @@ server.listen(0, '127.0.0.1', async () => {
     await run('ui.test.js', [path.join(root, 'index.html'), path.join(out, 'ui')]),   // por file://
     await run('planificador.test.js', [path.join(root, 'index.html')]),                                  // sesiones largas y prioridad
     await run('horario.test.js', [path.join(root, 'index.html')]),                                       // actividades personales (Mi horario)
+    await run('arvis-pregunta.test.js', [path.join(root, 'index.html')]),                                // trivia desde PPTX/PDF
     await run('evidencia.test.js', [path.join(root, 'index.html')]),                                     // base en evidencia
     await run('notas.test.js', [path.join(root, 'index.html')]),                                          // calculadora de notas
     await run('herramientas.test.js', [path.join(root, 'index.html')]),                                   // Pomodoro y flashcards

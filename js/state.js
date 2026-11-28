@@ -39,7 +39,40 @@ function cleanArvisConfig(v,profileReady){
 }
 function freshPomodoro(){return {focusMin:25,shortMin:5,longMin:15,longEvery:4,sound:true,phase:'focus',running:false,endsAt:null,leftMs:1500000,pomodoros:0,target:'',completed:0,todayDate:'',todayMinutes:0,kindStreak:'',kindCount:0}}
 function freshFlashcards(){return {decks:[],activeDeckId:'',limit:20,correct:0}}
-function freshTools(){return {pomodoro:freshPomodoro(),flashcards:freshFlashcards()}}
+function freshQuiz(){return {sets:[]}}
+function freshTools(){return {pomodoro:freshPomodoro(),flashcards:freshFlashcards(),quiz:freshQuiz()}}
+/* Arvis pregunta: solo se guardan las preguntas generadas, nunca el archivo ni el texto completo. */
+const QUIZ_MAX_SETS=20,QUIZ_MAX_Q=30,QUIZ_KINDS=['definicion','concepto','tema','completar','vf'];
+function validQuizQuestion(q){
+  if(!q||typeof q!=='object'||typeof q.q!=='string'||!q.q||q.q.length>300)return false;
+  if(!Array.isArray(q.opts)||(q.opts.length!==2&&q.opts.length!==4)||!q.opts.every(o=>typeof o==='string'&&o.length<=300))return false;
+  return Number.isInteger(q.ok)&&q.ok>=0&&q.ok<q.opts.length&&Number.isInteger(q.slide)&&q.slide>=1&&q.slide<=1000&&QUIZ_KINDS.indexOf(q.kind)>=0;
+}
+function validQuiz(z){
+  if(!z||typeof z!=='object'||Array.isArray(z)||!Array.isArray(z.sets)||z.sets.length>QUIZ_MAX_SETS)return false;
+  const seen={};
+  return z.sets.every(s=>{
+    if(!s||!RX_TOOL_ID.test(s.id||'')||seen[s.id]||typeof s.name!=='string'||!s.name||s.name.length>80)return false;
+    seen[s.id]=1;
+    if(s.courseId!==undefined&&s.courseId!==''&&!RX_TOOL_ID.test(s.courseId))return false;
+    if(['pptx','pdf'].indexOf(s.tipo)<0||!RX_TOOL_DATE.test(s.createdAt||''))return false;
+    if(!Number.isInteger(s.best)||s.best<0||s.best>1000000||!Number.isInteger(s.plays)||s.plays<0||s.plays>1000000)return false;
+    return Array.isArray(s.questions)&&s.questions.length>=1&&s.questions.length<=QUIZ_MAX_Q&&s.questions.every(validQuizQuestion);
+  });
+}
+function cleanQuiz(z){
+  const seen={},sets=z&&Array.isArray(z.sets)?z.sets:[];
+  return {sets:sets.map(s=>{
+    if(!s||typeof s!=='object')return null;
+    const questions=(Array.isArray(s.questions)?s.questions:[]).filter(validQuizQuestion).slice(0,QUIZ_MAX_Q)
+      .map(q=>({q:q.q,opts:q.opts.slice(),ok:q.ok,slide:q.slide,kind:q.kind}));
+    if(!questions.length)return null;
+    const id=RX_TOOL_ID.test(s.id||'')&&!seen[s.id]?s.id:uid();seen[id]=1;
+    return {id,name:String(s.name||'Presentación').slice(0,80)||'Presentación',courseId:RX_TOOL_ID.test(s.courseId||'')?s.courseId:'',
+      tipo:s.tipo==='pdf'?'pdf':'pptx',createdAt:RX_TOOL_DATE.test(s.createdAt||'')?s.createdAt:today(),
+      best:toolInt(s.best,0,1000000,0),plays:toolInt(s.plays,0,1000000,0),questions};
+  }).filter(Boolean).slice(0,QUIZ_MAX_SETS)};
+}
 const toolInt=(v,a,b,d)=>Number.isInteger(v)&&v>=a&&v<=b?v:d;
 const RX_TOOL_ID=/^[\w-]{1,40}$/,RX_TOOL_DATE=/^\d{4}-\d{2}-\d{2}$/;
 const RX_TOOL_TARGET=/^(?:(course|task):[\w-]{1,40})?$/;
@@ -77,6 +110,7 @@ function validTools(t){
     total+=d.cards.length;
   }
   if(total>5000)return false;
+  if(t.quiz!==undefined&&!validQuiz(t.quiz))return false;
   if(f.activeDeckId!==undefined&&f.activeDeckId!==''&&!seen[f.activeDeckId])return false;
   return true;
 }
@@ -109,6 +143,7 @@ function cleanTools(t){
     return deck;
   });
   F.activeDeckId=F.decks.some(d=>d.id===f.activeDeckId)?f.activeDeckId:(F.decks[0]?F.decks[0].id:'');
+  out.quiz=cleanQuiz(t&&t.quiz);
   return out;
 }
 const migrateTools=t=>cleanTools(t);

@@ -296,7 +296,7 @@ function dismissWeeklySummary(){
 }
 function viewInicio(){
   const name=esc(typeof displayName==='function'?displayName():'');
-  const descs={planificacion:'Tu día y tu semana, sin sobrecargas.',academico:'Ramos, fechas y notas.',herramientas:'Pomodoro y flashcards para estudiar.',bienestar:'Check-in y apoyo.',social:'Coordina sesiones con amigos.',ajustes:'Perfil, tema y privacidad.'};
+  const descs={planificacion:'Tu día y tu semana, sin sobrecargas.',academico:'Ramos, fechas y notas.',herramientas:'Pomodoro, flashcards y trivia con tus diapositivas.',bienestar:'Check-in y apoyo.',social:'Coordina sesiones con amigos.',ajustes:'Perfil, tema y privacidad.'};
   const icons=(typeof HOME_ICONS!=='undefined')?HOME_ICONS:[];
   const order=['bienestar','academico','herramientas','planificacion','social','ajustes'];
   const cards=order.map(k=>SECTIONS.find(s=>s.key===k)).filter(Boolean).map(s=>{
