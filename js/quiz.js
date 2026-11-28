@@ -103,75 +103,132 @@ async function pdfSlides(file){
   return slides;
 }
 
-/* ---------- Generador local de preguntas ---------- */
-const QZ_STOP=new Set('para como entre sobre desde hasta donde cuando porque aunque mientras tambien también puede pueden deben debe tiene tienen hacer cada todos todas otros otras otro otra este esta estos estas ellos ellas mucho muchos mayor menor según segun durante través traves mediante partir siempre nunca entonces luego además ademas solo sólo cual cuales cuál cuáles parte forma tipo tipos ejemplo ejemplos general importante slide diapositiva página pagina'.split(' '));
+/* ---------- Generador local de preguntas (centrado en conceptos y teoría) ---------- */
+const QZ_STOP=new Set('para como entre sobre desde hasta donde cuando porque aunque mientras tambien puede pueden deben debe tiene tienen hacer cada todos todas otros otras otro otra este esta estos estas ellos ellas mucho muchos mayor menor segun durante traves mediante partir siempre nunca entonces luego ademas solo cual cuales parte forma tipo tipos ejemplo ejemplos general importante slide diapositiva pagina valor valores caso casos'.split(' '));
+const QZ_EXERCISE_TITLE=/^(ejercicios?|ejemplos?|problemas?|soluci[oó]n(es)?|desarrollo|resoluci[oó]n|actividad(es)?|taller|ayudant[ií]a|preguntas?|control|pauta|aplicaci[oó]n(es)?|casos?|ejercitaci[oó]n|pr[aá]ctica|tarea|gu[ií]a|resumen de ejercicios)\b/i;
+const QZ_GENERIC_TITLE=/^(introducci[oó]n|resumen|contenidos?|objetivos?|agenda|temario|bibliograf[ií]a|referencias|preguntas|dudas|gracias|fin|índice|indice|clase \d+|semana \d+|unidad \d+)$/i;
+const QZ_EXERCISE_LINE=/\b(ejercicios?|ejemplos?|problemas?|calcul[ae]|calcular|determin[ae]|encuentr[ae]|resuelv[ae]|obteng[ae]|consider[ae]|supong[ae]|se toma|se tiene|se tienen|se sabe que|se registr|datos?\s*:|soluci[oó]n|respuesta|pregunta|ppt|diapositiva|slide|l[aá]mina|figura|gr[aá]fico|tabla|anterior|siguiente|a continuaci[oó]n|como se ve|en la imagen|desarrolle|demuestre|justifique|complete)\b/i;
+const QZ_PRONOUN_START=/^(esto|esta|este|estos|estas|eso|esa|ese|ello|lo|le|les|se|si|no|y|o|pero|entonces|luego|así|asi|por eso|por lo tanto|además|ademas)\b/i;
 const qzNorm=s=>String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9ñ ]+/g,' ').replace(/\s+/g,' ').trim();
+const qzCap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+const qzDigits=s=>(String(s).match(/\d/g)||[]).length/Math.max(1,String(s).length);
 function qzShuffle(a,rnd=Math.random){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function qzPickOthers(pool,exclude,n,rnd){
   const seen=new Set(exclude.map(qzNorm)),out=[];
-  for(const x of qzShuffle(pool,rnd)){const k=qzNorm(x);if(!k||seen.has(k))continue;seen.add(k);out.push(x);if(out.length>=n)break}
+  for(const x of qzShuffle(pool,rnd)){const k=qzNorm(x);if(!k||seen.has(k)||[...seen].some(s=>s&&(s.includes(k)||k.includes(s))&&Math.min(s.length,k.length)>12))continue;seen.add(k);out.push(x);if(out.length>=n)break}
   return out;
 }
 function qzMake(q,correct,others,slide,kind,rnd){
   const opts=qzShuffle([correct,...others],rnd).map(o=>String(o).slice(0,300));
   return {q:String(q).slice(0,300),opts,ok:opts.indexOf(String(correct).slice(0,300)),slide,kind};
 }
+// Une líneas cortadas (típico en PDF): si la línea siguiente empieza en minúscula, es continuación.
+function qzMergeLines(lines){
+  const out=[];
+  lines.forEach(l=>{
+    const prev=out[out.length-1];
+    if(prev&&/^[a-záéíóúñü(,;]/.test(l)&&!/[.:;!?]$/.test(prev))out[out.length-1]=prev+' '+l;
+    else out.push(l);
+  });
+  return out;
+}
+const qzIsExerciseLine=l=>QZ_EXERCISE_LINE.test(l)||/\?\s*$|^¿/.test(l)||/^[a-h][).]\s/i.test(l)||qzDigits(l)>0.08||/=\s*\d|\d\s*=/.test(l)||/^\(?\d+[).]\s/.test(l);
+const qzTermOk=t=>{
+  const w=t.split(/\s+/);
+  return t.length>=3&&t.length<=60&&w.length<=6&&!QZ_EXERCISE_LINE.test(t)&&!QZ_PRONOUN_START.test(t)&&qzDigits(t)<0.15&&!/^(nota|obs|observaci[oó]n|importante|recuerda|ojo|def|definici[oó]n)$/i.test(t);
+};
+const qzStripArticle=t=>t.replace(/^(el|la|los|las|un|una|unos|unas)\s+/i,'').trim();
+// Reconoce definiciones con varias redacciones habituales.
+function qzDefinition(l){
+  let m;
+  const clean=(term,def,verbo)=>{
+    term=qzStripArticle(term.replace(/^(definici[oó]n( de)?|def\.?)\s*/i,'').trim());def=def.trim().replace(/\.$/,'');
+    if(!qzTermOk(term)||def.split(/\s+/).length<4||def.length>260||qzIsExerciseLine(def))return null;
+    return {term:qzCap(term),def:qzCap(def),verbo};
+  };
+  if((m=l.match(/^(?:se\s+(?:llama|denomina|define(?:\s+como)?|conoce\s+como)|llamamos|denominamos|definimos)\s+(.{2,60}?)\s+(?:a|al)\s+(.{12,})$/i)))return clean(m[1],m[2],'es');
+  if((m=l.match(/^(.{2,60}?)\s+(?:se\s+define\s+como|se\s+denomina|se\s+conoce\s+como|se\s+refiere\s+a|corresponde\s+a|consiste\s+en)\s+(.{12,})$/i)))return clean(m[1],m[2],'es');
+  if((m=l.match(/^(.{2,60}?)\s+(establece|indica|afirma|plantea)\s+que\s+(.{12,})$/i))){const d=clean(m[1],m[3],m[2].toLowerCase());if(d)d.def=qzCap(d.def);return d}
+  if((m=l.match(/^([^:]{2,60}?)\s*[:–—]\s+(.{12,})$/)))return clean(m[1],m[2],'es');
+  if((m=l.match(/^(.{2,55}?)\s+(es|son)\s+((?:un|una|el|la|los|las|aquel|aquella|aquello|lo que|cada)\s+.{8,})$/i))&&/^(el|la|los|las|un|una|[A-ZÁÉÍÓÚÑ])/.test(m[1]))return clean(m[1],m[3],m[2].toLowerCase());
+  return null;
+}
+// «Término: definición» suena natural sin tener que adivinar artículos.
+const qzSentence=(term,verbo,def)=>verbo==='es'||verbo==='son'?`${term}: ${def.replace(/^./,c=>c.toLowerCase())}`:`${term} ${verbo} que ${def.replace(/^./,c=>c.toLowerCase())}`;
+function qzQuestionFor(d){
+  if(d.verbo==='establece'||d.verbo==='indica'||d.verbo==='afirma'||d.verbo==='plantea')return `¿Qué ${d.verbo} «${d.term}»?`;
+  return `¿Qué ${d.verbo} «${d.term}»?`;
+}
 function quizFromSlides(slides,cantidad=10,rnd=Math.random){
+  // 1) Normalizar diapositivas y separar teoría de ejercicios
   const S2=(slides||[]).map(s=>{
-    let title=qzClean(s.title),lines=(s.lines||[]).map(qzClean).filter(l=>l.length>=4&&l.length<=300);
+    let title=qzClean(s.title),lines=qzMergeLines((s.lines||[]).map(qzClean).filter(l=>l.length>=3&&l.length<=400));
     if(!title&&lines.length&&lines[0].length<=80){title=lines[0];lines=lines.slice(1)}
-    return {n:s.n,title:title.slice(0,120),lines};
+    const exLines=lines.filter(qzIsExerciseLine).length;
+    const ejercicio=QZ_EXERCISE_TITLE.test(title)||(lines.length>=2&&exLines/lines.length>=0.5);
+    return {n:s.n,title:title.slice(0,120),lines,ejercicio};
   }).filter(s=>s.title||s.lines.length);
-  const defs=[],stmts=[],freq={};
-  S2.forEach(s=>s.lines.forEach(l=>{
-    let m=l.match(/^([^:]{2,60}?)\s*[:–—]\s+(.{8,})$/)||l.match(/^([^:]{2,60}?)\s+-\s+(.{8,})$/);
-    let verbo='es';
-    if(!m){const d=l.match(/^(.{2,60}?)\s+(es|son|se define como|se refiere a|corresponde a|consiste en)\s+(.{8,})$/i);if(d){m=[d[0],d[1],d[3]];verbo=/^son$/i.test(d[2])?'son':'es'}}
-    if(m&&m[1].split(' ').length<=7)defs.push({term:m[1].trim(),def:m[2].trim().replace(/\.$/,''),verbo,slide:s.n});
-    const words=l.split(' ');
-    if(words.length>=5&&l.length>=25&&l.length<=220)stmts.push({t:l,slide:s.n,title:s.title});
-    words.forEach(w=>{const k=w.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü]/g,'');if(k.length>=6&&!QZ_STOP.has(qzNorm(k)))freq[k]=(freq[k]||0)+1});
+  const teoria=S2.filter(s=>!s.ejercicio);
+  // 2) Extraer definiciones y afirmaciones de teoría
+  const defs=[],stmts=[];
+  teoria.forEach(s=>s.lines.forEach(l=>{
+    if(qzIsExerciseLine(l))return;
+    const d=qzDefinition(l);
+    if(d&&!defs.some(x=>qzNorm(x.term)===qzNorm(d.term))){d.slide=s.n;defs.push(d);return}
+    const words=l.split(/\s+/);
+    if(words.length>=6&&l.length>=30&&l.length<=220&&/^[A-ZÁÉÍÓÚÑ¿]/.test(l)&&!QZ_PRONOUN_START.test(l))stmts.push({t:l.replace(/\.$/,''),slide:s.n,title:s.title});
   }));
-  const titles=[...new Map(S2.filter(s=>s.title&&s.title.length<=90).map(s=>[qzNorm(s.title),s.title])).values()];
-  const keywords=Object.keys(freq);
-  const defTexts=defs.map(d=>d.def),terms=defs.map(d=>d.term);
-  const fillers=stmts.map(s=>s.t);
-  const byType={def:[],inv:[],tema:[],completar:[],vf:[]};
+  const titles=[...new Map(teoria.filter(s=>s.title&&s.title.length<=70&&!QZ_GENERIC_TITLE.test(s.title)&&!qzIsExerciseLine(s.title)).map(s=>[qzNorm(s.title),s.title])).values()];
+  const concepts=[...new Map(defs.map(d=>d.term).concat(titles.filter(t=>!/\s(y|e|vs\.?|versus|o)\s|[,/&]/i.test(t)).map(t=>qzCap(qzStripArticle(t)))).map(c=>[qzNorm(c),c])).values()];
+  const defTexts=defs.map(d=>d.def);
+  const byType={definicion:[],concepto:[],completar:[],vf:[],tema:[]};
+  // 3) Preguntas sobre definiciones
   defs.forEach((d,i)=>{
     const oth=qzPickOthers(defTexts.filter((_,j)=>j!==i),[d.def],3,rnd);
-    if(oth.length<3)oth.push(...qzPickOthers(fillers,[d.def,...oth],3-oth.length,rnd));
-    if(oth.length===3)byType.def.push(qzMake(`¿Qué ${d.verbo} «${d.term}»?`,d.def,oth,d.slide,'definicion',rnd));
-    const ot=qzPickOthers(terms.filter((_,j)=>j!==i),[d.term],3,rnd);
-    if(ot.length<3)ot.push(...qzPickOthers(titles.concat(keywords),[d.term,...ot],3-ot.length,rnd));
-    if(ot.length===3)byType.inv.push(qzMake(`¿A qué concepto corresponde: «${d.def}»?`,d.term,ot,d.slide,'concepto',rnd));
-    if(defs.length>=2){
-      const falso=rnd()<0.5,otro=defs[(i+1+Math.floor(rnd()*(defs.length-1)))%defs.length];
-      const enunciado=`${d.term} ${d.verbo} ${falso?otro.def:d.def}`;
-      if(!falso||qzNorm(otro.def)!==qzNorm(d.def))byType.vf.push({q:`Verdadero o falso: «${enunciado}».`.slice(0,300),opts:['Verdadero','Falso'],ok:falso?1:0,slide:d.slide,kind:'vf'});
+    if(oth.length<3)oth.push(...qzPickOthers(stmts.filter(s=>s.slide!==d.slide).map(s=>s.t),[d.def,...oth],3-oth.length,rnd));
+    if(oth.length===3)byType.definicion.push(qzMake(qzQuestionFor(d),d.def,oth,d.slide,'definicion',rnd));
+    const ot=qzPickOthers(concepts.filter(c=>qzNorm(c)!==qzNorm(d.term)&&!qzNorm(d.def).includes(qzNorm(c))),[d.term],3,rnd);
+    if(ot.length===3)byType.concepto.push(qzMake(`¿Qué concepto se describe? «${d.def}»`,d.term,ot,d.slide,'concepto',rnd));
+    if(defs.length>=3){
+      const falso=rnd()<0.5,otros=defs.filter((_,j)=>j!==i),otro=otros[Math.floor(rnd()*otros.length)];
+      const enunciado=qzSentence(d.term,d.verbo,falso?otro.def:d.def);
+      byType.vf.push({q:`¿Verdadero o falso? «${enunciado}»`.slice(0,300),opts:['Verdadero','Falso'],ok:falso?1:0,slide:d.slide,kind:'vf'});
     }
   });
+  // 4) Completar: se oculta un concepto (nunca una palabra cualquiera)
+  const sources=stmts.map(s=>({t:s.t,slide:s.slide})).concat(defs.map(d=>({t:qzSentence(d.term,d.verbo,d.def),slide:d.slide,own:d.term})));
+  sources.forEach(s=>{
+    const nt=' '+qzNorm(s.t)+' ';
+    const hit=concepts.filter(c=>qzNorm(c).length>=5&&nt.includes(' '+qzNorm(c)+' ')&&qzNorm(c)!==qzNorm(s.own||'')).sort((a,b)=>b.length-a.length)[0]
+      ||(s.own&&qzNorm(s.own).length>=5?s.own:null);
+    if(!hit)return;
+    const rx=new RegExp(hit.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'),m=s.t.match(rx);if(!m)return;
+    const oth=qzPickOthers(concepts.filter(c=>!nt.includes(' '+qzNorm(c)+' ')),[hit],3,rnd);
+    if(oth.length===3)byType.completar.push(qzMake(`Completa la idea: «${s.t.replace(rx,'_____')}»`,qzCap(m[0])===m[0]?m[0]:qzCap(hit),oth.map(qzCap),s.slide,'completar',rnd));
+  });
+  // 5) Tema: solo afirmaciones de teoría, sin regalar la respuesta
   if(titles.length>=4)stmts.forEach(s=>{
-    if(!s.title||qzNorm(s.t).includes(qzNorm(s.title)))return;
+    if(!s.title||titles.every(t=>qzNorm(t)!==qzNorm(s.title)))return;
+    const nt=qzNorm(s.t);if(titles.some(t=>nt.includes(qzNorm(t))))return;
     const oth=qzPickOthers(titles,[s.title],3,rnd);
-    if(oth.length===3)byType.tema.push(qzMake(`¿En qué tema de la presentación aparece esta idea? «${s.t}»`,s.title,oth,s.slide,'tema',rnd));
+    if(oth.length===3)byType.tema.push(qzMake(`¿De qué tema habla esta idea? «${s.t}»`,s.title,oth,s.slide,'tema',rnd));
   });
-  stmts.forEach(s=>{
-    const cands=s.t.split(' ').map(w=>w.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü]/g,'')).filter(w=>freq[w]&&w.length>=6);
-    if(!cands.length)return;
-    const kw=cands.sort((a,b)=>b.length-a.length)[0];
-    const inLine=new Set(s.t.split(' ').map(qzNorm));
-    const oth=qzPickOthers(keywords.filter(k=>!inLine.has(qzNorm(k))&&Math.abs(k.length-kw.length)<=5),[kw],3,rnd);
-    if(oth.length===3)byType.completar.push(qzMake(`Completa: «${s.t.replace(kw,'____')}»`,kw,oth,s.slide,'completar',rnd));
-  });
-  const seen=new Set(),out=[],colas=Object.values(byType).map(c=>qzShuffle(c,rnd)).filter(c=>c.length);
+  // 6) Mezclar dando prioridad a definiciones y conceptos, sin repetir
+  const seen=new Set(),out=[],usados={};
+  const colas=['definicion','concepto','completar','vf','tema'].map(k=>qzShuffle(byType[k],rnd)).filter(c=>c.length);
   const want=clamp(Math.round(+cantidad)||10,1,30);
   while(out.length<want&&colas.some(c=>c.length)){
     for(const c of colas){
       if(out.length>=want)break;
-      while(c.length){const q=c.shift(),k=qzNorm(q.q);if(seen.has(k)||q.ok<0)continue;seen.add(k);out.push(q);break}
+      while(c.length){
+        const q=c.shift(),k=qzNorm(q.q),ans=qzNorm(q.opts[q.ok])+'|'+q.kind;
+        if(seen.has(k)||q.ok<0||usados[ans])continue;
+        seen.add(k);usados[ans]=1;out.push(q);break;
+      }
     }
   }
-  return {preguntas:out,diapositivas:S2.length,conTexto:S2.filter(s=>s.lines.length).length};
+  return {preguntas:qzShuffle(out,rnd),diapositivas:S2.length,conTexto:S2.filter(s=>s.lines.length).length,
+    teoria:teoria.length,ejercicios:S2.length-teoria.length,definiciones:defs.length};
 }
 
 /* ---------- Guardado ---------- */
@@ -202,7 +259,8 @@ async function createQuiz(){
     const r=quizFromSlides(slides,+qzCount);
     qzBusy=false;
     if(r.preguntas.length<3){
-      qzMsg=r.conTexto?'Encontré muy poco texto para armar preguntas. Funciona mejor con diapositivas que tengan títulos, viñetas y definiciones (por ejemplo «Concepto: explicación»).'
+      qzMsg=r.conTexto&&r.ejercicios>r.teoria?'Esta presentación parece ser casi solo de ejercicios. Arvis pregunta arma preguntas de conceptos y teoría: prueba con las diapositivas de la clase teórica.'
+        :r.conTexto?'Encontré muy poco texto para armar preguntas. Funciona mejor con diapositivas que tengan títulos, viñetas y definiciones (por ejemplo «Concepto: explicación»).'
         :'No encontré texto en el archivo. Si las diapositivas son imágenes o escaneos, no se pueden leer.';
       return render();
     }
@@ -220,32 +278,68 @@ async function delQuiz(id){
   Q.sets=Q.sets.filter(x=>x.id!==id);save();render();
 }
 
-/* ---------- Juego ---------- */
+/* ---------- Juego (estilo trivia con ruleta) ---------- */
+const QZ_CATS={
+  definicion:{label:'Definición',color:'#3b82f6',dark:'#1e40af',icon:'📘'},
+  concepto:{label:'Concepto',color:'#8b5cf6',dark:'#5b21b6',icon:'💡'},
+  completar:{label:'Completar',color:'#10b981',dark:'#047857',icon:'✏️'},
+  vf:{label:'Verdadero o falso',color:'#ec4899',dark:'#9d174d',icon:'⚖️'},
+  tema:{label:'Tema',color:'#f59e0b',dark:'#b45309',icon:'🧭'}
+};
+const QZ_ORDER=['definicion','concepto','completar','vf','tema'];
+const QZ_SAY={
+  spin:['¡Gira la ruleta!','¿Qué categoría saldrá?','¡Vamos por otra!'],
+  play:['Tú puedes.','Piensa en la definición.','Lee con calma.','Esta la vimos en clases.'],
+  ok:['¡Correcto!','¡Bien ahí!','¡Eso es!','¡Vas con todo!'],
+  bad:['Casi… repásala después.','Ups, esa no era.','No pasa nada, sigamos.']
+};
+const qzPick=a=>a[Math.floor(Math.random()*a.length)];
+const qzReduced=()=>{try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}};
+const qzSpinMs=()=>qzReduced()?0:1700;
+const qzArvis=(mood,size,cls)=>typeof arvisOn==='function'&&arvisOn()?arvisFigura(mood,size,cls||''):'';
 function qzStopTimer(){if(qzTimer){clearInterval(qzTimer);qzTimer=null}}
 function startQuiz(id){
   const s=qzCfg().sets.find(x=>x.id===id);if(!s)return;
   qzStopTimer();
-  qzGame={id,order:qzShuffle(s.questions.map((_,i)=>i)),i:0,score:0,streak:0,bestStreak:0,answers:[],picked:null,phase:'play',deadline:0};
-  qzNext(true);
+  qzGame={id,order:qzShuffle(s.questions.map((_,i)=>i)),i:0,score:0,streak:0,bestStreak:0,answers:[],picked:null,
+    phase:'spin',deadline:0,rot:0,say:qzPick(QZ_SAY.spin)};
+  render();
 }
 function qzLimit(q){return (q.kind==='vf'?QZ_TIME.vf:QZ_TIME.opcion)*1000}
 function qzCurrent(){const s=qzGame&&qzCfg().sets.find(x=>x.id===qzGame.id);return s?s.questions[qzGame.order[qzGame.i]]:null}
-function qzNext(first){
-  if(!qzGame)return;
-  if(!first)qzGame.i++;
-  qzStopTimer();
-  if(qzGame.i>=qzGame.order.length)return qzFinish();
-  qzGame.phase='play';qzGame.picked=null;
+function qzSpin(){
+  if(!qzGame||qzGame.phase!=='spin')return;
+  const q=qzCurrent();if(!q)return;
+  const idx=Math.max(0,QZ_ORDER.indexOf(q.kind)),ms=qzSpinMs();
+  const target=(360-(idx*72+36))%360,cur=((qzGame.rot%360)+360)%360;
+  const to=qzGame.rot+(ms?360*4:0)+((target-cur+360)%360);
+  qzGame.phase='spinning';render();
+  const el=$('#qz-wheel');
+  const done=()=>{if(!qzGame||qzGame.phase!=='spinning')return;qzGame.rot=to;qzReveal()};
+  if(!ms||!el)return done();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{el.style.transform=`rotate(${to}deg)`}));
+  setTimeout(done,ms+250);
+}
+function qzReveal(){
+  qzGame.phase='play';qzGame.picked=null;qzGame.say=qzPick(QZ_SAY.play);
   qzGame.deadline=Date.now()+qzLimit(qzCurrent());
   render();
-  qzTimer=setInterval(qzTick,250);
+  qzStopTimer();qzTimer=setInterval(qzTick,250);
+}
+function qzNext(){
+  if(!qzGame)return;
+  qzGame.i++;qzStopTimer();
+  if(qzGame.i>=qzGame.order.length)return qzFinish();
+  qzGame.phase='spin';qzGame.picked=null;qzGame.say=qzPick(QZ_SAY.spin);
+  render();
+  const b=$('#qz-spin');if(b)b.focus();
 }
 function qzTick(){
   if(!qzGame||qzGame.phase!=='play')return qzStopTimer();
   const left=qzGame.deadline-Date.now(),q=qzCurrent();
-  const bar=$('#qz-bar'),txt=$('#qz-secs');
-  if(bar&&q)bar.style.width=Math.max(0,left/qzLimit(q)*100)+'%';
-  if(txt)txt.textContent=Math.max(0,Math.ceil(left/1000))+' s';
+  const ring=$('#qz-ring'),txt=$('#qz-secs');
+  if(ring&&q){ring.style.setProperty('--p',Math.max(0,left/qzLimit(q)*100).toFixed(1));ring.classList.toggle('qz-hurry',left<=5000)}
+  if(txt)txt.textContent=Math.max(0,Math.ceil(left/1000));
   if(left<=0)qzAnswer(-1);
 }
 function qzAnswer(idx){
@@ -256,7 +350,8 @@ function qzAnswer(idx){
   if(ok){qzGame.streak++;qzGame.bestStreak=Math.max(qzGame.bestStreak,qzGame.streak);pts=100+Math.round(left/1000)*5+(qzGame.streak>=3?20:0)}
   else qzGame.streak=0;
   qzGame.score+=pts;qzGame.picked=idx;qzGame.phase='feedback';
-  qzGame.answers.push({qi:qzGame.order[qzGame.i],ok,pts,timeout:idx<0});
+  qzGame.say=ok?(qzGame.streak>=3?`¡Racha de ${qzGame.streak}! +${pts}`:`${qzPick(QZ_SAY.ok)} +${pts}`):idx<0?'¡Se acabó el tiempo!':qzPick(QZ_SAY.bad);
+  qzGame.answers.push({qi:qzGame.order[qzGame.i],ok,pts,timeout:idx<0,kind:q.kind});
   render();
   const nb=$('#qz-next');if(nb)nb.focus();
 }
@@ -289,28 +384,52 @@ function qzWrongToFlashcards(){
 }
 
 /* ---------- Vistas ---------- */
-const qzKindLabel={definicion:'Definición',concepto:'Concepto',tema:'Tema',completar:'Completar',vf:'Verdadero o falso'};
+const qzKindLabel=Object.fromEntries(Object.entries(QZ_CATS).map(([k,v])=>[k,v.label]));
+function qzWheelHtml(rot){
+  const grad=QZ_ORDER.map((k,i)=>`${QZ_CATS[k].color} ${i*72}deg ${(i+1)*72}deg`).join(',');
+  const icons=QZ_ORDER.map((k,i)=>`<span class="qz-wheel-ic" style="--a:${i*72+36}deg" title="${QZ_CATS[k].label}">${QZ_CATS[k].icon}</span>`).join('');
+  return `<div class="qz-wheel-wrap"><span class="qz-pointer" aria-hidden="true"></span>
+    <div class="qz-wheel" id="qz-wheel" aria-hidden="true" style="transform:rotate(${rot}deg);background:conic-gradient(${grad})">${icons}</div>
+    <button class="qz-hub" id="qz-spin" data-focus-id="qz-spin" onclick="qzSpin()" ${qzGame.phase==='spinning'?'disabled':''}>${qzGame.phase==='spinning'?'…':'¡Girar!'}</button></div>
+    <ul class="qz-legend">${QZ_ORDER.map(k=>`<li style="--c:${QZ_CATS[k].color}">${QZ_CATS[k].icon} ${QZ_CATS[k].label}</li>`).join('')}</ul>`;
+}
+function qzDotsHtml(){
+  return `<div class="qz-dots" aria-label="Pregunta ${qzGame.i+1} de ${qzGame.order.length}">${qzGame.order.map((_,i)=>{
+    const a=qzGame.answers[i];return `<span class="${a?(a.ok?'ok':'bad'):i===qzGame.i?'now':''}"></span>`}).join('')}</div>`;
+}
+function qzBubble(mood,text,size){
+  const fig=qzArvis(mood,size||76,'qz-arvis-fig');
+  return `<div class="qz-arvis-row${fig?'':' sin-arvis'}">${fig}<div class="qz-bubble" role="status">${esc(text)}</div></div>`;
+}
 function qzPlayHtml(){
   const s=qzCfg().sets.find(x=>x.id===qzGame.id),q=qzCurrent();
   if(!s||!q){qzGame=null;return ''}
-  const total=qzGame.order.length,fb=qzGame.phase==='feedback',last=qzGame.answers[qzGame.answers.length-1];
+  const total=qzGame.order.length,cat=QZ_CATS[q.kind]||QZ_CATS.definicion;
+  const hud=`<div class="qz-hud"><button class="qz-x" aria-label="Salir de la trivia" onclick="quitQuiz()">✕</button>${qzDotsHtml()}
+    <span class="qz-pts" aria-label="Puntaje">★ ${qzGame.score}</span></div>`;
+  if(qzGame.phase==='spin'||qzGame.phase==='spinning'){
+    return `<div class="qz-stage qz-stage-spin">${hud}
+      <p class="qz-count">Pregunta ${qzGame.i+1} de ${total}</p>
+      ${qzBubble('energia',qzGame.say,70)}
+      ${qzWheelHtml(qzGame.rot)}</div>`;
+  }
+  const fb=qzGame.phase==='feedback',last=qzGame.answers[qzGame.answers.length-1];
+  const left=Math.max(0,qzGame.deadline-Date.now());
   const opts=q.opts.map((o,i)=>{
     let cls='qz-opt';
-    if(fb){if(i===q.ok)cls+=' qz-ok';else if(i===qzGame.picked)cls+=' qz-bad'}
-    return `<button class="${cls}" ${fb?'disabled':''} data-focus-id="qz-opt-${i}" onclick="qzAnswer(${i})"><span class="qz-letter" aria-hidden="true">${'ABCD'[i]}</span><span>${esc(o)}</span></button>`;
+    if(fb){if(i===q.ok)cls+=' qz-ok';else if(i===qzGame.picked)cls+=' qz-bad';else cls+=' qz-dim'}
+    return `<button class="${cls}" ${fb?'disabled':''} data-focus-id="qz-opt-${i}" onclick="qzAnswer(${i})"><span class="qz-letter" aria-hidden="true">${'ABCD'[i]}</span><span class="qz-opt-t">${esc(o)}</span></button>`;
   }).join('');
-  const left=Math.max(0,qzGame.deadline-Date.now());
-  return `<div class="card qz-card" aria-live="polite">
-    <div class="row qz-top"><b>${esc(s.name)}</b><span class="mute">Pregunta ${qzGame.i+1} de ${total}</span>
-      <span class="qz-score">${qzGame.score} pts${qzGame.streak>=2?` · racha ${qzGame.streak}`:''}</span></div>
-    ${fb?'':`<div class="qz-timer" aria-hidden="true"><div id="qz-bar" style="width:${left/qzLimit(q)*100}%"></div></div><p class="mute qz-secs" id="qz-secs">${Math.ceil(left/1000)} s</p>`}
-    <p class="qz-kind">${qzKindLabel[q.kind]||'Pregunta'} · diapositiva ${q.slide}</p>
-    <h2 class="qz-q">${esc(q.q)}</h2>
+  const mood=fb?(last.ok?'celebrando':'preocupado'):'estudiando';
+  return `<div class="qz-stage" style="--cat:${cat.color};--cat-dark:${cat.dark}">${hud}
+    <div class="qz-catbar"><span class="qz-cat-ic" aria-hidden="true">${cat.icon}</span>
+      <span><b>${cat.label}</b><br><small>Pregunta ${qzGame.i+1} de ${total} · diapositiva ${q.slide}</small></span>
+      ${fb?'':`<span class="qz-ring" id="qz-ring" style="--p:${(left/qzLimit(q)*100).toFixed(1)}" aria-hidden="true"><span id="qz-secs">${Math.ceil(left/1000)}</span></span>`}</div>
+    ${qzBubble(mood,qzGame.say)}
+    <div class="qz-qcard"><h2 class="qz-q">${esc(q.q)}</h2></div>
     <div class="qz-opts${q.opts.length===2?' qz-two':''}">${opts}</div>
-    ${fb?`<p class="qz-feedback ${last.ok?'ok':'bad'}" role="status">${last.ok?`¡Correcto! +${last.pts} pts`:last.timeout?'Se acabó el tiempo.':'Incorrecto.'}${last.ok?'':` La respuesta era: <b>${esc(q.opts[q.ok])}</b> (diapositiva ${q.slide}).`}</p>
-      <div class="row"><button class="btn" id="qz-next" data-focus-id="qz-next" onclick="qzNext()">${qzGame.i+1<total?'Siguiente':'Ver resultado'}</button>
-      <button class="btn sec" onclick="quitQuiz()">Salir</button></div>`
-      :`<div class="row"><button class="btn sec" onclick="quitQuiz()">Salir</button></div>`}
+    ${fb?`<div class="qz-feedback ${last.ok?'ok':'bad'}" role="status">${last.ok?`¡Correcto! +${last.pts} pts`:last.timeout?'Se acabó el tiempo.':'Incorrecto.'}${last.ok?'':` La respuesta era: <b>${esc(q.opts[q.ok])}</b> (diapositiva ${q.slide}).`}</div>
+      <button class="qz-next" id="qz-next" data-focus-id="qz-next" onclick="qzNext()">${qzGame.i+1<total?'Siguiente ➜':'Ver resultado ➜'}</button>`:''}
   </div>`;
 }
 function qzEndHtml(){
@@ -318,16 +437,20 @@ function qzEndHtml(){
   const ok=qzGame.answers.filter(a=>a.ok).length,total=qzGame.answers.length,pct=total?Math.round(ok/total*100):0;
   const wrong=qzGame.answers.filter(a=>!a.ok).map(a=>s.questions[a.qi]);
   const msg=pct>=80?'¡Dominas esta presentación!':pct>=50?'Vas bien. Repasa las que fallaste y vuelve a jugar.':'Buen comienzo: repasa esas diapositivas y vuelve a intentarlo.';
-  return `<div class="card qz-card">
-    <h2>Resultado</h2>
-    ${arvis(pct>=80?'celebrando':pct>=50?'normal':'estudiando',msg,{pequeno:true,id:'arvis-qz'})||`<p>${esc(msg)}</p>`}
-    <p class="qz-final"><b>${qzGame.score} pts</b> · ${ok} de ${total} correctas (${pct} %) · mejor racha ${qzGame.bestStreak}</p>
-    ${qzGame.record&&s.plays>1?'<p class="qz-feedback ok">¡Nuevo récord en esta trivia!</p>':''}
-    ${wrong.length?`<h3>Para repasar</h3><ul class="qz-wrong">${wrong.map(q=>`<li>${esc(q.q)}<br><span class="mute">Respuesta: <b>${esc(q.opts[q.ok])}</b> · diapositiva ${q.slide}</span></li>`).join('')}</ul>`:''}
-    <div class="row">
-      <button class="btn" data-focus-id="qz-again" onclick="startQuiz('${s.id}')">Jugar de nuevo</button>
-      ${wrong.length?`<button class="btn sec" data-focus-id="qz-to-fc" onclick="qzWrongToFlashcards()">Pasar falladas a flashcards</button>`:''}
-      <button class="btn sec" onclick="quitQuiz()">Volver</button>
+  const porCat=QZ_ORDER.map(k=>{const a=qzGame.answers.filter(x=>x.kind===k);return a.length?`<li style="--c:${QZ_CATS[k].color}">${QZ_CATS[k].icon} ${QZ_CATS[k].label} <b>${a.filter(x=>x.ok).length}/${a.length}</b></li>`:''}).join('');
+  const confeti=pct>=50&&!qzReduced()?`<div class="qz-confetti" aria-hidden="true">${Array.from({length:24},(_,i)=>`<i style="--x:${(i*37)%100}%;--d:${(i%6)*0.15}s;--c:${QZ_CATS[QZ_ORDER[i%5]].color}"></i>`).join('')}</div>`:'';
+  return `<div class="qz-stage qz-stage-end">${confeti}
+    <h2 class="qz-end-title">Resultado</h2>
+    ${qzBubble(pct>=80?'celebrando':pct>=50?'normal':'estudiando',msg,96)}
+    <div class="qz-bigscore"><span>${qzGame.score}</span><small>puntos</small></div>
+    <p class="qz-final">${ok} de ${total} correctas (${pct} %) · mejor racha ${qzGame.bestStreak}</p>
+    ${qzGame.record&&s.plays>1?'<p class="qz-record">🏆 ¡Nuevo récord en esta trivia!</p>':''}
+    <ul class="qz-legend qz-catscore">${porCat}</ul>
+    ${wrong.length?`<div class="qz-qcard qz-review"><h3>Para repasar</h3><ul class="qz-wrong">${wrong.map(q=>`<li>${esc(q.q)}<br><span class="mute">Respuesta: <b>${esc(q.opts[q.ok])}</b> · diapositiva ${q.slide}</span></li>`).join('')}</ul></div>`:''}
+    <div class="qz-endbtns">
+      <button class="qz-next" data-focus-id="qz-again" onclick="startQuiz('${s.id}')">Jugar de nuevo</button>
+      ${wrong.length?`<button class="qz-ghost" data-focus-id="qz-to-fc" onclick="qzWrongToFlashcards()">Pasar falladas a flashcards</button>`:''}
+      <button class="qz-ghost" onclick="quitQuiz()">Volver</button>
     </div></div>`;
 }
 function viewPregunta(){
@@ -336,28 +459,34 @@ function viewPregunta(){
   qzStopTimer();
   const Q=qzCfg();
   const courses=S.courses.map(c=>`<option value="${c.id}" ${qzCourse===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
-  return `${screenHelp('pregunta')}<div class="grid">
-    <div class="card"><h2>Arvis pregunta</h2>
-      <p class="mute" style="margin-top:0">Sube las diapositivas de una clase y Arvis arma una trivia con preguntas de alternativas y tiempo límite. El archivo se lee en este dispositivo: no se sube a ningún servidor.</p>
-      <div class="row form-stack" style="margin-top:10px">
-        <span class="diff-field"><label for="qz-file">Presentación (.pptx o PDF)</label>
-          <input id="qz-file" type="file" accept=".pptx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation" onchange="qzOnFile(this)" ${qzBusy?'disabled':''}></span>
+  const tiles=Q.sets.map((s,i)=>{const c=QZ_CATS[QZ_ORDER[i%5]];return `<div class="qz-tile" style="--cat:${c.color};--cat-dark:${c.dark}">
+      <span class="qz-tile-ic" aria-hidden="true">${s.tipo==='pdf'?'📄':'📊'}</span>
+      <span class="qz-tile-t"><b>${esc(s.name)}</b><small>${s.questions.length} preguntas${s.courseId&&course(s.courseId)?` · ${esc(cname(s.courseId))}`:''} · ${s.plays?`récord ${s.best} pts`:'sin jugar'}</small></span>
+      <button class="qz-play" data-focus-id="qz-play-${s.id}" onclick="startQuiz('${s.id}')">Jugar ▶</button>
+      <button class="btn del qz-del" aria-label="Borrar trivia ${esc(s.name)}" onclick="delQuiz('${s.id}')">Borrar</button></div>`}).join('');
+  return `${screenHelp('pregunta')}<div class="qz-hero">
+      ${qzArvis('energia',104,'qz-hero-arvis')}
+      <div><h2>Arvis pregunta</h2><p>Sube las diapositivas de una clase y juega una trivia de conceptos, definiciones y teoría.</p></div>
+    </div>
+    <div class="grid">
+    <div class="card"><h2>Nueva trivia</h2>
+      <label class="qz-drop${qzFile?' has-file':''}" for="qz-file">
+        <input id="qz-file" type="file" accept=".pptx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation" onchange="qzOnFile(this)" ${qzBusy?'disabled':''}>
+        <span class="qz-drop-ic" aria-hidden="true">${qzFile?'✅':'📥'}</span>
+        <span>${qzFile?`<b>${esc(qzFile.name)}</b><br><small>Toca para cambiar el archivo</small>`:'<b>Elige tu presentación</b><br><small>.pptx o PDF · se lee en este dispositivo</small>'}</span>
+      </label>
+      <div class="row form-stack" style="margin-top:12px">
         ${S.courses.length?`<span class="diff-field"><label for="qz-course">Ramo (opcional)</label>
           <select id="qz-course" onchange="qzCourse=this.value"><option value="">Sin ramo</option>${courses}</select></span>`:''}
         <span class="diff-field"><label for="qz-count">Preguntas</label>
           <select id="qz-count" onchange="qzCount=this.value">${['5','10','15','20'].map(n=>`<option ${qzCount===n?'selected':''}>${n}</option>`).join('')}</select></span>
       </div>
-      ${qzFile?`<p class="mute">Archivo: <b>${esc(qzFile.name)}</b></p>`:''}
-      <div class="row" style="margin-top:8px"><button class="btn" data-focus-id="qz-create" onclick="createQuiz()" ${qzBusy?'disabled':''}>${qzBusy?'Leyendo diapositivas…':'Crear trivia'}</button></div>
+      <button class="qz-next qz-create" data-focus-id="qz-create" onclick="createQuiz()" ${qzBusy?'disabled':''}>${qzBusy?'Leyendo diapositivas…':'Crear trivia ✨'}</button>
       ${qzMsg?`<p class="qz-feedback bad" role="alert">${esc(qzMsg)}</p>`:''}
-      <p class="mute">Las preguntas se arman con reglas a partir del texto de las diapositivas: revisa que tengan sentido. Funciona mejor con títulos, viñetas y definiciones. Las diapositivas que son solo imágenes no se pueden leer.</p>
+      <p class="mute">Arvis se enfoca en conceptos, definiciones y teoría, y deja fuera los ejercicios y ejemplos numéricos. Funciona mejor con títulos y viñetas del tipo «Concepto: explicación». No lee texto dentro de imágenes.</p>
     </div>
     <div class="card"><h2>Tus trivias</h2>
-      ${Q.sets.length?Q.sets.map(s=>`<div class="task"><span style="flex:1"><b>${esc(s.name)}</b>${s.courseId&&course(s.courseId)?` · ${esc(cname(s.courseId))}`:''}<br>
-        <span class="mute">${s.questions.length} preguntas · ${s.tipo==='pdf'?'PDF':'PPTX'} · ${s.plays?`récord ${s.best} pts`:'sin jugar'}</span></span>
-        <button class="btn" data-focus-id="qz-play-${s.id}" onclick="startQuiz('${s.id}')">Jugar</button>
-        <button class="btn del" aria-label="Borrar trivia ${esc(s.name)}" onclick="delQuiz('${s.id}')">Borrar</button></div>`).join('')
-        :'<p class="mute">Aún no tienes trivias. Sube las diapositivas de tu próxima clase o certamen.</p>'}
+      ${tiles||'<p class="mute">Aún no tienes trivias. Sube las diapositivas de tu próxima clase o certamen.</p>'}
     </div>
   </div>`;
 }
