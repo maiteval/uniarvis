@@ -80,37 +80,65 @@ async function pptxSlides(file){
 }
 async function pdfSlides(file){
   await loadPdfJs();
-  const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise,slides=[];
-  for(let p=1;p<=Math.min(pdf.numPages,QZ_MAX_SLIDES);p++){
-    const tc=await (await pdf.getPage(p)).getTextContent();
-    const rows=[];
+  const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise,rows=[],total=Math.min(pdf.numPages,QZ_MAX_SLIDES);
+  for(let p=1;p<=total;p++){
+    const tc=await (await pdf.getPage(p)).getTextContent(),pr=[];
     for(const it of tc.items){
       if(!it.str||!it.str.trim())continue;
       const y=Math.round(it.transform[5]),h=Math.abs(it.transform[3])||Math.abs(it.height)||0;
-      let r=rows.find(r=>Math.abs(r.y-y)<=3);
-      if(!r){r={y,h:0,parts:[]};rows.push(r)}
+      let r=pr.find(r=>Math.abs(r.y-y)<=3);
+      if(!r){r={y,h:0,parts:[]};pr.push(r)}
       r.parts.push({x:it.transform[4],s:it.str});r.h=Math.max(r.h,h);
     }
-    rows.sort((a,b)=>b.y-a.y);
-    const lines=rows.map(r=>({h:r.h,t:qzClean(r.parts.sort((a,b)=>a.x-b.x).map(x=>x.s).join(' '))}))
-      .filter(l=>l.t&&!/^\d{1,3}$/.test(l.t));
-    if(!lines.length){slides.push({n:p,title:'',lines:[]});continue}
-    const hs=lines.map(l=>l.h).sort((a,b)=>a-b),med=hs[Math.floor(hs.length/2)]||0;
-    let ti=lines.findIndex(l=>l.h>=Math.max(...hs)&&l.h>med*1.15&&l.t.length<=90);
-    if(ti<0)ti=lines[0].t.length<=90?0:-1;
-    slides.push({n:p,title:ti>=0?lines[ti].t:'',lines:lines.filter((_,i)=>i!==ti).map(l=>l.t)});
+    pr.sort((a,b)=>b.y-a.y).forEach(r=>{const t=qzClean(r.parts.sort((a,b)=>a.x-b.x).map(x=>x.s).join(' '));if(t)rows.push({page:p,h:Math.round(r.h*10)/10,t})});
   }
-  return slides;
+  // Tamaño de letra del cuerpo: el más frecuente entre líneas con texto real.
+  const cnt={};rows.filter(r=>r.t.length>25).forEach(r=>{cnt[r.h]=(cnt[r.h]||0)+1});
+  const body=+Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0]||0;
+  // Encabezados o pies que se repiten en varias páginas.
+  const pagesBy={};rows.forEach(r=>{const k=qzNorm(r.t);(pagesBy[k]=pagesBy[k]||new Set()).add(r.page)});
+  const repetida=r=>total>=3&&pagesBy[qzNorm(r.t)].size>=Math.max(3,Math.ceil(total*0.3));
+  const sizes=[...new Set(rows.filter(r=>body&&r.h>=body+0.8).map(r=>r.h))].sort((a,b)=>b-a);
+  const hayPartes=rows.some(r=>r.h>=body+0.8&&/^parte\b/i.test(r.t));
+  const sections=[];let cur=null,modo=hayPartes?'portada':'teoria',padre='',padreH=0;
+  rows.forEach(r=>{
+    if(repetida(r)||/^\d{1,3}$/.test(r.t)||/(\.\s?){4,}/.test(r.t))return;
+    const esTitulo=body&&r.h>=body+0.8&&r.t.length<=100&&/[A-Za-zÁÉÍÓÚáéíóúÑñ]{3}/.test(r.t)&&!/[,;]$/.test(r.t);
+    if(esTitulo){
+      const titulo=r.t.replace(/^(\d+(\.\d+)*\.?|[IVX]+[.)])\s+/,'').trim();
+      if(/^parte\b/i.test(r.t)){modo=/ejercicio|problema|aplicaci|pr[aá]ctica|resuelto/i.test(r.t)?'ejercicios':'teoria';padre='';padreH=0}
+      else if(!padreH||r.h>=padreH){padre=titulo;padreH=r.h}
+      cur={n:r.page,title:titulo,parent:padre!==titulo?padre:'',lines:[],ejercicio:modo!=='teoria'};
+      sections.push(cur);return;
+    }
+    if(!cur){cur={n:r.page,title:'',lines:[],ejercicio:modo!=='teoria'};sections.push(cur)}
+    cur.lines.push(r.t);
+  });
+  return sections.filter(s=>s.lines.length||s.title);
 }
 
 /* ---------- Generador local de preguntas (centrado en conceptos y teoría) ---------- */
 const QZ_STOP=new Set('para como entre sobre desde hasta donde cuando porque aunque mientras tambien puede pueden deben debe tiene tienen hacer cada todos todas otros otras otro otra este esta estos estas ellos ellas mucho muchos mayor menor segun durante traves mediante partir siempre nunca entonces luego ademas solo cual cuales parte forma tipo tipos ejemplo ejemplos general importante slide diapositiva pagina valor valores caso casos'.split(' '));
 const QZ_EXERCISE_TITLE=/^(ejercicios?|ejemplos?|problemas?|soluci[oó]n(es)?|desarrollo|resoluci[oó]n|actividad(es)?|taller|ayudant[ií]a|preguntas?|control|pauta|aplicaci[oó]n(es)?|casos?|ejercitaci[oó]n|pr[aá]ctica|tarea|gu[ií]a|resumen de ejercicios)\b/i;
-const QZ_GENERIC_TITLE=/^(introducci[oó]n|resumen|contenidos?|objetivos?|agenda|temario|bibliograf[ií]a|referencias|preguntas|dudas|gracias|fin|índice|indice|clase \d+|semana \d+|unidad \d+)$/i;
-const QZ_EXERCISE_LINE=/\b(ejercicios?|ejemplos?|problemas?|calcul[ae]|calcular|determin[ae]|encuentr[ae]|resuelv[ae]|obteng[ae]|consider[ae]|supong[ae]|se toma|se tiene|se tienen|se sabe que|se registr|datos?\s*:|soluci[oó]n|respuesta|pregunta|ppt|diapositiva|slide|l[aá]mina|figura|gr[aá]fico|tabla|anterior|siguiente|a continuaci[oó]n|como se ve|en la imagen|desarrolle|demuestre|justifique|complete)\b/i;
-const QZ_PRONOUN_START=/^(esto|esta|este|estos|estas|eso|esa|ese|ello|lo|le|les|se|si|no|y|o|pero|entonces|luego|así|asi|por eso|por lo tanto|además|ademas)\b/i;
+const QZ_GENERIC_TITLE=/^(introducci[oó]n|resumen|contenidos?|objetivos?|agenda|temario|bibliograf[ií]a|referencias|preguntas|dudas|gracias|fin|índice|indice|clase \d+|semana \d+|unidad \d+|gu[ií]a r[aá]pida.*|formulario.*|resumen de f[oó]rmulas.*|tabla de f[oó]rmulas.*|errores? (t[ií]picos?|comunes|frecuentes).*)$/i;
+const QZ_EXERCISE_LINE=/\b(ejercicios?|ejemplos?|problemas?|calcul[ae]|calcular|determin[ae]|encuentr[ae]|resuelv[ae]|obteng[ae]|consider[ae]|supong[ae]|se toma|se tiene|se tienen|se sabe que|se registr|datos?\s*:|soluci[oó]n|respuesta|pregunta|ppt|diapositiva|slide|l[aá]mina|figura|gr[aá]fico|tabla|anterior|siguiente|a continuaci[oó]n|como se ve|en la imagen|desarrolle|demuestre|justifique|complete|listado|ej\.|certamen|evaluaci[oó]n|profesor|ayudante|te preguntan|te piden|enunciado|caso \([a-z]\)|\([a-d]\))/i;
+const QZ_IMPERATIVE=/^(usa|use|ajusta|ajuste|f[ií]jate|recuerda|aplica|revisa|calcula|toma|elige|anota|escribe|considera|mira|redondea|verifica|compara|plantea|define|decide|interpreta|busca|identifica)\b/i;
+const QZ_PRONOUN_START=/^(esto|esta|este|estos|estas|eso|esa|ese|ello|lo|le|les|se|no|y|o|pero|entonces|luego|así|asi|por eso|por lo tanto|además|ademas)\b/i;
+const QZ_BAD_TERM_START=/^(si|cada|todo|toda|todos|todas|nunca|siempre|también|tambien|solo|sólo|casi|primero|luego|después|despues|para|con|sin|en|de|del|al|por|cuando|donde|aunque)\b/i;
+const QZ_WARNING=/^(errores?\s+(t[ií]picos?|comunes|frecuentes)|ojo|cuidado|no hacer|qu[eé] no hacer|trampas?)\b/i;
 const qzNorm=s=>String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9ñ ]+/g,' ').replace(/\s+/g,' ').trim();
 const qzCap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+const QZ_SHORT_OK=new Set('a y o e u de la el en un se es no lo al si su ni le me te mi tu ya ha he va da'.split(' '));
+const QZ_GENERIC_TERM=/^(etapa|paso|fase|caso|parte|regla|nota|excepci[oó]n|notaci[oó]n|atajo|ojo|error com[uú]n|errores comunes|cuidado|tip|truco|resumen|idea|intuici[oó]n|recordatorio|importante|clave|f[oó]rmula|ejemplo|observaci[oó]n|interpretaci[oó]n|conclusi[oó]n|respuesta|dato|datos|paso a paso|procedimiento|m[eé]todo|objetivo|hip[oó]tesis|resultado|soluci[oó]n|pregunta|tabla|figura|elementos|supuestos|definiciones|conceptos|propiedades|caracter[ií]sticas|ventajas|desventajas|repaso|gu[ií]a r[aá]pida|universidad.*|facultad.*|departamento.*|evaluaci[oó]n|certamen|control|listado|clase|una poblaci[oó]n|dos poblaciones)(\s+\d+|\s+[ivx]+)?$/i;
+// Une subíndices separados por el PDF («H 0» → «H0») y ordena espacios alrededor de signos.
+const qzTidy=s=>String(s).replace(/([a-záéíóúñ])-\s+([a-záéíóúñ])/g,'$1$2').replace(/\b([A-Za-z])\s(\d)\b/g,'$1$2').replace(/\s+([,.;:)\]])/g,'$1').replace(/([(\[¿¡])\s+/g,'$1').replace(/\s+/g,' ').trim();
+// Detecta fórmulas o restos de ellas (muchos símbolos o «palabras» de 1–2 letras).
+function qzMathy(l){
+  const tok=l.split(' ').filter(Boolean);if(!tok.length)return true;
+  const corto=tok.filter(w=>{const c=w.replace(/[^\wáéíóúñ]/gi,'');return c.length<=2&&!/^[A-Z]{2}$/.test(c)&&!/^[A-Z]\d$/.test(c)&&!QZ_SHORT_OK.has(c.toLowerCase())}).length/tok.length;
+  const sym=(l.match(/[±×÷√∑∏∼≤≥≈≠σμαβθχλνπρτφψωΣΔ∈∉ˆ¯̸∞∫|=<>^_]/g)||[]).length;
+  return corto>=0.25||sym>=3||(sym>=1&&corto>0.15)||/\s\/|\/\s|\/,/.test(l);
+}
 const qzDigits=s=>(String(s).match(/\d/g)||[]).length/Math.max(1,String(s).length);
 function qzShuffle(a,rnd=Math.random){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function qzPickOthers(pool,exclude,n,rnd){
@@ -132,10 +160,10 @@ function qzMergeLines(lines){
   });
   return out;
 }
-const qzIsExerciseLine=l=>QZ_EXERCISE_LINE.test(l)||/\?\s*$|^¿/.test(l)||/^[a-h][).]\s/i.test(l)||qzDigits(l)>0.08||/=\s*\d|\d\s*=/.test(l)||/^\(?\d+[).]\s/.test(l);
+const qzIsExerciseLine=l=>qzMathy(l)||QZ_EXERCISE_LINE.test(l)||/\?\s*$|^¿/.test(l)||/^[a-h][).]\s/i.test(l)||qzDigits(l)>0.08||/=\s*\d|\d\s*=/.test(l)||/^\(?\d+[).]\s/.test(l);
 const qzTermOk=t=>{
   const w=t.split(/\s+/);
-  return t.length>=3&&t.length<=60&&w.length<=6&&!QZ_EXERCISE_LINE.test(t)&&!QZ_PRONOUN_START.test(t)&&qzDigits(t)<0.15&&!/^(nota|obs|observaci[oó]n|importante|recuerda|ojo|def|definici[oó]n)$/i.test(t);
+  return t.length>=3&&t.length<=60&&w.length<=6&&/^[A-Za-zÁÉÍÓÚáéíóúÑñ]/.test(t)&&!/["“”«»'‘’¿?]/.test(t)&&!QZ_GENERIC_TERM.test(t)&&!QZ_BAD_TERM_START.test(t)&&!(t.match(/[±×√∑∼≤≥≈≠σμαβθχλνπ=<>^]/g)||[]).length&&!QZ_EXERCISE_LINE.test(t)&&!QZ_PRONOUN_START.test(t)&&qzDigits(t)<0.15&&!/^(nota|obs|observaci[oó]n|importante|recuerda|ojo|def|definici[oó]n)$/i.test(t);
 };
 const qzStripArticle=t=>t.replace(/^(el|la|los|las|un|una|unos|unas)\s+/i,'').trim();
 // Reconoce definiciones con varias redacciones habituales.
@@ -143,7 +171,7 @@ function qzDefinition(l){
   let m;
   const clean=(term,def,verbo)=>{
     term=qzStripArticle(term.replace(/^(definici[oó]n( de)?|def\.?)\s*/i,'').trim());def=def.trim().replace(/\.$/,'');
-    if(!qzTermOk(term)||def.split(/\s+/).length<4||def.length>260||qzIsExerciseLine(def))return null;
+    if(!qzTermOk(term)||def.split(/\s+/).length<4||def.length>260||qzIsExerciseLine(def)||/[;,:]$/.test(def)||(def.match(/\b[A-Z]{2,}\b/g)||[]).length>=3)return null;
     return {term:qzCap(term),def:qzCap(def),verbo};
   };
   if((m=l.match(/^(?:se\s+(?:llama|denomina|define(?:\s+como)?|conoce\s+como)|llamamos|denominamos|definimos)\s+(.{2,60}?)\s+(?:a|al)\s+(.{12,})$/i)))return clean(m[1],m[2],'es');
@@ -155,6 +183,13 @@ function qzDefinition(l){
 }
 // «Término: definición» suena natural sin tener que adivinar artículos.
 const qzSentence=(term,verbo,def)=>verbo==='es'||verbo==='son'?`${term}: ${def.replace(/^./,c=>c.toLowerCase())}`:`${term} ${verbo} que ${def.replace(/^./,c=>c.toLowerCase())}`;
+function qzListNoun(l){
+  const m=l.match(/^(?:las|los|hay|existen|tipos de|clases de)?\s*(?:\w+\s+)?([a-záéíóúñ]{5,})(?:\s|$)/i);
+  const w=(l.match(/\b(?:las|los)\s+(?:tres|dos|cuatro|cinco|distintas|distintos|diferentes)?\s*([a-záéíóúñ]{5,}s)\b/i)||[])[1];
+  if(!w)return '';
+  const sing=w.toLowerCase().replace(/ciones$/,'ción').replace(/siones$/,'sión').replace(/([^aeiou])es$/,'$1').replace(/s$/,'');
+  return QZ_STOP.has(qzNorm(sing))?'':sing;
+}
 function qzQuestionFor(d){
   if(d.verbo==='establece'||d.verbo==='indica'||d.verbo==='afirma'||d.verbo==='plantea')return `¿Qué ${d.verbo} «${d.term}»?`;
   return `¿Qué ${d.verbo} «${d.term}»?`;
@@ -162,23 +197,30 @@ function qzQuestionFor(d){
 function quizFromSlides(slides,cantidad=10,rnd=Math.random){
   // 1) Normalizar diapositivas y separar teoría de ejercicios
   const S2=(slides||[]).map(s=>{
-    let title=qzClean(s.title),lines=qzMergeLines((s.lines||[]).map(qzClean).filter(l=>l.length>=3&&l.length<=400));
+    let title=qzTidy(qzClean(s.title)),lines=qzMergeLines((s.lines||[]).map(l=>qzTidy(qzClean(l))).filter(l=>l.length>=3&&!/(\.\s?){4,}/.test(l))).map(qzTidy)
+      .flatMap(l=>l.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿])/)).map(l=>l.trim()).filter(l=>l.length>=3&&l.length<=400);
     if(!title&&lines.length&&lines[0].length<=80){title=lines[0];lines=lines.slice(1)}
-    const exLines=lines.filter(qzIsExerciseLine).length;
-    const ejercicio=QZ_EXERCISE_TITLE.test(title)||(lines.length>=2&&exLines/lines.length>=0.5);
-    return {n:s.n,title:title.slice(0,120),lines,ejercicio};
+    const exLines=lines.filter(l=>QZ_EXERCISE_LINE.test(l)||/\?\s*$|^¿/.test(l)||/^[a-h][).]\s/i.test(l)).length;
+    const ejercicio=!!s.ejercicio||QZ_EXERCISE_TITLE.test(title)||/^parte\b.*(ejercicio|resuelto|problema)/i.test(title)||QZ_GENERIC_TITLE.test(title)||(lines.length>=2&&exLines/lines.length>=0.6);
+    const sinNum=t=>qzTidy(String(t||'')).replace(/^(\d+(\.\d+)*\.?|[IVX]+[.)])\s+/,'').replace(/\s*\([^)]*\)/g,'').replace(/[:\s]+$/,'').trim();
+    return {n:s.n,title:sinNum(title).slice(0,120),tema:sinNum(s.parent)||sinNum(title),lines,ejercicio};
   }).filter(s=>s.title||s.lines.length);
   const teoria=S2.filter(s=>!s.ejercicio);
   // 2) Extraer definiciones y afirmaciones de teoría
   const defs=[],stmts=[];
-  teoria.forEach(s=>s.lines.forEach(l=>{
+  teoria.forEach(s=>{let ctx='',aviso=false;s.lines.forEach(l=>{
+    if(QZ_WARNING.test(l)){aviso=true;return}
+    if(aviso)return;
+    if(/:$/.test(l)){ctx=qzListNoun(l);return}
+    if(!/^[^:]{2,40}:\s/.test(l))ctx='';
     if(qzIsExerciseLine(l))return;
     const d=qzDefinition(l);
+    if(d&&ctx&&d.term.split(' ').length<=2&&!qzNorm(d.term).includes(qzNorm(ctx)))d.term=qzCap(ctx)+(/^[A-ZÁÉÍÓÚÑ]/.test(d.term)&&/^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+$/.test(d.term)&&!/^(constante|proporcional|simple|[oó]ptima|igual)$/i.test(d.term)?' de ':' ')+(/^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+$/.test(d.term)&&/^(constante|proporcional|simple|[oó]ptima|igual)$/i.test(d.term)?d.term.toLowerCase():d.term);
     if(d&&!defs.some(x=>qzNorm(x.term)===qzNorm(d.term))){d.slide=s.n;defs.push(d);return}
     const words=l.split(/\s+/);
-    if(words.length>=6&&l.length>=30&&l.length<=220&&/^[A-ZÁÉÍÓÚÑ¿]/.test(l)&&!QZ_PRONOUN_START.test(l))stmts.push({t:l.replace(/\.$/,''),slide:s.n,title:s.title});
-  }));
-  const titles=[...new Map(teoria.filter(s=>s.title&&s.title.length<=70&&!QZ_GENERIC_TITLE.test(s.title)&&!qzIsExerciseLine(s.title)).map(s=>[qzNorm(s.title),s.title])).values()];
+    if(words.length>=8&&l.length>=30&&l.length<=220&&!/\b(la|lo|los|las)\s+(hay|es|son)\b/i.test(l)&&/^[A-ZÁÉÍÓÚÑ]/.test(l)&&!/[:;,]$/.test(l)&&!QZ_PRONOUN_START.test(l)&&!QZ_IMPERATIVE.test(l))stmts.push({t:l.replace(/\.$/,''),slide:s.n,title:s.tema});
+  })});
+  const titles=[...new Map(teoria.filter(s=>s.tema&&s.tema.length<=70&&!QZ_GENERIC_TITLE.test(s.tema)&&!QZ_GENERIC_TERM.test(s.tema)&&!qzIsExerciseLine(s.tema)).map(s=>[qzNorm(s.tema),s.tema])).values()];
   const concepts=[...new Map(defs.map(d=>d.term).concat(titles.filter(t=>!/\s(y|e|vs\.?|versus|o)\s|[,/&]/i.test(t)).map(t=>qzCap(qzStripArticle(t)))).map(c=>[qzNorm(c),c])).values()];
   const defTexts=defs.map(d=>d.def);
   const byType={definicion:[],concepto:[],completar:[],vf:[],tema:[]};
@@ -221,9 +263,9 @@ function quizFromSlides(slides,cantidad=10,rnd=Math.random){
     for(const c of colas){
       if(out.length>=want)break;
       while(c.length){
-        const q=c.shift(),k=qzNorm(q.q),ans=qzNorm(q.opts[q.ok])+'|'+q.kind;
-        if(seen.has(k)||q.ok<0||usados[ans])continue;
-        seen.add(k);usados[ans]=1;out.push(q);break;
+        const q=c.shift(),k=qzNorm(q.q),ans=qzNorm(q.opts[q.ok])+'|'+q.kind,clave=q.kind==='vf'?qzNorm(q.q).slice(0,40):qzNorm(q.opts[q.ok]);
+        if(seen.has(k)||q.ok<0||usados[ans]||(usados[clave]||0)>=2)continue;
+        seen.add(k);usados[ans]=1;usados[clave]=(usados[clave]||0)+1;out.push(q);break;
       }
     }
   }
@@ -293,6 +335,7 @@ const QZ_SAY={
   ok:['¡Correcto!','¡Bien ahí!','¡Eso es!','¡Vas con todo!'],
   bad:['Casi… repásala después.','Ups, esa no era.','No pasa nada, sigamos.']
 };
+const qzWhere=(s,n)=>`${s&&s.tipo==='pdf'?'página':'diapositiva'} ${n}`;
 const qzPick=a=>a[Math.floor(Math.random()*a.length)];
 const qzReduced=()=>{try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}};
 const qzSpinMs=()=>qzReduced()?0:1700;
@@ -374,7 +417,7 @@ function qzWrongToFlashcards(){
   if(!deck){deck={id:uid(),name:`Arvis pregunta · ${s.name}`.slice(0,80),courseId:s.courseId||'',cards:[]};F.decks.push(deck)}
   let n=0;
   wrong.forEach(q=>{
-    const front=q.q.slice(0,1000),back=(q.opts[q.ok]+` (diapositiva ${q.slide})`).slice(0,1000);
+    const front=q.q.slice(0,1000),back=(q.opts[q.ok]+` (${qzWhere(s,q.slide)})`).slice(0,1000);
     if(deck.cards.some(c=>c.front===front))return;
     deck.cards.push({id:uid(),front,back,box:1,due:today()});n++;
   });
@@ -423,12 +466,12 @@ function qzPlayHtml(){
   const mood=fb?(last.ok?'celebrando':'preocupado'):'estudiando';
   return `<div class="qz-stage" style="--cat:${cat.color};--cat-dark:${cat.dark}">${hud}
     <div class="qz-catbar"><span class="qz-cat-ic" aria-hidden="true">${cat.icon}</span>
-      <span><b>${cat.label}</b><br><small>Pregunta ${qzGame.i+1} de ${total} · diapositiva ${q.slide}</small></span>
+      <span><b>${cat.label}</b><br><small>Pregunta ${qzGame.i+1} de ${total} · ${qzWhere(s,q.slide)}</small></span>
       ${fb?'':`<span class="qz-ring" id="qz-ring" style="--p:${(left/qzLimit(q)*100).toFixed(1)}" aria-hidden="true"><span id="qz-secs">${Math.ceil(left/1000)}</span></span>`}</div>
     ${qzBubble(mood,qzGame.say)}
     <div class="qz-qcard"><h2 class="qz-q">${esc(q.q)}</h2></div>
     <div class="qz-opts${q.opts.length===2?' qz-two':''}">${opts}</div>
-    ${fb?`<div class="qz-feedback ${last.ok?'ok':'bad'}" role="status">${last.ok?`¡Correcto! +${last.pts} pts`:last.timeout?'Se acabó el tiempo.':'Incorrecto.'}${last.ok?'':` La respuesta era: <b>${esc(q.opts[q.ok])}</b> (diapositiva ${q.slide}).`}</div>
+    ${fb?`<div class="qz-feedback ${last.ok?'ok':'bad'}" role="status">${last.ok?`¡Correcto! +${last.pts} pts`:last.timeout?'Se acabó el tiempo.':'Incorrecto.'}${last.ok?'':` La respuesta era: <b>${esc(q.opts[q.ok])}</b> (${qzWhere(s,q.slide)}).`}</div>
       <button class="qz-next" id="qz-next" data-focus-id="qz-next" onclick="qzNext()">${qzGame.i+1<total?'Siguiente ➜':'Ver resultado ➜'}</button>`:''}
   </div>`;
 }
@@ -446,7 +489,7 @@ function qzEndHtml(){
     <p class="qz-final">${ok} de ${total} correctas (${pct} %) · mejor racha ${qzGame.bestStreak}</p>
     ${qzGame.record&&s.plays>1?'<p class="qz-record">🏆 ¡Nuevo récord en esta trivia!</p>':''}
     <ul class="qz-legend qz-catscore">${porCat}</ul>
-    ${wrong.length?`<div class="qz-qcard qz-review"><h3>Para repasar</h3><ul class="qz-wrong">${wrong.map(q=>`<li>${esc(q.q)}<br><span class="mute">Respuesta: <b>${esc(q.opts[q.ok])}</b> · diapositiva ${q.slide}</span></li>`).join('')}</ul></div>`:''}
+    ${wrong.length?`<div class="qz-qcard qz-review"><h3>Para repasar</h3><ul class="qz-wrong">${wrong.map(q=>`<li>${esc(q.q)}<br><span class="mute">Respuesta: <b>${esc(q.opts[q.ok])}</b> · ${qzWhere(s,q.slide)}</span></li>`).join('')}</ul></div>`:''}
     <div class="qz-endbtns">
       <button class="qz-next" data-focus-id="qz-again" onclick="startQuiz('${s.id}')">Jugar de nuevo</button>
       ${wrong.length?`<button class="qz-ghost" data-focus-id="qz-to-fc" onclick="qzWrongToFlashcards()">Pasar falladas a flashcards</button>`:''}

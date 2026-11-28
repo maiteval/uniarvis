@@ -107,13 +107,24 @@ const path=require('path');
     await p.setInputFiles('#qz-file',fx('inferencia.pdf'));
     const inf=await p.evaluate(async()=>{const {slides}=await qzRead(qzFile);const r=quizFromSlides(slides,30);
       return {r:{teoria:r.teoria,ejercicios:r.ejercicios,definiciones:r.definiciones},qs:r.preguntas.map(q=>q.q+' '+q.opts.join(' '))}});
-    ok('separa diapositivas de teoría y de ejercicios',inf.r.teoria===5&&inf.r.ejercicios===3,JSON.stringify(inf.r));
+    ok('separa diapositivas de teoría y de ejercicios',inf.r.teoria===6&&inf.r.ejercicios===2,JSON.stringify(inf.r));
     ok('reconoce las definiciones aunque el PDF corte las líneas',inf.r.definiciones>=10,String(inf.r.definiciones));
     const malas=inf.qs.filter(t=>/ejercicio|ejemplo|calcule|soluci[oó]n|n = 25|1\.200|ampolleta|1,96|diapositiva|ppt|¿qu[eé] ocurre/i.test(t));
     ok('ninguna pregunta sale de ejercicios, ejemplos o datos numéricos',malas.length===0,malas.slice(0,2).join(' || '));
     ok('pregunta por los conceptos clave',['Valor p','Error tipo I','Intervalo de confianza','Hipótesis nula','Estimador puntual'].every(c=>inf.qs.some(t=>t.includes(c))));
     const soloEj=await p.evaluate(()=>{const r=quizFromSlides([{n:1,title:'Ejercicio 1',lines:['Calcule la media de 3, 5 y 7','Se toma una muestra de n = 10']},{n:2,title:'Ejemplo',lines:['¿Qué ocurre si n aumenta?','Solución: disminuye']}],10);return r.preguntas.length+'|'+r.ejercicios});
     ok('una presentación solo de ejercicios no genera preguntas',soloEj==='0|2',soloEj);
+    // Apuntes tipo documento: índice, encabezados, Parte II, fórmulas y «Errores típicos»
+    await p.setInputFiles('#qz-file',fx('apunte-muestreo.pdf'));
+    const ap=await p.evaluate(async()=>{const {slides}=await qzRead(qzFile);const r=quizFromSlides(slides,30);
+      return {secciones:slides.map(s=>s.title),qs:r.preguntas.map(q=>q.q+' '+q.opts.join(' '))}});
+    ok('arma secciones con los títulos del apunte',ap.secciones.includes('Muestreo estratificado')&&ap.secciones.includes('Afijación'),ap.secciones.join(' | '));
+    ok('ignora índice y encabezado repetido',!ap.qs.some(t=>/\. \. \.|999999|Índice/.test(t)));
+    ok('no pregunta sobre la Parte II de ejercicios',!ap.qs.some(t=>/turno|trabajadores|n1 =|Calcule/i.test(t)));
+    ok('no toma «Errores típicos» como verdades',!ap.qs.some(t=>/Redondear el tama|Olvidar la correcci/i.test(t)));
+    ok('ignora las fórmulas',!ap.qs.some(t=>/Σ|V\(ȳ\)/.test(t)));
+    ok('da contexto a las listas (afijación proporcional)',ap.qs.some(t=>t.includes('Afijación proporcional'))&&ap.qs.some(t=>t.includes('Afijación de Neyman')));
+    ok('une definiciones cortadas en dos líneas',ap.qs.some(t=>t.includes('respecto de la variable de interés')));
     // Poco texto
     const poco=await p.evaluate(()=>quizFromSlides([{n:1,title:'Hola',lines:['Gracias']}],10).preguntas.length);
     ok('con poco texto no inventa preguntas',poco===0);
